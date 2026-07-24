@@ -1,0 +1,2352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nova Curated — Finance</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #F7F5F1;
+      --surface: #FFFFFF;
+      --surface-alt: #F2EEE8;
+      --border: #E4DDD3;
+      --border-light: #EDE9E2;
+      --text: #1A1916;
+      --text-2: #706B62;
+      --text-3: #A09890;
+      --accent: #8C6E52;
+      --accent-light: #F0E8DE;
+      --accent-mid: #C4A88A;
+      --pos: #3E7055;
+      --pos-bg: #EBF4EF;
+      --neg: #B84E3A;
+      --neg-bg: #FCEEE9;
+      --warn-bg: #FEF6EA;
+      --warn: #A0712A;
+      --nav-bg: #18170F;
+      --nav-text: #F7F5F1;
+      --nav-text-2: #8C8880;
+      --nav-active: #8C6E52;
+      --nav-active-bg: rgba(140,110,82,0.15);
+      --radius: 8px;
+      --radius-lg: 12px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.05);
+      --shadow-lg: 0 20px 60px rgba(0,0,0,0.12), 0 8px 24px rgba(0,0,0,0.08);
+    }
+
+    html, body { height: 100%; overflow: hidden; }
+
+    body {
+      font-family: 'Sono', monospace;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.5;
+      display: flex;
+    }
+
+    /* ── Sidebar ──────────────────────────────────── */
+    #sidebar {
+      width: 220px;
+      min-width: 220px;
+      background: var(--nav-bg);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      position: relative;
+      z-index: 10;
+    }
+
+    .sidebar-logo {
+      padding: 28px 24px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .sidebar-logo .brand {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--nav-text);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .sidebar-logo .sub {
+      font-size: 11px;
+      font-weight: 300;
+      color: var(--nav-text-2);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    .sidebar-nav {
+      padding: 16px 12px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .nav-section-label {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--nav-text-2);
+      padding: 12px 12px 6px;
+      opacity: 0.6;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      color: var(--nav-text-2);
+      font-size: 13.5px;
+      font-weight: 400;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+
+    .nav-item-inner {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .nav-item:hover {
+      color: var(--nav-text);
+      background: rgba(255,255,255,0.05);
+    }
+
+    .nav-item.active {
+      color: var(--nav-text);
+      background: var(--nav-active-bg);
+    }
+
+    .nav-item.active .nav-icon { color: var(--nav-active); }
+
+    .nav-icon {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      opacity: 0.7;
+    }
+
+    .nav-item.active .nav-icon { opacity: 1; }
+
+    .sidebar-footer {
+      padding: 16px 24px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .sidebar-date {
+      font-size: 11px;
+      color: var(--nav-text-2);
+      opacity: 0.5;
+    }
+
+    /* ── Main content ─────────────────────────────── */
+    #main {
+      flex: 1;
+      overflow-y: auto;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .page-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 20px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+
+    .page-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .page-subtitle {
+      font-size: 12px;
+      font-weight: 300;
+      color: var(--text-3);
+      margin-top: 1px;
+    }
+
+    .page-content {
+      padding: 28px 32px;
+      flex: 1;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: var(--radius);
+      font-family: 'Sono', monospace;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-primary:hover { background: #7A5F46; }
+
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover { background: var(--bg); }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-2);
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover { background: var(--bg); color: var(--text); }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--neg);
+      border: 1px solid var(--neg);
+    }
+
+    .btn-danger:hover { background: var(--neg-bg); }
+
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+
+    /* ── Cards ────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-3);
+    }
+
+    /* ── KPI Grid ─────────────────────────────────── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .kpi-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 18px 20px;
+      transition: box-shadow 0.15s;
+    }
+
+    .kpi-card:hover { box-shadow: var(--shadow-md); }
+
+    .kpi-label {
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+
+    .kpi-value {
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.1;
+    }
+
+    .kpi-value.pos { color: var(--pos); }
+    .kpi-value.neg { color: var(--neg); }
+    .kpi-value.warn { color: var(--warn); }
+
+    .kpi-sub {
+      font-size: 11px;
+      color: var(--text-3);
+      margin-top: 4px;
+    }
+
+    /* ── Section Heading ──────────────────────────── */
+    .section-heading {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    /* ── Table ────────────────────────────────────── */
+    .table-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .table-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border-light);
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .table-toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .search-input {
+      font-family: 'Sono', monospace;
+      font-size: 13px;
+      padding: 7px 12px 7px 32px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg);
+      color: var(--text);
+      width: 220px;
+      outline: none;
+      transition: border-color 0.15s;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23A09890' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: 10px center;
+    }
+
+    .search-input:focus { border-color: var(--accent); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    thead th {
+      text-align: left;
+      font-size: 10.5px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      padding: 10px 16px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border-light);
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    thead th:hover { color: var(--text-2); }
+
+    thead th.sort-asc::after { content: ' ↑'; }
+    thead th.sort-desc::after { content: ' ↓'; }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border-light);
+      transition: background 0.1s;
+    }
+
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--surface-alt); }
+
+    tbody td {
+      padding: 11px 16px;
+      color: var(--text);
+      vertical-align: middle;
+    }
+
+    tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .badge-in { background: var(--pos-bg); color: var(--pos); }
+    .badge-out { background: var(--neg-bg); color: var(--neg); }
+    .badge-cogs { background: #FEF6EA; color: #A0712A; }
+    .badge-opex { background: #EEF3FB; color: #3D5FA0; }
+    .badge-financing { background: #F3EEF9; color: #7048A0; }
+    .badge-equity { background: #EEF9F5; color: #2E7A58; }
+    .badge-revenue { background: var(--pos-bg); color: var(--pos); }
+
+    .pos-text { color: var(--pos); font-weight: 500; }
+    .neg-text { color: var(--neg); font-weight: 500; }
+    .muted { color: var(--text-3); }
+
+    /* ── Modal ────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      backdrop-filter: blur(2px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .modal {
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+      width: 100%;
+      max-width: 520px;
+      max-height: 90vh;
+      overflow-y: auto;
+      transform: translateY(8px);
+      transition: transform 0.2s;
+    }
+
+    .modal-overlay.open .modal { transform: translateY(0); }
+
+    .modal-header {
+      padding: 20px 24px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      background: var(--surface);
+      z-index: 1;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .modal-title { font-size: 16px; font-weight: 600; }
+
+    .modal-close {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--bg);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-2);
+      font-size: 16px;
+      transition: background 0.15s;
+    }
+
+    .modal-close:hover { background: var(--border); }
+
+    .modal-body { padding: 20px 24px; }
+
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border-light);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    /* ── Form ─────────────────────────────────────── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group.full { grid-column: 1 / -1; }
+
+    label {
+      font-size: 11.5px;
+      font-weight: 500;
+      color: var(--text-2);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    input[type="date"],
+    select,
+    textarea {
+      font-family: 'Sono', monospace;
+      font-size: 13.5px;
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      width: 100%;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(140,110,82,0.12);
+    }
+
+    input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-2);
+    }
+
+    .form-hint {
+      font-size: 11px;
+      color: var(--text-3);
+      margin-top: 3px;
+    }
+
+    /* ── P&L Statement ────────────────────────────── */
+    .pl-statement {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .pl-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 24px;
+      border-bottom: 1px solid var(--border-light);
+      font-size: 13.5px;
+    }
+
+    .pl-row:last-child { border-bottom: none; }
+
+    .pl-row.section-header {
+      background: var(--bg);
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      padding: 8px 24px;
+    }
+
+    .pl-row.total {
+      background: var(--surface-alt);
+      font-weight: 600;
+      border-top: 2px solid var(--border);
+      border-bottom: 2px solid var(--border);
+    }
+
+    .pl-row.subtotal { font-weight: 600; }
+
+    .pl-row.net-profit {
+      background: var(--accent-light);
+      font-weight: 700;
+      font-size: 15px;
+      border-top: 2px solid var(--accent-mid);
+    }
+
+    .pl-value { font-variant-numeric: tabular-nums; font-weight: 500; }
+    .pl-value.indent { padding-left: 20px; }
+
+    /* ── Balance Sheet ────────────────────────────── */
+    .bs-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .bs-header {
+      background: var(--bg);
+      padding: 10px 20px;
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-3);
+    }
+
+    .bs-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 20px;
+      font-size: 13.5px;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .bs-row:last-child { border-bottom: none; }
+    .bs-row.total { font-weight: 600; background: var(--surface-alt); }
+    .bs-value { font-variant-numeric: tabular-nums; }
+
+    /* ── Dashboard ────────────────────────────────── */
+    .dash-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    .chart-wrap {
+      position: relative;
+      height: 240px;
+    }
+
+    /* ── Period filter ────────────────────────────── */
+    .period-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 16px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .period-bar label {
+      font-size: 11.5px;
+      font-weight: 500;
+      color: var(--text-2);
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    .period-bar select, .period-bar input {
+      padding: 5px 10px;
+      width: auto;
+      font-size: 13px;
+    }
+
+    .period-viewing {
+      font-size: 12px;
+      color: var(--accent);
+      font-weight: 500;
+      margin-left: 8px;
+    }
+
+    /* ── Settings ─────────────────────────────────── */
+    .settings-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+
+    .settings-section-header {
+      padding: 14px 20px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-3);
+    }
+
+    .settings-section-body { padding: 20px; }
+
+    .settings-form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .mini-table {
+      width: 100%;
+      font-size: 13px;
+    }
+
+    .mini-table th {
+      text-align: left;
+      padding: 6px 10px;
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      background: var(--bg);
+    }
+
+    .mini-table td { padding: 6px 10px; border-bottom: 1px solid var(--border-light); }
+    .mini-table tr:last-child td { border-bottom: none; }
+    .mini-table input { padding: 4px 8px; font-size: 12.5px; }
+
+    /* ── Empty state ──────────────────────────────── */
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--text-3);
+    }
+
+    .empty-state-icon { font-size: 32px; margin-bottom: 10px; opacity: 0.4; }
+    .empty-state-text { font-size: 13px; }
+
+    /* ── Toast ────────────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--nav-bg);
+      color: var(--nav-text);
+      padding: 12px 18px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 400;
+      box-shadow: var(--shadow-lg);
+      z-index: 999;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: all 0.25s ease;
+      pointer-events: none;
+    }
+
+    #toast.show { opacity: 1; transform: translateY(0); }
+
+    /* ── Utilities ────────────────────────────────── */
+    .flex { display: flex; }
+    .flex-center { display: flex; align-items: center; }
+    .gap-8 { gap: 8px; }
+    .gap-12 { gap: 12px; }
+    .mb-16 { margin-bottom: 16px; }
+    .mb-24 { margin-bottom: 24px; }
+
+    .delete-btn, .edit-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-3);
+      padding: 4px;
+      border-radius: 4px;
+      transition: all 0.1s;
+      font-size: 14px;
+    }
+
+    .delete-btn:hover { color: var(--neg); background: var(--neg-bg); }
+    .edit-btn:hover { color: var(--accent); background: var(--accent-light); }
+
+    .row-actions { display: flex; gap: 2px; align-items: center; }
+
+    .tag {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      background: var(--surface-alt);
+      color: var(--text-2);
+      border: 1px solid var(--border);
+    }
+
+    .balance-ok { color: var(--pos); font-weight: 600; }
+    .balance-check { color: var(--neg); font-weight: 600; }
+
+    .divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
+
+    @media (max-width: 900px) {
+      #sidebar { width: 60px; min-width: 60px; }
+      .sidebar-logo, .nav-item span, .sidebar-footer, .nav-section-label { display: none; }
+      .nav-item { justify-content: center; padding: 12px; }
+      .nav-icon { width: 20px; height: 20px; }
+      .page-content { padding: 16px; }
+      .form-grid { grid-template-columns: 1fr; }
+      .settings-form-grid { grid-template-columns: 1fr; }
+      .dash-grid { grid-template-columns: 1fr; }
+      .kpi-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<nav id="sidebar">
+  <div class="sidebar-logo">
+    <div class="brand">Nova Curated</div>
+    <div class="sub">Finance OS</div>
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-section-label">Overview</div>
+    <div class="nav-item active" data-view="dashboard" onclick="navigate('dashboard')">
+      <div class="nav-item-inner">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        <span>Dash</span>
+      </div>
+    </div>
+
+    <div class="nav-section-label">Log</div>
+    <div class="nav-item" data-view="orders" onclick="navigate('orders')">
+      <div class="nav-item-inner">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+        <span>Orders</span>
+      </div>
+    </div>
+    <div class="nav-item" data-view="transactions" onclick="navigate('transactions')">
+      <div class="nav-item-inner">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        <span>Transactions</span>
+      </div>
+    </div>
+
+    <div class="nav-section-label">Reports</div>
+    <div class="nav-item" data-view="monthly" onclick="navigate('monthly')">
+      <div class="nav-item-inner">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span>Monthly</span>
+      </div>
+    </div>
+    <div class="nav-item" data-view="pl" onclick="navigate('pl')">
+      <div class="nav-item-inner">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        <span>P&amp;L</span>
+      </div>
+    </div>
+    <div class="nav-item" data-view="balance" onclick="navigate('balance')">
+      <div class="nav-item-inner">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+        <span>Balance</span>
+      </div>
+    </div>
+
+    <div style="flex:1"></div>
+    <div class="nav-section-label">Config</div>
+    <div class="nav-item" data-view="settings" onclick="navigate('settings')">
+      <div class="nav-item-inner">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>Settings</span>
+      </div>
+    </div>
+  </div>
+  <div class="sidebar-footer">
+    <div class="sidebar-date" id="sidebar-date"></div>
+  </div>
+</nav>
+
+<!-- Main -->
+<div id="main">
+  <div class="page-header">
+    <div>
+      <div class="page-title" id="page-title">Dashboard</div>
+      <div class="page-subtitle" id="page-subtitle">Nova Curated · FY 2026</div>
+    </div>
+    <div id="page-actions"></div>
+  </div>
+  <div class="page-content" id="page-content"></div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModalOnOverlay(event)">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title"></div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// DATA & STATE
+// ═══════════════════════════════════════════════════
+
+const DEFAULT_DATA = {
+  transactions: [
+    { id: 1,  date: '2026-04-07', description: "Director's loan into the business",                       category: 'Loan Received',             amount: 2800   },
+    { id: 2,  date: '2026-04-13', description: 'Shopify Website Monthly Cost',                            category: 'Software & Subscriptions',  amount: 1      },
+    { id: 3,  date: '2026-04-07', description: 'Purchase of Trial Scarf',                                 category: 'Other Expenses',            amount: 115    },
+    { id: 4,  date: '2026-04-20', description: 'Purchase of Second Trial Scarf',                          category: 'Other Expenses',            amount: 29.55  },
+    { id: 5,  date: '2026-04-20', description: 'Adobe Illustrator Monthly Cost',                          category: 'Software & Subscriptions',  amount: 21.98  },
+    { id: 6,  date: '2026-05-12', description: 'Shopify Website Monthly Cost',                            category: 'Software & Subscriptions',  amount: 1      },
+    { id: 7,  date: '2026-05-20', description: 'Adobe Illustrator Monthly Cost',                          category: 'Software & Subscriptions',  amount: 21.98  },
+    { id: 8,  date: '2026-05-21', description: 'Purchase of Trial Scarf',                                 category: 'Other Expenses',            amount: 29.85  },
+    { id: 9,  date: '2026-06-10', description: 'Shopify Website Monthly Cost',                            category: 'Software & Subscriptions',  amount: 1      },
+    { id: 10, date: '2026-06-15', description: 'Purchase of Inventory – Cotton Scarves',                  category: 'Stock Purchases',           amount: 540.65 },
+    { id: 11, date: '2026-06-16', description: 'Purchase of Inventory – Silk Scarves',                    category: 'Stock Purchases',           amount: 774.02 },
+    { id: 12, date: '2026-06-22', description: 'Adobe Illustrator Monthly Cost',                          category: 'Software & Subscriptions',  amount: 21.98  },
+    { id: 13, date: '2026-06-30', description: 'Inwards Shipping – Silk Scarves',                         category: 'Stock Purchases',           amount: 138.01 },
+    { id: 14, date: '2026-07-07', description: 'Purchase of Inventory – Silk Scarves',                    category: 'Stock Purchases',           amount: 982.31 },
+    { id: 15, date: '2026-07-10', description: 'Shopify Website Monthly Cost',                            category: 'Software & Subscriptions',  amount: 25     },
+    { id: 16, date: '2026-07-17', description: 'Shopify Annual Website Subscription',                     category: 'Software & Subscriptions',  amount: 11.99  },
+    { id: 17, date: '2026-07-16', description: 'Purchase of Packaging – Cotton Bags',                     category: 'Packaging',                 amount: 16.99  },
+  ],
+  orders: [
+    { id: 1,  date: '2026-07-19', orderNum: '#1005', customer: 'Lily Ker',           skuType: 'Silk 90',   qty: 1, revenue: 78,    shippingMethod: 'Standard',   outsideShopify: false },
+    { id: 2,  date: '2026-07-20', orderNum: '#1006', customer: 'Cheyenna Devenish',  skuType: 'Silk 90',   qty: 1, revenue: 78,    shippingMethod: 'Standard',   outsideShopify: false },
+    { id: 3,  date: '2026-07-20', orderNum: '#1007', customer: 'Janine Calder',      skuType: 'Silk 90',   qty: 1, revenue: 82,    shippingMethod: 'Standard',   outsideShopify: false },
+    { id: 4,  date: '2026-07-20', orderNum: '#1008', customer: 'Melanie Simpson',    skuType: 'Silk 90',   qty: 1, revenue: 85.99, shippingMethod: 'Standard',   outsideShopify: false },
+    { id: 5,  date: '2026-07-17', orderNum: '#1001', customer: 'Kendra Tunley',      skuType: 'Silk 90',   qty: 1, revenue: 0,     shippingMethod: 'Collection', outsideShopify: true  },
+    { id: 6,  date: '2026-07-17', orderNum: '#1002', customer: 'Bethany Cantley',    skuType: 'Cotton 50', qty: 3, revenue: 0,     shippingMethod: 'Collection', outsideShopify: true  },
+    { id: 7,  date: '2026-07-21', orderNum: '#1009', customer: 'Aidan Hewison',      skuType: 'Silk 90',   qty: 1, revenue: 82,    shippingMethod: 'Standard',   outsideShopify: false },
+    { id: 8,  date: '2026-07-22', orderNum: '#1010', customer: 'Lorraine Tunley',    skuType: 'Silk 90',   qty: 1, revenue: 82,    shippingMethod: 'Collection', outsideShopify: false },
+    { id: 9,  date: '2026-07-22', orderNum: '#1011', customer: 'Joanna Hibbert',     skuType: 'Silk 90',   qty: 1, revenue: 78,    shippingMethod: 'Collection', outsideShopify: false },
+    { id: 10, date: '2026-07-22', orderNum: '#1011', customer: 'Bronte Fishwick',    skuType: 'Silk 90',   qty: 1, revenue: 85.99, shippingMethod: 'Standard',   outsideShopify: false },
+  ],
+  settings: {
+    businessName: 'Nova Curated',
+    periodLabel: 'FY 2026',
+    openingStock: 0,
+    closingStock: 2657,
+    skuCosts: [
+      { sku: 'Silk 90',   cost: 13, notes: '90×90cm silk scarf'   },
+      { sku: 'Silk 50',   cost: 5,  notes: '50×50cm silk scarf'   },
+      { sku: 'Cotton 50', cost: 5,  notes: '50×50cm cotton scarf' },
+    ],
+    defaultShipping: 3.80,
+    shopifyFeeRate: 0.02,
+    shopifyFixedFee: 0.25,
+    shippingMethods: [
+      { method: 'Standard',   cost: 3.40, notes: 'Royal Mail tracked' },
+      { method: 'Collection', cost: 0,    notes: 'Customer collection' },
+    ]
+  },
+  nextId: { tx: 18, order: 11 }
+};
+
+const CATEGORIES = [
+  'Sales','Other Income',
+  'Stock Purchases','Packaging','Shipping & Postage',
+  'Marketing & Advertising','Software & Subscriptions','Bank Fees',
+  'Rent','Utilities','Professional Fees','Insurance','Travel',
+  'Office Supplies','Other Expenses',
+  'Loan Received','Loan Repayment',
+  'Owner Investment','Owner Drawings'
+];
+
+const CAT_CFG = {
+  'Sales':                    { t:'Revenue',   d:'In'  },
+  'Other Income':             { t:'Revenue',   d:'In'  },
+  'Stock Purchases':          { t:'COGS',      d:'Out' },
+  'Packaging':                { t:'COGS',      d:'Out' },
+  'Shipping & Postage':       { t:'COGS',      d:'Out' },
+  'Marketing & Advertising':  { t:'OpEx',      d:'Out' },
+  'Software & Subscriptions': { t:'OpEx',      d:'Out' },
+  'Bank Fees':                { t:'OpEx',      d:'Out' },
+  'Rent':                     { t:'OpEx',      d:'Out' },
+  'Utilities':                { t:'OpEx',      d:'Out' },
+  'Professional Fees':        { t:'OpEx',      d:'Out' },
+  'Insurance':                { t:'OpEx',      d:'Out' },
+  'Travel':                   { t:'OpEx',      d:'Out' },
+  'Office Supplies':          { t:'OpEx',      d:'Out' },
+  'Other Expenses':           { t:'OpEx',      d:'Out' },
+  'Loan Received':            { t:'Financing', d:'In'  },
+  'Loan Repayment':           { t:'Financing', d:'Out' },
+  'Owner Investment':         { t:'Equity',    d:'In'  },
+  'Owner Drawings':           { t:'Equity',    d:'Out' },
+};
+
+// Load / save state
+function loadState() {
+  try {
+    const saved = localStorage.getItem('nova_finance_v2');
+    return saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(DEFAULT_DATA));
+  } catch(e) { return JSON.parse(JSON.stringify(DEFAULT_DATA)); }
+}
+
+function saveState() {
+  localStorage.setItem('nova_finance_v2', JSON.stringify(state));
+}
+
+let state = loadState();
+
+// ═══════════════════════════════════════════════════
+// CALCULATIONS
+// ═══════════════════════════════════════════════════
+
+function getSkuCost(skuType) {
+  const s = state.settings;
+  const entry = s.skuCosts.find(x => x.sku === skuType);
+  return entry ? entry.cost : 0;
+}
+
+function getShippingCost(method) {
+  const s = state.settings;
+  if (!method) return s.defaultShipping;
+  const entry = s.shippingMethods.find(x => x.method === method);
+  return entry !== undefined ? entry.cost : s.defaultShipping;
+}
+
+function calcOrder(order) {
+  const s = state.settings;
+  const productCost = order.qty * getSkuCost(order.skuType);
+  const shippingOut = getShippingCost(order.shippingMethod);
+  const shopifyCut = (order.outsideShopify || !order.revenue) ? 0 :
+    Math.round((order.revenue * s.shopifyFeeRate + s.shopifyFixedFee) * 100) / 100;
+  const cm = Math.round((order.revenue - productCost - shippingOut - shopifyCut) * 100) / 100;
+  const netCash = Math.round((order.revenue - shippingOut - shopifyCut) * 100) / 100;
+  return { productCost, shippingOut, shopifyCut, cm, netCash };
+}
+
+function calcDash() {
+  const s = state.settings;
+  const orders = state.orders;
+  const txs = state.transactions;
+
+  const ordersCount = orders.filter(o => o.revenue > 0).length;
+  const revenue = orders.reduce((a, o) => a + o.revenue, 0);
+  const totalCM = orders.reduce((a, o) => a + calcOrder(o).cm, 0);
+  const cmPct = revenue ? totalCM / revenue : 0;
+
+  const opexCats = ['Marketing & Advertising','Software & Subscriptions','Bank Fees','Rent','Utilities','Professional Fees','Insurance','Travel','Office Supplies','Other Expenses'];
+  const fixedCosts = txs.filter(t => opexCats.includes(t.category)).reduce((a,t) => a+t.amount, 0);
+
+  const opProfit = totalCM - fixedCosts;
+  const opMarginPct = revenue ? opProfit / revenue : 0;
+
+  // Cash: sum all In txs + order net cash - sum all Out txs
+  const txIn = txs.filter(t => CAT_CFG[t.category]?.d === 'In').reduce((a,t) => a+t.amount, 0);
+  const txOut = txs.filter(t => CAT_CFG[t.category]?.d === 'Out').reduce((a,t) => a+t.amount, 0);
+  const orderNetCash = orders.reduce((a,o) => a + calcOrder(o).netCash, 0);
+  const cash = txIn - txOut + orderNetCash;
+
+  // P&L net profit (full year)
+  const plFull = calcPL(0, 0, new Date().getFullYear());
+  const netProfit = plFull.netProfit;
+
+  const inventory = s.closingStock;
+  const totalAssets = cash + inventory;
+  const directorLoan = txs.filter(t=>t.category==='Loan Received').reduce((a,t)=>a+t.amount,0) -
+    txs.filter(t=>t.category==='Loan Repayment').reduce((a,t)=>a+t.amount,0);
+  const ownerCapital = txs.filter(t=>t.category==='Owner Investment').reduce((a,t)=>a+t.amount,0) -
+    txs.filter(t=>t.category==='Owner Drawings').reduce((a,t)=>a+t.amount,0);
+  const totalLiabilities = directorLoan;
+  const totalEquity = ownerCapital + netProfit;
+
+  return { ordersCount, revenue, totalCM, cmPct, fixedCosts, opProfit, opMarginPct,
+           cash, netProfit, inventory, directorLoan, totalAssets, totalLiabilities, totalEquity };
+}
+
+function calcPL(fromMonth, toMonth, year) {
+  // fromMonth=0 means full year; toMonth used for range
+  const s = state.settings;
+  const txs = state.transactions;
+  const orders = state.orders;
+
+  const inPeriod = (dateStr) => {
+    if (!fromMonth) return true;
+    const d = new Date(dateStr + 'T00:00:00');
+    const dYear = d.getFullYear();
+    const dMo   = d.getMonth()+1;
+    if (dYear !== year) return false;
+    const effectiveTo = toMonth && toMonth >= fromMonth ? toMonth : fromMonth;
+    return dMo >= fromMonth && dMo <= effectiveTo;
+  };
+
+  const filtOrders = orders.filter(o => inPeriod(o.date));
+  const filtTxs = txs.filter(t => inPeriod(t.date));
+
+  const salesRev = filtOrders.reduce((a,o) => a+o.revenue, 0);
+  const otherIncome = filtTxs.filter(t=>t.category==='Other Income').reduce((a,t)=>a+t.amount,0);
+  const totalRev = salesRev + otherIncome;
+
+  const openingStock = s.openingStock;
+  const stockPurchases = filtTxs.filter(t=>t.category==='Stock Purchases').reduce((a,t)=>a+t.amount,0);
+  const packaging = filtTxs.filter(t=>t.category==='Packaging').reduce((a,t)=>a+t.amount,0);
+  const shippingOut = filtOrders.reduce((a,o)=>a+calcOrder(o).shippingOut,0) +
+    filtTxs.filter(t=>t.category==='Shipping & Postage').reduce((a,t)=>a+t.amount,0);
+  const shopifyFees = filtOrders.reduce((a,o)=>a+calcOrder(o).shopifyCut,0);
+  const closingStock = fromMonth ? 0 : s.closingStock; // only subtract closing stock on full year
+  const cogs = openingStock + stockPurchases + packaging + shippingOut + shopifyFees - closingStock;
+  const grossProfit = totalRev - cogs;
+  const grossMarginPct = totalRev ? grossProfit / totalRev : 0;
+
+  const opexCats = ['Marketing & Advertising','Software & Subscriptions','Bank Fees','Rent','Utilities','Professional Fees','Insurance','Travel','Office Supplies','Other Expenses'];
+  const opex = {};
+  opexCats.forEach(cat => {
+    opex[cat] = filtTxs.filter(t=>t.category===cat).reduce((a,t)=>a+t.amount,0);
+  });
+  const totalOpEx = Object.values(opex).reduce((a,v)=>a+v,0);
+  const netProfit = grossProfit - totalOpEx;
+  const netMarginPct = totalRev ? netProfit / totalRev : 0;
+
+  return { salesRev, otherIncome, totalRev, openingStock, stockPurchases, packaging,
+           shippingOut, shopifyFees, closingStock, cogs, grossProfit, grossMarginPct,
+           opex, totalOpEx, netProfit, netMarginPct };
+}
+
+function calcBS() {
+  const s = state.settings;
+  const txs = state.transactions;
+  const orders = state.orders;
+
+  const txIn = txs.filter(t => CAT_CFG[t.category]?.d === 'In').reduce((a,t)=>a+t.amount,0);
+  const txOut = txs.filter(t => CAT_CFG[t.category]?.d === 'Out').reduce((a,t)=>a+t.amount,0);
+  const orderNetCash = orders.reduce((a,o) => a+calcOrder(o).netCash, 0);
+  const cash = txIn - txOut + orderNetCash;
+
+  const inventory = s.closingStock;
+  const totalAssets = cash + inventory;
+
+  const directorLoan = txs.filter(t=>t.category==='Loan Received').reduce((a,t)=>a+t.amount,0) -
+    txs.filter(t=>t.category==='Loan Repayment').reduce((a,t)=>a+t.amount,0);
+  const totalLiabilities = directorLoan;
+
+  const ownerCapital = txs.filter(t=>t.category==='Owner Investment').reduce((a,t)=>a+t.amount,0) -
+    txs.filter(t=>t.category==='Owner Drawings').reduce((a,t)=>a+t.amount,0);
+
+  // Net profit (full year)
+  const pl = calcPL(0, 0, new Date().getFullYear());
+  const retainedEarnings = pl.netProfit;
+  const totalEquity = ownerCapital + retainedEarnings;
+  const totalLiabEquity = totalLiabilities + totalEquity;
+
+  const balanced = Math.abs(totalAssets - totalLiabEquity) < 0.01;
+
+  return { cash, inventory, totalAssets, directorLoan, totalLiabilities,
+           ownerCapital, retainedEarnings, totalEquity, totalLiabEquity, balanced };
+}
+
+// ═══════════════════════════════════════════════════
+// FORMATTING
+// ═══════════════════════════════════════════════════
+
+function fmt(n, decimals = 2) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  return '£' + Math.abs(n).toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function fmtPct(n) {
+  if (!n && n !== 0) return '—';
+  return (n * 100).toFixed(1) + '%';
+}
+
+function fmtDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function colorFmt(n) {
+  if (n > 0) return `<span class="pos-text">${fmt(n)}</span>`;
+  if (n < 0) return `<span class="neg-text">(${fmt(Math.abs(n))})</span>`;
+  return `<span class="muted">${fmt(0)}</span>`;
+}
+
+function treatmentBadge(cat) {
+  const cfg = CAT_CFG[cat] || {};
+  const t = cfg.t || '';
+  const d = cfg.d || '';
+  const cls = t === 'Revenue' ? 'badge-revenue' : t === 'COGS' ? 'badge-cogs' :
+    t === 'OpEx' ? 'badge-opex' : t === 'Financing' ? 'badge-financing' :
+    t === 'Equity' ? 'badge-equity' : '';
+  return `<span class="badge ${cls}">${t || '—'}</span>`;
+}
+
+function monthLabel(month, year) {
+  if (!month) return state.settings.periodLabel + ' (full year)';
+  return new Date(year, month-1, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+}
+
+// ═══════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════
+
+let currentView = 'dashboard';
+let sortState = {};
+
+function navigate(view) {
+  currentView = view;
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.view === view);
+  });
+
+  const titles = {
+    dashboard: 'Dashboard',
+    orders: 'Orders',
+    transactions: 'Transactions',
+    monthly: 'Monthly View',
+    pl: 'Profit & Loss',
+    balance: 'Balance Sheet',
+    settings: 'Settings'
+  };
+
+  document.getElementById('page-title').textContent = titles[view] || '';
+  document.getElementById('page-subtitle').textContent =
+    `${state.settings.businessName} · ${state.settings.periodLabel}`;
+
+  renderView(view);
+}
+
+function renderView(view) {
+  const content = document.getElementById('page-content');
+  const actions = document.getElementById('page-actions');
+  actions.innerHTML = '';
+
+  if (view === 'dashboard')    renderDashboard(content, actions);
+  else if (view === 'orders')  renderOrders(content, actions);
+  else if (view === 'transactions') renderTransactions(content, actions);
+  else if (view === 'monthly') renderMonthly(content, actions);
+  else if (view === 'pl')      renderPL(content, actions);
+  else if (view === 'balance') renderBalance(content, actions);
+  else if (view === 'settings') renderSettings(content, actions);
+}
+
+// ═══════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════
+
+let revenueChart = null;
+
+function renderDashboard(el, actions) {
+  const d = calcDash();
+
+  const kpiValue = (val, cls='') => `<div class="kpi-value ${cls}">${val}</div>`;
+
+  el.innerHTML = `
+    <p class="section-heading">Operational</p>
+    <div class="kpi-grid mb-24">
+      <div class="kpi-card">
+        <div class="kpi-label">Orders (YTD)</div>
+        ${kpiValue(d.ordersCount)}
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Revenue (YTD)</div>
+        ${kpiValue(fmt(d.revenue))}
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Contribution Margin</div>
+        ${kpiValue(fmt(d.totalCM), d.totalCM >= 0 ? 'pos' : 'neg')}
+        <div class="kpi-sub">${fmtPct(d.cmPct)} of revenue</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Fixed Costs (OpEx)</div>
+        ${kpiValue(fmt(d.fixedCosts), 'neg')}
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Operating Profit</div>
+        ${kpiValue(fmt(d.opProfit), d.opProfit >= 0 ? 'pos' : 'neg')}
+        <div class="kpi-sub">${fmtPct(d.opMarginPct)} margin</div>
+      </div>
+    </div>
+
+    <p class="section-heading">Financial Health</p>
+    <div class="kpi-grid mb-24">
+      <div class="kpi-card">
+        <div class="kpi-label">Cash at Bank</div>
+        ${kpiValue(fmt(d.cash), d.cash >= 0 ? '' : 'neg')}
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Net Profit</div>
+        ${kpiValue(fmt(d.netProfit), d.netProfit >= 0 ? 'pos' : 'neg')}
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Inventory (Stock)</div>
+        ${kpiValue(fmt(d.inventory))}
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Director Loan</div>
+        ${kpiValue(fmt(d.directorLoan))}
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Total Assets</div>
+        ${kpiValue(fmt(d.totalAssets))}
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Total Liabilities</div>
+        ${kpiValue(fmt(d.totalLiabilities))}
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Total Equity</div>
+        ${kpiValue(fmt(d.totalEquity), d.totalEquity >= 0 ? 'pos' : 'neg')}
+      </div>
+    </div>
+
+    <div class="dash-grid">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Monthly Revenue</div></div>
+        <div class="chart-wrap"><canvas id="rev-chart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Monthly Contribution</div></div>
+        <div class="chart-wrap"><canvas id="cm-chart"></canvas></div>
+      </div>
+    </div>
+  `;
+
+  // Build monthly data
+  const months = ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
+  const monthMap = {Apr:4,May:5,Jun:6,Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12,Jan:1,Feb:2,Mar:3};
+  const revByMonth = {};
+  const cmByMonth = {};
+  months.forEach(m => { revByMonth[m] = 0; cmByMonth[m] = 0; });
+
+  state.orders.forEach(o => {
+    const d2 = new Date(o.date + 'T00:00:00');
+    const mo = d2.getMonth()+1;
+    const label = months.find(m => monthMap[m] === mo);
+    if (label) {
+      revByMonth[label] += o.revenue;
+      cmByMonth[label] += calcOrder(o).cm;
+    }
+  });
+
+  const activeMonths = months.filter(m => revByMonth[m] > 0 || cmByMonth[m] > 0);
+  const displayMonths = activeMonths.length > 0 ? activeMonths : ['Apr','May','Jun','Jul'];
+
+  const chartDefaults = {
+    plugins: { legend: { display: false }, tooltip: {
+      callbacks: { label: ctx => fmt(ctx.raw) }
+    }},
+    scales: {
+      x: { grid: { color: '#F2EEE8' }, ticks: { font: { family: 'Sono', size: 11 } } },
+      y: { grid: { color: '#F2EEE8' }, ticks: { font: { family: 'Sono', size: 11 },
+        callback: v => '£' + v.toLocaleString() } }
+    },
+    maintainAspectRatio: false,
+    responsive: true,
+  };
+
+  if (revenueChart) revenueChart.destroy();
+  const ctx1 = document.getElementById('rev-chart').getContext('2d');
+  revenueChart = new Chart(ctx1, {
+    type: 'bar',
+    data: {
+      labels: displayMonths,
+      datasets: [{
+        data: displayMonths.map(m => revByMonth[m]),
+        backgroundColor: '#C4A88A',
+        borderRadius: 5,
+        borderSkipped: false,
+      }]
+    },
+    options: chartDefaults
+  });
+
+  const ctx2 = document.getElementById('cm-chart').getContext('2d');
+  new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels: displayMonths,
+      datasets: [{
+        data: displayMonths.map(m => cmByMonth[m]),
+        backgroundColor: displayMonths.map(m => cmByMonth[m] >= 0 ? '#6FA882' : '#C47060'),
+        borderRadius: 5,
+        borderSkipped: false,
+      }]
+    },
+    options: chartDefaults
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// ORDERS
+// ═══════════════════════════════════════════════════
+
+let orderSearch = '';
+let orderSort = { col: 'date', dir: -1 };
+
+function renderOrders(el, actions) {
+  actions.innerHTML = `<button class="btn btn-primary" onclick="openAddOrder()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Add Order
+  </button>`;
+
+  let orders = [...state.orders];
+  if (orderSearch) {
+    const q = orderSearch.toLowerCase();
+    orders = orders.filter(o =>
+      o.customer.toLowerCase().includes(q) ||
+      o.orderNum.toLowerCase().includes(q) ||
+      o.skuType.toLowerCase().includes(q)
+    );
+  }
+
+  orders.sort((a,b) => {
+    const col = orderSort.col;
+    let va = a[col], vb = b[col];
+    if (col === 'revenue' || col === 'cm' || col === 'netCash') {
+      va = col === 'cm' ? calcOrder(a).cm : col === 'netCash' ? calcOrder(a).netCash : a.revenue;
+      vb = col === 'cm' ? calcOrder(b).cm : col === 'netCash' ? calcOrder(b).netCash : b.revenue;
+    }
+    if (va < vb) return -1 * orderSort.dir;
+    if (va > vb) return 1 * orderSort.dir;
+    return 0;
+  });
+
+  const rows = orders.map(o => {
+    const c = calcOrder(o);
+    const shTag = o.shippingMethod ? `<span class="tag">${o.shippingMethod}</span>` : '';
+    const extTag = o.outsideShopify ? `<span class="tag" style="color:var(--accent)">Direct</span>` : '';
+    return `<tr>
+      <td>${fmtDate(o.date)}</td>
+      <td><strong>${o.orderNum}</strong></td>
+      <td>${o.customer}</td>
+      <td><span class="tag">${o.skuType}</span></td>
+      <td class="num">${o.qty}</td>
+      <td class="num">${fmt(o.revenue)}</td>
+      <td class="num muted">${fmt(c.productCost)}</td>
+      <td class="num muted">${fmt(c.shippingOut)}</td>
+      <td class="num muted">${fmt(c.shopifyCut)}</td>
+      <td class="num">${colorFmt(c.cm)}</td>
+      <td>${shTag}${extTag ? ' '+extTag : ''}</td>
+      <td>
+        <div class="row-actions">
+          <button class="edit-btn" onclick="editOrder(${o.id})" title="Edit">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="delete-btn" onclick="deleteOrder(${o.id})" title="Delete">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          </button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const thSort = (col, label) => {
+    const active = orderSort.col === col;
+    const cls = active ? (orderSort.dir === 1 ? 'sort-asc' : 'sort-desc') : '';
+    return `<th class="${cls}" onclick="sortOrders('${col}')">${label}</th>`;
+  };
+
+  const totalRev = orders.reduce((a,o)=>a+o.revenue,0);
+  const totalCM = orders.reduce((a,o)=>a+calcOrder(o).cm,0);
+
+  el.innerHTML = `
+    <div class="table-wrap">
+      <div class="table-toolbar">
+        <div class="table-toolbar-left">
+          <input class="search-input" type="text" placeholder="Search orders…"
+            value="${orderSearch}" oninput="orderSearch=this.value;renderView('orders')">
+          <span class="muted" style="font-size:12px">${orders.length} order${orders.length !== 1 ? 's' : ''}</span>
+        </div>
+        <div style="font-size:12px;color:var(--text-2)">
+          Revenue <strong>${fmt(totalRev)}</strong> &nbsp;·&nbsp;
+          Contribution <strong style="color:${totalCM>=0?'var(--pos)':'var(--neg)'}">${fmt(totalCM)}</strong>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              ${thSort('date','Date')}
+              ${thSort('orderNum','Order')}
+              ${thSort('customer','Customer')}
+              ${thSort('skuType','SKU')}
+              <th>Qty</th>
+              ${thSort('revenue','Revenue')}
+              <th>Prod Cost</th>
+              <th>Shipping</th>
+              <th>Shopify Fee</th>
+              ${thSort('cm','Contribution')}
+              <th>Details</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>${rows || `<tr><td colspan="12"><div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-text">No orders yet. Add your first sale.</div></div></td></tr>`}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function sortOrders(col) {
+  if (orderSort.col === col) orderSort.dir *= -1;
+  else { orderSort.col = col; orderSort.dir = -1; }
+  renderView('orders');
+}
+
+function openAddOrder() {
+  const skuOptions = state.settings.skuCosts.map(s =>
+    `<option value="${s.sku}">${s.sku} – £${s.cost}/unit</option>`).join('');
+  const methodOptions = state.settings.shippingMethods.map(m =>
+    `<option value="${m.method}">${m.method} (£${m.cost})</option>`).join('');
+
+  document.getElementById('modal-title').textContent = 'Add Order';
+  document.getElementById('modal-body').innerHTML = `
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date" id="o-date" value="${new Date().toISOString().split('T')[0]}">
+      </div>
+      <div class="form-group">
+        <label>Order #</label>
+        <input type="text" id="o-num" placeholder="#1012">
+      </div>
+      <div class="form-group full">
+        <label>Customer Name</label>
+        <input type="text" id="o-customer" placeholder="Full name">
+      </div>
+      <div class="form-group">
+        <label>SKU Type</label>
+        <select id="o-sku">${skuOptions}</select>
+      </div>
+      <div class="form-group">
+        <label>Quantity</label>
+        <input type="number" id="o-qty" value="1" min="1">
+      </div>
+      <div class="form-group">
+        <label>Revenue (£)</label>
+        <input type="number" id="o-rev" value="" placeholder="78.00" step="0.01" min="0">
+      </div>
+      <div class="form-group">
+        <label>Shipping Method</label>
+        <select id="o-ship">${methodOptions}</select>
+      </div>
+      <div class="form-group" style="align-self:end">
+        <div class="checkbox-row" style="padding-bottom:10px">
+          <input type="checkbox" id="o-direct">
+          <label for="o-direct" style="text-transform:none;letter-spacing:0;font-size:13px;font-weight:400;">Outside Shopify (no Shopify fee)</label>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('modal-footer').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-primary" onclick="saveOrder()">Add Order</button>
+  `;
+  openModal();
+}
+
+function editOrder(id) {
+  const o = state.orders.find(x => x.id === id);
+  if (!o) return;
+  const skuOptions = state.settings.skuCosts.map(s =>
+    `<option value="${s.sku}" ${o.skuType===s.sku?'selected':''}>${s.sku} – £${s.cost}/unit</option>`).join('');
+  const methodOptions = state.settings.shippingMethods.map(m =>
+    `<option value="${m.method}" ${o.shippingMethod===m.method?'selected':''}>${m.method} (£${m.cost})</option>`).join('');
+
+  document.getElementById('modal-title').textContent = 'Edit Order';
+  document.getElementById('modal-body').innerHTML = `
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date" id="o-date" value="${o.date}">
+      </div>
+      <div class="form-group">
+        <label>Order #</label>
+        <input type="text" id="o-num" value="${o.orderNum}">
+      </div>
+      <div class="form-group full">
+        <label>Customer Name</label>
+        <input type="text" id="o-customer" value="${o.customer}">
+      </div>
+      <div class="form-group">
+        <label>SKU Type</label>
+        <select id="o-sku">${skuOptions}</select>
+      </div>
+      <div class="form-group">
+        <label>Quantity</label>
+        <input type="number" id="o-qty" value="${o.qty}" min="1">
+      </div>
+      <div class="form-group">
+        <label>Revenue (£)</label>
+        <input type="number" id="o-rev" value="${o.revenue}" step="0.01" min="0">
+      </div>
+      <div class="form-group">
+        <label>Shipping Method</label>
+        <select id="o-ship">${methodOptions}</select>
+      </div>
+      <div class="form-group" style="align-self:end">
+        <div class="checkbox-row" style="padding-bottom:10px">
+          <input type="checkbox" id="o-direct" ${o.outsideShopify?'checked':''}>
+          <label for="o-direct" style="text-transform:none;letter-spacing:0;font-size:13px;font-weight:400;">Outside Shopify (no Shopify fee)</label>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('modal-footer').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-primary" onclick="updateOrder(${id})">Save Changes</button>
+  `;
+  openModal();
+}
+
+function updateOrder(id) {
+  const idx = state.orders.findIndex(x => x.id === id);
+  if (idx === -1) return;
+  const date = document.getElementById('o-date').value;
+  const customer = document.getElementById('o-customer').value.trim();
+  if (!date || !customer) { toast('Please fill in date and customer name.'); return; }
+  state.orders[idx] = {
+    ...state.orders[idx],
+    date,
+    orderNum:      document.getElementById('o-num').value.trim(),
+    customer,
+    skuType:       document.getElementById('o-sku').value,
+    qty:           parseInt(document.getElementById('o-qty').value) || 1,
+    revenue:       parseFloat(document.getElementById('o-rev').value) || 0,
+    shippingMethod: document.getElementById('o-ship').value,
+    outsideShopify: document.getElementById('o-direct').checked,
+  };
+  saveState();
+  closeModal();
+  renderView('orders');
+  toast('Order updated.');
+}
+
+function saveOrder() {
+  const date = document.getElementById('o-date').value;
+  const orderNum = document.getElementById('o-num').value.trim();
+  const customer = document.getElementById('o-customer').value.trim();
+  const skuType = document.getElementById('o-sku').value;
+  const qty = parseInt(document.getElementById('o-qty').value) || 1;
+  const revenue = parseFloat(document.getElementById('o-rev').value) || 0;
+  const shippingMethod = document.getElementById('o-ship').value;
+  const outsideShopify = document.getElementById('o-direct').checked;
+
+  if (!date || !customer) { toast('Please fill in date and customer name.'); return; }
+
+  state.orders.push({ id: state.nextId.order++, date, orderNum, customer, skuType, qty, revenue, shippingMethod, outsideShopify });
+  saveState();
+  closeModal();
+  renderView('orders');
+  toast('Order added.');
+}
+
+function deleteOrder(id) {
+  if (!confirm('Delete this order?')) return;
+  state.orders = state.orders.filter(o => o.id !== id);
+  saveState();
+  renderView('orders');
+  toast('Order deleted.');
+}
+
+// ═══════════════════════════════════════════════════
+// TRANSACTIONS
+// ═══════════════════════════════════════════════════
+
+let txSearch = '';
+let txSort = { col: 'date', dir: -1 };
+
+function renderTransactions(el, actions) {
+  actions.innerHTML = `<button class="btn btn-primary" onclick="openAddTx()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Add Transaction
+  </button>`;
+
+  let txs = [...state.transactions];
+  if (txSearch) {
+    const q = txSearch.toLowerCase();
+    txs = txs.filter(t =>
+      t.description.toLowerCase().includes(q) ||
+      t.category.toLowerCase().includes(q)
+    );
+  }
+
+  txs.sort((a,b) => {
+    let va = a[txSort.col], vb = b[txSort.col];
+    if (va < vb) return -1 * txSort.dir;
+    if (va > vb) return 1 * txSort.dir;
+    return 0;
+  });
+
+  const rows = txs.map(t => {
+    const cfg = CAT_CFG[t.category] || {};
+    const cashEffect = cfg.d === 'In' ? t.amount : -t.amount;
+    return `<tr>
+      <td>${fmtDate(t.date)}</td>
+      <td>${t.description}</td>
+      <td>${t.category}</td>
+      <td class="num">${fmt(t.amount)}</td>
+      <td>${treatmentBadge(t.category)}</td>
+      <td><span class="badge ${cfg.d==='In'?'badge-in':'badge-out'}">${cfg.d||'—'}</span></td>
+      <td class="num">${colorFmt(cashEffect)}</td>
+      <td>
+        <div class="row-actions">
+          <button class="edit-btn" onclick="editTx(${t.id})" title="Edit">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="delete-btn" onclick="deleteTx(${t.id})" title="Delete">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          </button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const thSort = (col, label) => {
+    const active = txSort.col === col;
+    const cls = active ? (txSort.dir === 1 ? 'sort-asc' : 'sort-desc') : '';
+    return `<th class="${cls}" onclick="sortTx('${col}')">${label}</th>`;
+  };
+
+  const totalIn = txs.filter(t=>CAT_CFG[t.category]?.d==='In').reduce((a,t)=>a+t.amount,0);
+  const totalOut = txs.filter(t=>CAT_CFG[t.category]?.d==='Out').reduce((a,t)=>a+t.amount,0);
+
+  el.innerHTML = `
+    <div class="table-wrap">
+      <div class="table-toolbar">
+        <div class="table-toolbar-left">
+          <input class="search-input" type="text" placeholder="Search transactions…"
+            value="${txSearch}" oninput="txSearch=this.value;renderView('transactions')">
+          <span class="muted" style="font-size:12px">${txs.length} transaction${txs.length !== 1 ? 's' : ''}</span>
+        </div>
+        <div style="font-size:12px;color:var(--text-2)">
+          In <strong class="pos-text">${fmt(totalIn)}</strong> &nbsp;·&nbsp;
+          Out <strong class="neg-text">${fmt(totalOut)}</strong>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              ${thSort('date','Date')}
+              ${thSort('description','Description')}
+              ${thSort('category','Category')}
+              ${thSort('amount','Amount')}
+              <th>Treatment</th>
+              <th>Direction</th>
+              <th>Cash Effect</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>${rows || `<tr><td colspan="8"><div class="empty-state"><div class="empty-state-icon">💳</div><div class="empty-state-text">No transactions yet.</div></div></td></tr>`}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function sortTx(col) {
+  if (txSort.col === col) txSort.dir *= -1;
+  else { txSort.col = col; txSort.dir = -1; }
+  renderView('transactions');
+}
+
+function openAddTx() {
+  const catOptions = CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
+  document.getElementById('modal-title').textContent = 'Add Transaction';
+  document.getElementById('modal-body').innerHTML = `
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date" id="t-date" value="${new Date().toISOString().split('T')[0]}">
+      </div>
+      <div class="form-group">
+        <label>Amount (£)</label>
+        <input type="number" id="t-amount" placeholder="0.00" step="0.01" min="0">
+      </div>
+      <div class="form-group full">
+        <label>Description</label>
+        <input type="text" id="t-desc" placeholder="Brief description">
+      </div>
+      <div class="form-group full">
+        <label>Category</label>
+        <select id="t-cat">${catOptions}</select>
+        <p class="form-hint" id="t-hint"></p>
+      </div>
+    </div>
+  `;
+  document.getElementById('t-cat').addEventListener('change', e => {
+    const cfg = CAT_CFG[e.target.value] || {};
+    document.getElementById('t-hint').textContent =
+      cfg.t ? `Treatment: ${cfg.t} · Direction: ${cfg.d}` : '';
+  });
+  // trigger hint on load
+  const cfg = CAT_CFG[CATEGORIES[0]] || {};
+  document.getElementById('t-hint').textContent = cfg.t ? `Treatment: ${cfg.t} · Direction: ${cfg.d}` : '';
+
+  document.getElementById('modal-footer').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-primary" onclick="saveTx()">Add Transaction</button>
+  `;
+  openModal();
+}
+
+function editTx(id) {
+  const t = state.transactions.find(x => x.id === id);
+  if (!t) return;
+  const catOptions = CATEGORIES.map(c =>
+    `<option value="${c}" ${t.category===c?'selected':''}>${c}</option>`).join('');
+
+  document.getElementById('modal-title').textContent = 'Edit Transaction';
+  document.getElementById('modal-body').innerHTML = `
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date" id="t-date" value="${t.date}">
+      </div>
+      <div class="form-group">
+        <label>Amount (£)</label>
+        <input type="number" id="t-amount" value="${t.amount}" step="0.01" min="0">
+      </div>
+      <div class="form-group full">
+        <label>Description</label>
+        <input type="text" id="t-desc" value="${t.description}">
+      </div>
+      <div class="form-group full">
+        <label>Category</label>
+        <select id="t-cat">${catOptions}</select>
+        <p class="form-hint" id="t-hint"></p>
+      </div>
+    </div>
+  `;
+  const updateHint = () => {
+    const cfg = CAT_CFG[document.getElementById('t-cat').value] || {};
+    document.getElementById('t-hint').textContent = cfg.t ? `Treatment: ${cfg.t} · Direction: ${cfg.d}` : '';
+  };
+  document.getElementById('t-cat').addEventListener('change', updateHint);
+  updateHint();
+
+  document.getElementById('modal-footer').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-primary" onclick="updateTx(${id})">Save Changes</button>
+  `;
+  openModal();
+}
+
+function updateTx(id) {
+  const idx = state.transactions.findIndex(x => x.id === id);
+  if (idx === -1) return;
+  const date = document.getElementById('t-date').value;
+  const description = document.getElementById('t-desc').value.trim();
+  const amount = parseFloat(document.getElementById('t-amount').value);
+  const category = document.getElementById('t-cat').value;
+  if (!date || !description || isNaN(amount) || amount <= 0) {
+    toast('Please fill in all fields with a valid amount.'); return;
+  }
+  state.transactions[idx] = { ...state.transactions[idx], date, description, amount, category };
+  saveState();
+  closeModal();
+  renderView('transactions');
+  toast('Transaction updated.');
+}
+
+function saveTx() {
+  const date = document.getElementById('t-date').value;
+  const description = document.getElementById('t-desc').value.trim();
+  const amount = parseFloat(document.getElementById('t-amount').value);
+  const category = document.getElementById('t-cat').value;
+
+  if (!date || !description || isNaN(amount) || amount <= 0) {
+    toast('Please fill in all fields with a valid amount.'); return;
+  }
+
+  state.transactions.push({ id: state.nextId.tx++, date, description, category, amount });
+  saveState();
+  closeModal();
+  renderView('transactions');
+  toast('Transaction added.');
+}
+
+function deleteTx(id) {
+  if (!confirm('Delete this transaction?')) return;
+  state.transactions = state.transactions.filter(t => t.id !== id);
+  saveState();
+  renderView('transactions');
+  toast('Transaction deleted.');
+}
+
+// ═══════════════════════════════════════════════════
+// MONTHLY VIEW
+// ═══════════════════════════════════════════════════
+
+let mvFromMonth = new Date().getMonth()+1, mvFromYear = new Date().getFullYear();
+let mvToMonth   = new Date().getMonth()+1, mvToYear   = new Date().getFullYear();
+
+function inRange(dateStr, fromM, fromY, toM, toY) {
+  const d = new Date(dateStr + 'T00:00:00');
+  const mIdx = d.getFullYear() * 12 + (d.getMonth()+1);
+  return mIdx >= fromY * 12 + fromM && mIdx <= toY * 12 + toM;
+}
+
+function renderMonthly(el, actions) {
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const monthOpts = (selected) => MONTHS.map((m,i) =>
+    `<option value="${i+1}" ${selected===i+1?'selected':''}>${m}</option>`).join('');
+
+  const filtered = state.orders.filter(o =>
+    inRange(o.date, mvFromMonth, mvFromYear, mvToMonth, mvToYear));
+
+  const totalRev   = filtered.reduce((a,o) => a + o.revenue, 0);
+  const totalCost  = filtered.reduce((a,o) => a + calcOrder(o).productCost, 0);
+  const totalShip  = filtered.reduce((a,o) => a + calcOrder(o).shippingOut, 0);
+  const totalShop  = filtered.reduce((a,o) => a + calcOrder(o).shopifyCut, 0);
+  const totalCM    = filtered.reduce((a,o) => a + calcOrder(o).cm, 0);
+  const cmPct      = totalRev ? totalCM / totalRev : 0;
+
+  const rows = [...filtered]
+    .sort((a,b) => a.date < b.date ? -1 : 1)
+    .map(o => {
+      const c = calcOrder(o);
+      return `<tr>
+        <td>${fmtDate(o.date)}</td>
+        <td><strong>${o.orderNum}</strong></td>
+        <td>${o.customer}</td>
+        <td><span class="tag">${o.skuType}</span></td>
+        <td class="num">${o.qty}</td>
+        <td class="num">${fmt(o.revenue)}</td>
+        <td class="num muted">${fmt(c.productCost)}</td>
+        <td class="num muted">${fmt(c.shippingOut)}</td>
+        <td class="num muted">${fmt(c.shopifyCut)}</td>
+        <td class="num">${colorFmt(c.cm)}</td>
+      </tr>`;
+    }).join('');
+
+  const fromLabel = MONTHS[mvFromMonth-1] + ' ' + mvFromYear;
+  const toLabel   = MONTHS[mvToMonth-1]   + ' ' + mvToYear;
+  const viewing   = fromLabel === toLabel ? fromLabel : `${fromLabel} – ${toLabel}`;
+
+  el.innerHTML = `
+    <div class="period-bar" style="gap:6px 14px">
+      <strong style="font-size:12px;color:var(--text-2)">From</strong>
+      <select onchange="mvFromMonth=parseInt(this.value);renderView('monthly')">${monthOpts(mvFromMonth)}</select>
+      <input type="number" value="${mvFromYear}" min="2020" max="2099" style="width:72px"
+        onchange="mvFromYear=parseInt(this.value)||2026;renderView('monthly')">
+      <strong style="font-size:12px;color:var(--text-2);margin-left:6px">To</strong>
+      <select onchange="mvToMonth=parseInt(this.value);renderView('monthly')">${monthOpts(mvToMonth)}</select>
+      <input type="number" value="${mvToYear}" min="2020" max="2099" style="width:72px"
+        onchange="mvToYear=parseInt(this.value)||2026;renderView('monthly')">
+      <span class="period-viewing">Viewing: ${viewing}</span>
+    </div>
+
+    <div class="kpi-grid mb-24" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">
+      <div class="kpi-card">
+        <div class="kpi-label">Orders</div>
+        <div class="kpi-value">${filtered.length}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Revenue</div>
+        <div class="kpi-value">${fmt(totalRev)}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Product Cost</div>
+        <div class="kpi-value neg">${fmt(totalCost)}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Shipping Out</div>
+        <div class="kpi-value neg">${fmt(totalShip)}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Shopify Fees</div>
+        <div class="kpi-value neg">${fmt(totalShop)}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Contribution</div>
+        <div class="kpi-value ${totalCM>=0?'pos':'neg'}">${fmt(totalCM)}</div>
+        <div class="kpi-sub">${fmtPct(cmPct)} of revenue</div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <div class="table-toolbar">
+        <span style="font-size:13px;font-weight:500">${filtered.length} order${filtered.length!==1?'s':''} in period</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th><th>Order</th><th>Customer</th><th>SKU</th>
+              <th>Qty</th><th>Revenue</th><th>Prod Cost</th>
+              <th>Shipping</th><th>Shopify Fee</th><th>Contribution</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows || `<tr><td colspan="10"><div class="empty-state"><div class="empty-state-icon">📅</div><div class="empty-state-text">No orders in this date range.</div></div></td></tr>`}
+            ${filtered.length > 0 ? `<tr style="background:var(--surface-alt);font-weight:600;border-top:2px solid var(--border)">
+              <td colspan="5" style="color:var(--text-3);font-size:12px">Period total</td>
+              <td class="num">${fmt(totalRev)}</td>
+              <td class="num muted">${fmt(totalCost)}</td>
+              <td class="num muted">${fmt(totalShip)}</td>
+              <td class="num muted">${fmt(totalShop)}</td>
+              <td class="num">${colorFmt(totalCM)}</td>
+            </tr>` : ''}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════
+// P&L
+// ═══════════════════════════════════════════════════
+
+let plFromMonth = 0, plToMonth = 0, plYear = 2026;
+
+function renderPL(el, actions) {
+  const effectiveTo = (plFromMonth && plToMonth >= plFromMonth) ? plToMonth : plFromMonth;
+  const p = calcPL(plFromMonth, effectiveTo, plYear);
+
+  let viewing;
+  if (!plFromMonth) {
+    viewing = state.settings.periodLabel + ' (full year)';
+  } else if (plFromMonth === effectiveTo) {
+    viewing = monthLabel(plFromMonth, plYear);
+  } else {
+    viewing = monthLabel(plFromMonth, plYear) + ' – ' + monthLabel(effectiveTo, plYear);
+  }
+
+  const row = (label, val, cls='', indent=false) => {
+    const indentStyle = indent ? ' style="padding-left:36px"' : '';
+    return `<div class="pl-row ${cls}">
+      <span${indentStyle}>${label}</span>
+      <span class="pl-value">${colorFmt(val)}</span>
+    </div>`;
+  };
+
+  const sectionHeader = label => `<div class="pl-row section-header"><span>${label}</span></div>`;
+  const divider = () => `<div style="height:1px;background:var(--border-light)"></div>`;
+
+  const opexCats = ['Marketing & Advertising','Software & Subscriptions','Bank Fees','Rent','Utilities','Professional Fees','Insurance','Travel','Office Supplies','Other Expenses'];
+  const opexRows = opexCats.map(cat =>
+    p.opex[cat] > 0 ? row(cat, -p.opex[cat], '', true) : ''
+  ).join('');
+
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const moOpts = (selected, includeAll) =>
+    (includeAll ? `<option value="0" ${!selected?'selected':''}>Full Year</option>` : '') +
+    MONTHS.map((m,i) => `<option value="${i+1}" ${selected===i+1?'selected':''}>${m}</option>`).join('');
+
+  el.innerHTML = `
+    <div class="period-bar" style="gap:6px 14px;flex-wrap:wrap">
+      <strong style="font-size:12px;color:var(--text-2)">From</strong>
+      <select onchange="plFromMonth=parseInt(this.value);renderView('pl')">${moOpts(plFromMonth, true)}</select>
+      ${plFromMonth ? `
+        <strong style="font-size:12px;color:var(--text-2);margin-left:6px">To</strong>
+        <select onchange="plToMonth=parseInt(this.value);renderView('pl')">${moOpts(plToMonth||plFromMonth, false)}</select>
+      ` : ''}
+      <label style="margin-left:6px">Year:</label>
+      <input type="number" value="${plYear}" min="2020" max="2099" style="width:72px"
+        onchange="plYear=parseInt(this.value)||2026;renderView('pl')">
+      <span class="period-viewing">Viewing: ${viewing}</span>
+    </div>
+
+    <div class="pl-statement">
+      ${sectionHeader('Revenue')}
+      ${row('Sales', p.salesRev, '', true)}
+      ${p.otherIncome ? row('Other Income', p.otherIncome, '', true) : ''}
+      ${row('Total Revenue', p.totalRev, 'total')}
+
+      ${sectionHeader('Cost of Sales')}
+      ${p.openingStock ? row('Opening stock', p.openingStock, '', true) : ''}
+      ${row('Stock purchases', p.stockPurchases, '', true)}
+      ${p.packaging ? row('Packaging', p.packaging, '', true) : ''}
+      ${row('Outwards shipping', p.shippingOut, '', true)}
+      ${row('Shopify transaction fees', p.shopifyFees, '', true)}
+      ${!plFromMonth && p.closingStock ? row('Less: closing stock', -p.closingStock, '', true) : ''}
+      ${row('Cost of Goods Sold', p.cogs, 'subtotal')}
+
+      ${row('Gross Profit', p.grossProfit, 'total')}
+      <div class="pl-row">
+        <span style="color:var(--text-3);font-size:12px">Gross margin</span>
+        <span class="pl-value" style="font-size:12px;color:var(--text-3)">${fmtPct(p.grossMarginPct)}</span>
+      </div>
+
+      ${sectionHeader('Operating Expenses')}
+      ${opexRows || `<div class="pl-row"><span style="color:var(--text-3);padding-left:36px">No operating expenses in this period</span></div>`}
+      ${row('Total Operating Expenses', -p.totalOpEx, 'subtotal')}
+
+      <div class="pl-row net-profit">
+        <span>Net Profit</span>
+        <span class="pl-value">${colorFmt(p.netProfit)}</span>
+      </div>
+      <div class="pl-row">
+        <span style="color:var(--text-3);font-size:12px">Net margin</span>
+        <span class="pl-value" style="font-size:12px;color:var(--text-3)">${fmtPct(p.netMarginPct)}</span>
+      </div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════
+// BALANCE SHEET
+// ═══════════════════════════════════════════════════
+
+function renderBalance(el, actions) {
+  const b = calcBS();
+  const today = new Date().toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
+
+  const row = (label, val, cls='') => `<div class="bs-row ${cls}">
+    <span>${label}</span>
+    <span class="bs-value">${colorFmt(val)}</span>
+  </div>`;
+
+  el.innerHTML = `
+    <p style="font-size:12px;color:var(--text-3);margin-bottom:16px">As at ${today}</p>
+
+    <div class="bs-section">
+      <div class="bs-header">Assets</div>
+      ${row('Cash at bank', b.cash)}
+      ${row('Inventory (stock at cost)', b.inventory)}
+      ${row('Total Assets', b.totalAssets, 'total')}
+    </div>
+
+    <div class="bs-section">
+      <div class="bs-header">Liabilities</div>
+      ${row('Owner / director loan', b.directorLoan)}
+      ${row('Total Liabilities', b.totalLiabilities, 'total')}
+    </div>
+
+    <div class="bs-section">
+      <div class="bs-header">Equity</div>
+      ${row('Owner capital (investment – drawings)', b.ownerCapital)}
+      ${row('Retained earnings (net profit)', b.retainedEarnings)}
+      ${row('Total Equity', b.totalEquity, 'total')}
+    </div>
+
+    <div class="bs-section">
+      <div class="bs-header">Check</div>
+      <div class="bs-row total">
+        <span>Total Liabilities &amp; Equity</span>
+        <span class="bs-value">${colorFmt(b.totalLiabEquity)}</span>
+      </div>
+      <div class="bs-row">
+        <span>Balance check</span>
+        <span class="${b.balanced ? 'balance-ok' : 'balance-check'}">${b.balanced ? 'OK – balanced' : 'CHECK ENTRIES'}</span>
+      </div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════════════
+
+function renderSettings(el, actions) {
+  const s = state.settings;
+
+  actions.innerHTML = `<button class="btn btn-primary" onclick="saveSettings()">Save Changes</button>`;
+
+  const skuRows = s.skuCosts.map((x, i) => `<tr>
+    <td><input type="text" value="${x.sku}" onchange="state.settings.skuCosts[${i}].sku=this.value"></td>
+    <td><input type="number" value="${x.cost}" step="0.01" min="0" style="width:80px" onchange="state.settings.skuCosts[${i}].cost=parseFloat(this.value)||0"></td>
+    <td><input type="text" value="${x.notes}" onchange="state.settings.skuCosts[${i}].notes=this.value"></td>
+    <td><button class="delete-btn" onclick="removeSkuRow(${i})">×</button></td>
+  </tr>`).join('');
+
+  const shippingRows = s.shippingMethods.map((x, i) => `<tr>
+    <td><input type="text" value="${x.method}" onchange="state.settings.shippingMethods[${i}].method=this.value"></td>
+    <td><input type="number" value="${x.cost}" step="0.01" min="0" style="width:80px" onchange="state.settings.shippingMethods[${i}].cost=parseFloat(this.value)||0"></td>
+    <td><input type="text" value="${x.notes}" onchange="state.settings.shippingMethods[${i}].notes=this.value"></td>
+    <td><button class="delete-btn" onclick="removeShipRow(${i})">×</button></td>
+  </tr>`).join('');
+
+  el.innerHTML = `
+    <div class="settings-section">
+      <div class="settings-section-header">Business</div>
+      <div class="settings-section-body">
+        <div class="settings-form-grid">
+          <div class="form-group">
+            <label>Business Name</label>
+            <input type="text" id="s-biz" value="${s.businessName}">
+          </div>
+          <div class="form-group">
+            <label>Period Label</label>
+            <input type="text" id="s-period" value="${s.periodLabel}">
+          </div>
+          <div class="form-group">
+            <label>Opening Stock Value (£)</label>
+            <input type="number" id="s-os" value="${s.openingStock}" step="0.01" min="0">
+          </div>
+          <div class="form-group">
+            <label>Closing Stock Value (£)</label>
+            <input type="number" id="s-cs" value="${s.closingStock}" step="0.01" min="0">
+            <p class="form-hint">Update whenever stock changes (e.g. after a stocktake).</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-header">Shopify & Shipping Defaults</div>
+      <div class="settings-section-body">
+        <div class="settings-form-grid">
+          <div class="form-group">
+            <label>Default Outwards Shipping (£)</label>
+            <input type="number" id="s-defship" value="${s.defaultShipping}" step="0.01" min="0">
+            <p class="form-hint">Used when no shipping method is specified.</p>
+          </div>
+          <div class="form-group">
+            <label>Shopify Fee Rate</label>
+            <input type="number" id="s-sfrate" value="${s.shopifyFeeRate}" step="0.001" min="0" max="1">
+            <p class="form-hint">Decimal e.g. 0.02 = 2%</p>
+          </div>
+          <div class="form-group">
+            <label>Shopify Fixed Fee per Order (£)</label>
+            <input type="number" id="s-sffixed" value="${s.shopifyFixedFee}" step="0.01" min="0">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-header">SKU Cost Table</div>
+      <div class="settings-section-body">
+        <table class="mini-table" id="sku-table">
+          <thead><tr><th>SKU Type</th><th>Cost/unit (£)</th><th>Notes</th><th></th></tr></thead>
+          <tbody>${skuRows}</tbody>
+        </table>
+        <button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="addSkuRow()">+ Add SKU</button>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-header">Shipping Methods</div>
+      <div class="settings-section-body">
+        <table class="mini-table" id="ship-table">
+          <thead><tr><th>Method</th><th>Cost (£)</th><th>Notes</th><th></th></tr></thead>
+          <tbody>${shippingRows}</tbody>
+        </table>
+        <button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="addShipRow()">+ Add Method</button>
+      </div>
+    </div>
+
+    <div class="settings-section" style="border-color:var(--neg-bg)">
+      <div class="settings-section-header" style="color:var(--neg)">Danger Zone</div>
+      <div class="settings-section-body">
+        <p style="font-size:13px;color:var(--text-2);margin-bottom:14px">Reset all data back to the spreadsheet defaults. This cannot be undone.</p>
+        <button class="btn btn-danger" onclick="resetData()">Reset to defaults</button>
+      </div>
+    </div>
+  `;
+}
+
+function saveSettings() {
+  state.settings.businessName = document.getElementById('s-biz').value;
+  state.settings.periodLabel  = document.getElementById('s-period').value;
+  state.settings.openingStock = parseFloat(document.getElementById('s-os').value) || 0;
+  state.settings.closingStock = parseFloat(document.getElementById('s-cs').value) || 0;
+  state.settings.defaultShipping = parseFloat(document.getElementById('s-defship').value) || 0;
+  state.settings.shopifyFeeRate   = parseFloat(document.getElementById('s-sfrate').value) || 0;
+  state.settings.shopifyFixedFee  = parseFloat(document.getElementById('s-sffixed').value) || 0;
+  saveState();
+  document.getElementById('page-subtitle').textContent =
+    `${state.settings.businessName} · ${state.settings.periodLabel}`;
+  toast('Settings saved.');
+}
+
+function addSkuRow() {
+  state.settings.skuCosts.push({ sku: '', cost: 0, notes: '' });
+  renderView('settings');
+}
+
+function removeSkuRow(i) {
+  state.settings.skuCosts.splice(i, 1);
+  renderView('settings');
+}
+
+function addShipRow() {
+  state.settings.shippingMethods.push({ method: '', cost: 0, notes: '' });
+  renderView('settings');
+}
+
+function removeShipRow(i) {
+  state.settings.shippingMethods.splice(i, 1);
+  renderView('settings');
+}
+
+function resetData() {
+  if (!confirm('This will wipe all your data and restore the original spreadsheet data. Are you sure?')) return;
+  state = JSON.parse(JSON.stringify(DEFAULT_DATA));
+  saveState();
+  navigate('dashboard');
+  toast('Data reset to defaults.');
+}
+
+// ═══════════════════════════════════════════════════
+// MODAL
+// ═══════════════════════════════════════════════════
+
+function openModal() {
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+function closeModalOnOverlay(e) {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// ═══════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════
+
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+
+document.getElementById('sidebar-date').textContent =
+  new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+
+navigate('dashboard');
+</script>
+</body>
+</html>
