@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -808,6 +809,71 @@
 
     .divider { height: 1px; background: var(--border); margin: 20px 0; }
 
+    /* Sync status */
+    #sync-status {
+      position: fixed;
+      top: 12px;
+      right: 16px;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      z-index: 50;
+      transition: all 0.3s;
+      pointer-events: none;
+    }
+
+    #sync-status.synced  { background: var(--pos-bg);  color: var(--pos); }
+    #sync-status.syncing { background: var(--warn-bg);  color: var(--warn); }
+    #sync-status.error   { background: var(--neg-bg);  color: var(--neg); }
+    #sync-status.hidden  { opacity: 0; }
+
+    .sync-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .sync-dot.pulse {
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* Loading splash */
+    #loading-splash {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      gap: 16px;
+      transition: opacity 0.4s;
+    }
+
+    #loading-splash.hidden { opacity: 0; pointer-events: none; }
+
+    .loading-brand { font-size: 18px; font-weight: 600; color: var(--text); letter-spacing: 0.05em; }
+    .loading-sub   { font-size: 12px; font-weight: 300; color: var(--text-3); letter-spacing: 0.1em; }
+
+    .loading-spinner {
+      width: 28px; height: 28px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
     /* Scrollbar */
     ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -828,6 +894,19 @@
   </style>
 </head>
 <body>
+
+<!-- Loading splash -->
+<div id="loading-splash">
+  <div class="loading-brand">Nova Curated</div>
+  <div class="loading-sub">Finance OS</div>
+  <div class="loading-spinner"></div>
+</div>
+
+<!-- Sync status -->
+<div id="sync-status" class="hidden">
+  <div class="sync-dot"></div>
+  <span id="sync-label"></span>
+</div>
 
 <!-- Sidebar -->
 <nav id="sidebar">
@@ -921,6 +1000,14 @@
 
 <script>
 // ═══════════════════════════════════════════════════
+// SUPABASE
+// ═══════════════════════════════════════════════════
+
+const SUPABASE_URL = 'https://cmsynqdqgybcvgopokny.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtc3lucWRxZ3liY3Znb3Bva255Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5MDIxOTgsImV4cCI6MjEwMDQ3ODE5OH0.ReaBg391W7s_3025YpqQeOxABRPm94xVNqpbj1guVdk';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ═══════════════════════════════════════════════════
 // DATA & STATE
 // ═══════════════════════════════════════════════════
 
@@ -1009,19 +1096,130 @@ const CAT_CFG = {
   'Owner Drawings':           { t:'Equity',    d:'Out' },
 };
 
-// Load / save state
-function loadState() {
-  try {
-    const saved = localStorage.getItem('nova_finance_v2');
-    return saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(DEFAULT_DATA));
-  } catch(e) { return JSON.parse(JSON.stringify(DEFAULT_DATA)); }
+// ── In-memory state (mirror of Supabase) ──────────
+let state = {
+  transactions: [],
+  orders: [],
+  settings: JSON.parse(JSON.stringify(DEFAULT_DATA.settings)),
+  nextId: { tx: 18, order: 11 }
+};
+
+// ── Sync status UI ─────────────────────────────────
+function setSyncStatus(type, label) {
+  const el = document.getElementById('sync-status');
+  const dot = el.querySelector('.sync-dot');
+  el.className = type === 'hidden' ? 'hidden' : type;
+  document.getElementById('sync-label').textContent = label || '';
+  dot.className = 'sync-dot' + (type === 'syncing' ? ' pulse' : '');
+  if (type === 'synced') setTimeout(() => el.classList.add('hidden'), 2500);
 }
 
-function saveState() {
-  localStorage.setItem('nova_finance_v2', JSON.stringify(state));
+// ── Row mappers ────────────────────────────────────
+function rowToOrder(r) {
+  return { id: r.id, date: r.date, orderNum: r.order_num, customer: r.customer,
+           skuType: r.sku_type, qty: r.qty, revenue: parseFloat(r.revenue),
+           shippingMethod: r.shipping_method, outsideShopify: r.outside_shopify };
 }
 
-let state = loadState();
+function orderToRow(o) {
+  return { id: o.id, date: o.date, order_num: o.orderNum, customer: o.customer,
+           sku_type: o.skuType, qty: o.qty, revenue: o.revenue,
+           shipping_method: o.shippingMethod, outside_shopify: o.outsideShopify };
+}
+
+function rowToTx(r) {
+  return { id: r.id, date: r.date, description: r.description,
+           category: r.category, amount: parseFloat(r.amount) };
+}
+
+function txToRow(t) {
+  return { id: t.id, date: t.date, description: t.description,
+           category: t.category, amount: t.amount };
+}
+
+// ── DB operations ──────────────────────────────────
+async function dbUpsertOrder(order) {
+  setSyncStatus('syncing', 'Saving…');
+  const { error } = await sb.from('orders').upsert(orderToRow(order));
+  if (error) { setSyncStatus('error', 'Save failed'); console.error(error); }
+  else setSyncStatus('synced', 'Saved');
+}
+
+async function dbDeleteOrder(id) {
+  setSyncStatus('syncing', 'Deleting…');
+  const { error } = await sb.from('orders').delete().eq('id', id);
+  if (error) setSyncStatus('error', 'Delete failed');
+  else setSyncStatus('synced', 'Deleted');
+}
+
+async function dbUpsertTx(tx) {
+  setSyncStatus('syncing', 'Saving…');
+  const { error } = await sb.from('transactions').upsert(txToRow(tx));
+  if (error) { setSyncStatus('error', 'Save failed'); console.error(error); }
+  else setSyncStatus('synced', 'Saved');
+}
+
+async function dbDeleteTx(id) {
+  setSyncStatus('syncing', 'Deleting…');
+  const { error } = await sb.from('transactions').delete().eq('id', id);
+  if (error) setSyncStatus('error', 'Delete failed');
+  else setSyncStatus('synced', 'Deleted');
+}
+
+async function dbSaveSettings() {
+  await sb.from('settings').upsert({ key: 'app_settings', value: state.settings });
+}
+
+// ── Seed default data on first run ─────────────────
+async function seedDefaultData() {
+  await Promise.all([
+    sb.from('orders').insert(DEFAULT_DATA.orders.map(orderToRow)),
+    sb.from('transactions').insert(DEFAULT_DATA.transactions.map(txToRow)),
+    sb.from('settings').upsert({ key: 'app_settings', value: DEFAULT_DATA.settings }),
+  ]);
+}
+
+// ── Load all data from Supabase ────────────────────
+async function loadFromSupabase() {
+  const [oRes, tRes, sRes] = await Promise.all([
+    sb.from('orders').select('*').order('id'),
+    sb.from('transactions').select('*').order('id'),
+    sb.from('settings').select('*').eq('key', 'app_settings').maybeSingle(),
+  ]);
+
+  // First run — seed default data
+  if (!oRes.data?.length && !tRes.data?.length) {
+    await seedDefaultData();
+    return loadFromSupabase();
+  }
+
+  state.orders       = (oRes.data || []).map(rowToOrder);
+  state.transactions = (tRes.data || []).map(rowToTx);
+  if (sRes.data?.value) state.settings = sRes.data.value;
+
+  state.nextId.order = (state.orders.length       ? Math.max(...state.orders.map(o => o.id))       : 0) + 1;
+  state.nextId.tx    = (state.transactions.length ? Math.max(...state.transactions.map(t => t.id)) : 0) + 1;
+}
+
+// ── Real-time subscriptions ────────────────────────
+let realtimeChannel = null;
+let skipNextRefresh = false; // avoids double-render after own write
+
+function subscribeRealtime() {
+  realtimeChannel = sb.channel('nova-finance-sync')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' },       handleRemoteChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, handleRemoteChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' },     handleRemoteChange)
+    .subscribe();
+}
+
+async function handleRemoteChange() {
+  if (skipNextRefresh) { skipNextRefresh = false; return; }
+  setSyncStatus('syncing', 'Syncing…');
+  await loadFromSupabase();
+  renderView(currentView);
+  setSyncStatus('synced', 'Synced');
+}
 
 // ═══════════════════════════════════════════════════
 // CALCULATIONS
@@ -1625,30 +1823,32 @@ function editOrder(id) {
   openModal();
 }
 
-function updateOrder(id) {
+async function updateOrder(id) {
   const idx = state.orders.findIndex(x => x.id === id);
   if (idx === -1) return;
   const date = document.getElementById('o-date').value;
   const customer = document.getElementById('o-customer').value.trim();
   if (!date || !customer) { toast('Please fill in date and customer name.'); return; }
-  state.orders[idx] = {
+  const updated = {
     ...state.orders[idx],
     date,
-    orderNum:      document.getElementById('o-num').value.trim(),
+    orderNum:       document.getElementById('o-num').value.trim(),
     customer,
-    skuType:       document.getElementById('o-sku').value,
-    qty:           parseInt(document.getElementById('o-qty').value) || 1,
-    revenue:       parseFloat(document.getElementById('o-rev').value) || 0,
+    skuType:        document.getElementById('o-sku').value,
+    qty:            parseInt(document.getElementById('o-qty').value) || 1,
+    revenue:        parseFloat(document.getElementById('o-rev').value) || 0,
     shippingMethod: document.getElementById('o-ship').value,
     outsideShopify: document.getElementById('o-direct').checked,
   };
-  saveState();
+  state.orders[idx] = updated;
+  skipNextRefresh = true;
   closeModal();
   renderView('orders');
   toast('Order updated.');
+  await dbUpsertOrder(updated);
 }
 
-function saveOrder() {
+async function saveOrder() {
   const date = document.getElementById('o-date').value;
   const orderNum = document.getElementById('o-num').value.trim();
   const customer = document.getElementById('o-customer').value.trim();
@@ -1660,19 +1860,22 @@ function saveOrder() {
 
   if (!date || !customer) { toast('Please fill in date and customer name.'); return; }
 
-  state.orders.push({ id: state.nextId.order++, date, orderNum, customer, skuType, qty, revenue, shippingMethod, outsideShopify });
-  saveState();
+  const order = { id: state.nextId.order++, date, orderNum, customer, skuType, qty, revenue, shippingMethod, outsideShopify };
+  state.orders.push(order);
+  skipNextRefresh = true;
   closeModal();
   renderView('orders');
   toast('Order added.');
+  await dbUpsertOrder(order);
 }
 
-function deleteOrder(id) {
+async function deleteOrder(id) {
   if (!confirm('Delete this order?')) return;
   state.orders = state.orders.filter(o => o.id !== id);
-  saveState();
+  skipNextRefresh = true;
   renderView('orders');
   toast('Order deleted.');
+  await dbDeleteOrder(id);
 }
 
 // ═══════════════════════════════════════════════════
@@ -1859,7 +2062,7 @@ function editTx(id) {
   openModal();
 }
 
-function updateTx(id) {
+async function updateTx(id) {
   const idx = state.transactions.findIndex(x => x.id === id);
   if (idx === -1) return;
   const date = document.getElementById('t-date').value;
@@ -1869,14 +2072,16 @@ function updateTx(id) {
   if (!date || !description || isNaN(amount) || amount <= 0) {
     toast('Please fill in all fields with a valid amount.'); return;
   }
-  state.transactions[idx] = { ...state.transactions[idx], date, description, amount, category };
-  saveState();
+  const updated = { ...state.transactions[idx], date, description, amount, category };
+  state.transactions[idx] = updated;
+  skipNextRefresh = true;
   closeModal();
   renderView('transactions');
   toast('Transaction updated.');
+  await dbUpsertTx(updated);
 }
 
-function saveTx() {
+async function saveTx() {
   const date = document.getElementById('t-date').value;
   const description = document.getElementById('t-desc').value.trim();
   const amount = parseFloat(document.getElementById('t-amount').value);
@@ -1886,19 +2091,22 @@ function saveTx() {
     toast('Please fill in all fields with a valid amount.'); return;
   }
 
-  state.transactions.push({ id: state.nextId.tx++, date, description, category, amount });
-  saveState();
+  const tx = { id: state.nextId.tx++, date, description, category, amount };
+  state.transactions.push(tx);
+  skipNextRefresh = true;
   closeModal();
   renderView('transactions');
   toast('Transaction added.');
+  await dbUpsertTx(tx);
 }
 
-function deleteTx(id) {
+async function deleteTx(id) {
   if (!confirm('Delete this transaction?')) return;
   state.transactions = state.transactions.filter(t => t.id !== id);
-  saveState();
+  skipNextRefresh = true;
   renderView('transactions');
   toast('Transaction deleted.');
+  await dbDeleteTx(id);
 }
 
 // ═══════════════════════════════════════════════════
@@ -2266,18 +2474,18 @@ function renderSettings(el, actions) {
   `;
 }
 
-function saveSettings() {
-  state.settings.businessName = document.getElementById('s-biz').value;
-  state.settings.periodLabel  = document.getElementById('s-period').value;
-  state.settings.openingStock = parseFloat(document.getElementById('s-os').value) || 0;
-  state.settings.closingStock = parseFloat(document.getElementById('s-cs').value) || 0;
-  state.settings.defaultShipping = parseFloat(document.getElementById('s-defship').value) || 0;
+async function saveSettings() {
+  state.settings.businessName     = document.getElementById('s-biz').value;
+  state.settings.periodLabel      = document.getElementById('s-period').value;
+  state.settings.openingStock     = parseFloat(document.getElementById('s-os').value) || 0;
+  state.settings.closingStock     = parseFloat(document.getElementById('s-cs').value) || 0;
+  state.settings.defaultShipping  = parseFloat(document.getElementById('s-defship').value) || 0;
   state.settings.shopifyFeeRate   = parseFloat(document.getElementById('s-sfrate').value) || 0;
   state.settings.shopifyFixedFee  = parseFloat(document.getElementById('s-sffixed').value) || 0;
-  saveState();
   document.getElementById('page-subtitle').textContent =
     `${state.settings.businessName} · ${state.settings.periodLabel}`;
   toast('Settings saved.');
+  await dbSaveSettings();
 }
 
 function addSkuRow() {
@@ -2300,10 +2508,15 @@ function removeShipRow(i) {
   renderView('settings');
 }
 
-function resetData() {
+async function resetData() {
   if (!confirm('This will wipe all your data and restore the original spreadsheet data. Are you sure?')) return;
-  state = JSON.parse(JSON.stringify(DEFAULT_DATA));
-  saveState();
+  setSyncStatus('syncing', 'Resetting…');
+  await Promise.all([
+    sb.from('orders').delete().neq('id', 0),
+    sb.from('transactions').delete().neq('id', 0),
+  ]);
+  await seedDefaultData();
+  await loadFromSupabase();
   navigate('dashboard');
   toast('Data reset to defaults.');
 }
@@ -2346,7 +2559,24 @@ function toast(msg) {
 document.getElementById('sidebar-date').textContent =
   new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 
-navigate('dashboard');
+// Boot
+(async () => {
+  try {
+    await loadFromSupabase();
+    subscribeRealtime();
+  } catch (e) {
+    console.error('Supabase load failed:', e);
+    // Fallback to defaults in memory so UI is still usable
+    state.orders       = JSON.parse(JSON.stringify(DEFAULT_DATA.orders));
+    state.transactions = JSON.parse(JSON.stringify(DEFAULT_DATA.transactions));
+    setSyncStatus('error', 'Offline — changes not saved');
+  }
+  // Hide splash
+  const splash = document.getElementById('loading-splash');
+  splash.classList.add('hidden');
+  setTimeout(() => splash.remove(), 500);
+  navigate('dashboard');
+})();
 </script>
 </body>
 </html>
