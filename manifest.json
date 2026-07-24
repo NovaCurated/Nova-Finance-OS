@@ -1,0 +1,20 @@
+{
+  "name": "Nova Finance OS",
+  "short_name": "Nova Finance",
+  "description": "Nova Curated Finance Operating System",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#18170F",
+  "background_color": "#F7F5F1",
+  "icons": [
+    {
+      "src": "https://cdn.shopify.com/s/files/1/1061/5327/9827/files/Brown.png?v=1784311199",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["finance", "business"],
+  "screenshots": []
+}

@@ -2,8 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Nova Curated — Finance</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Nova Finance OS</title>
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#18170F">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Nova Finance">
+  <link rel="apple-touch-icon" href="https://cdn.shopify.com/s/files/1/1061/5327/9827/files/Brown.png?v=1784311199">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -66,25 +72,29 @@
     }
 
     .sidebar-logo {
-      padding: 28px 24px 20px;
+      padding: 20px 20px 16px;
       border-bottom: 1px solid rgba(255,255,255,0.06);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
     }
 
-    .sidebar-logo .brand {
-      font-size: 15px;
-      font-weight: 600;
-      color: var(--nav-text);
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
+    .sidebar-logo img {
+      width: 100px;
+      height: auto;
+      display: block;
+      filter: brightness(0) invert(1);
+      opacity: 0.92;
     }
 
     .sidebar-logo .sub {
-      font-size: 11px;
-      font-weight: 300;
+      font-size: 10px;
+      font-weight: 400;
       color: var(--nav-text-2);
-      letter-spacing: 0.12em;
+      letter-spacing: 0.18em;
       text-transform: uppercase;
-      margin-top: 2px;
+      opacity: 0.6;
     }
 
     .sidebar-nav {
@@ -861,8 +871,8 @@
 
     #loading-splash.hidden { opacity: 0; pointer-events: none; }
 
-    .loading-brand { font-size: 18px; font-weight: 600; color: var(--text); letter-spacing: 0.05em; }
-    .loading-sub   { font-size: 12px; font-weight: 300; color: var(--text-3); letter-spacing: 0.1em; }
+    .loading-logo  { width: 140px; height: auto; opacity: 0.85; }
+    .loading-sub   { font-size: 12px; font-weight: 300; color: var(--text-3); letter-spacing: 0.18em; text-transform: uppercase; }
 
     .loading-spinner {
       width: 28px; height: 28px;
@@ -880,7 +890,165 @@
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
     ::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
 
-    @media (max-width: 900px) {
+    /* ── Bottom nav (mobile) ─────────────────────── */
+    #bottom-nav {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background: var(--nav-bg);
+      border-top: 1px solid rgba(255,255,255,0.08);
+      padding-bottom: env(safe-area-inset-bottom);
+      z-index: 20;
+      flex-direction: row;
+      align-items: stretch;
+    }
+
+    .bottom-nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      cursor: pointer;
+      color: var(--nav-text-2);
+      font-size: 10px;
+      font-weight: 400;
+      padding: 6px 4px;
+      transition: color 0.15s;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .bottom-nav-item svg { width: 20px; height: 20px; opacity: 0.65; transition: opacity 0.15s; }
+    .bottom-nav-item.active { color: var(--nav-active); }
+    .bottom-nav-item.active svg { opacity: 1; }
+
+    /* ── Page slide transitions ───────────────────── */
+    #page-content {
+      transition: opacity 0.18s ease, transform 0.18s ease;
+    }
+    #page-content.slide-out-left  { opacity: 0; transform: translateX(-18px); }
+    #page-content.slide-out-right { opacity: 0; transform: translateX(18px); }
+    #page-content.slide-in-left   { opacity: 0; transform: translateX(18px); }
+    #page-content.slide-in-right  { opacity: 0; transform: translateX(-18px); }
+
+    /* ── Update banner ────────────────────────────── */
+    #update-banner {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: var(--accent);
+      color: white;
+      padding: 10px 20px;
+      font-size: 13px;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 300;
+      gap: 12px;
+    }
+
+    #update-banner.show { display: flex; }
+
+    #update-banner button {
+      background: white;
+      color: var(--accent);
+      border: none;
+      border-radius: var(--radius);
+      padding: 5px 12px;
+      font-family: 'Sono', monospace;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    /* ── Sync page ────────────────────────────────── */
+    .sync-page-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+
+    .sync-page-card h3 {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      margin-bottom: 16px;
+    }
+
+    .sync-info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border-light);
+      font-size: 13.5px;
+    }
+
+    .sync-info-row:last-child { border-bottom: none; }
+    .sync-info-label { color: var(--text-2); }
+    .sync-info-value { font-weight: 500; color: var(--text); }
+    .sync-info-value.ok { color: var(--pos); }
+    .sync-info-value.warn { color: var(--warn); }
+    .sync-info-value.err { color: var(--neg); }
+
+    .install-instruction-step {
+      display: flex;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border-light);
+      font-size: 13px;
+      color: var(--text-2);
+      align-items: flex-start;
+    }
+
+    .install-instruction-step:last-child { border-bottom: none; }
+
+    .install-step-num {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--accent-light);
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    @media (max-width: 768px) {
+      #sidebar { display: none; }
+      #bottom-nav { display: flex; }
+      #main { padding-bottom: calc(60px + env(safe-area-inset-bottom)); }
+      .page-content { padding: 16px; }
+      .page-header { padding: 16px 20px; }
+      .form-grid { grid-template-columns: 1fr; }
+      .settings-form-grid { grid-template-columns: 1fr; }
+      .dash-grid { grid-template-columns: 1fr; }
+      .kpi-grid { grid-template-columns: 1fr 1fr; }
+      .table-wrap { overflow-x: auto; }
+      .table-toolbar { flex-direction: column; align-items: stretch; }
+      .table-toolbar-left { flex-wrap: wrap; }
+      .search-input { width: 100%; }
+      #sync-status { top: auto; bottom: calc(68px + env(safe-area-inset-bottom)); right: 12px; }
+      #toast { bottom: calc(72px + env(safe-area-inset-bottom)); right: 12px; left: 12px; text-align: center; }
+      .modal { max-height: 85vh; margin: 0 12px; }
+    }
+
+    @media (min-width: 769px) and (max-width: 900px) {
       #sidebar { width: 60px; min-width: 60px; }
       .sidebar-logo, .nav-item span, .sidebar-footer, .nav-section-label { display: none; }
       .nav-item { justify-content: center; padding: 12px; }
@@ -897,7 +1065,7 @@
 
 <!-- Loading splash -->
 <div id="loading-splash">
-  <div class="loading-brand">Nova Curated</div>
+  <img class="loading-logo" src="https://cdn.shopify.com/s/files/1/1061/5327/9827/files/Brown.png?v=1784311199" alt="Nova Curated">
   <div class="loading-sub">Finance OS</div>
   <div class="loading-spinner"></div>
 </div>
@@ -911,7 +1079,7 @@
 <!-- Sidebar -->
 <nav id="sidebar">
   <div class="sidebar-logo">
-    <div class="brand">Nova Curated</div>
+    <img src="https://cdn.shopify.com/s/files/1/1061/5327/9827/files/Brown.png?v=1784311199" alt="Nova Curated">
     <div class="sub">Finance OS</div>
   </div>
   <div class="sidebar-nav">
@@ -959,6 +1127,12 @@
 
     <div style="flex:1"></div>
     <div class="nav-section-label">Config</div>
+    <div class="nav-item" data-view="sync" onclick="navigate('sync')">
+      <div class="nav-item-inner">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+        <span>Sync</span>
+      </div>
+    </div>
     <div class="nav-item" data-view="settings" onclick="navigate('settings')">
       <div class="nav-item-inner">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -998,7 +1172,125 @@
 <!-- Toast -->
 <div id="toast"></div>
 
+<!-- Update banner -->
+<div id="update-banner">
+  <span>🎉 A new version of Nova Finance OS is available.</span>
+  <button onclick="applyUpdate()">Update now</button>
+</div>
+
+<!-- Mobile bottom nav -->
+<nav id="bottom-nav">
+  <div class="bottom-nav-item active" data-view="dashboard" onclick="navigate('dashboard')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+    <span>Dash</span>
+  </div>
+  <div class="bottom-nav-item" data-view="orders" onclick="navigate('orders')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+    <span>Orders</span>
+  </div>
+  <div class="bottom-nav-item" data-view="monthly" onclick="navigate('monthly')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    <span>Monthly</span>
+  </div>
+  <div class="bottom-nav-item" data-view="pl" onclick="navigate('pl')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    <span>P&amp;L</span>
+  </div>
+  <div class="bottom-nav-item" data-view="sync" onclick="navigate('sync')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+    <span>Sync</span>
+  </div>
+</nav>
+
 <script>
+// ═══════════════════════════════════════════════════
+// VERSION & PWA
+// ═══════════════════════════════════════════════════
+
+const APP_VERSION = '1.0.0';
+let swRegistration = null;
+let deferredInstallPrompt = null;
+let lastSyncTime = null;
+let syncConnectionStatus = 'connecting'; // 'connected' | 'error' | 'connecting'
+
+// Service worker registration
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    try {
+      swRegistration = await navigator.serviceWorker.register('./sw.js');
+      swRegistration.addEventListener('updatefound', () => {
+        const newWorker = swRegistration.installing;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            document.getElementById('update-banner').classList.add('show');
+          }
+        });
+      });
+    } catch (e) {
+      console.warn('SW registration failed:', e);
+    }
+  });
+  // Listen for SW activation messages
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data?.type === 'SW_ACTIVATED') {
+      document.getElementById('update-banner').classList.remove('show');
+      toast('App updated to v' + e.data.version + ' ✓');
+    }
+  });
+}
+
+// PWA install prompt
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  // Refresh sync page if open so the install button appears
+  if (currentView === 'sync') renderView('sync');
+});
+
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  toast('App installed successfully ✓');
+  if (currentView === 'sync') renderView('sync');
+});
+
+function applyUpdate() {
+  if (swRegistration?.waiting) {
+    swRegistration.waiting.postMessage('skipWaiting');
+  }
+  window.location.reload();
+}
+
+async function installApp() {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  const { outcome } = await deferredInstallPrompt.userChoice;
+  if (outcome === 'accepted') deferredInstallPrompt = null;
+}
+
+// ── Swipe between pages ────────────────────────────
+const SWIPE_VIEWS = ['dashboard','orders','transactions','monthly','pl','balance','sync','settings'];
+let touchStartX = 0, touchStartY = 0, touchStartTime = 0;
+
+document.addEventListener('touchstart', e => {
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+  touchStartTime = Date.now();
+}, { passive: true });
+
+document.addEventListener('touchend', e => {
+  // Don't interfere if user is scrolling or interacting with a form element
+  if (e.target.closest('input,select,textarea,table,#modal-overlay')) return;
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  const dy = e.changedTouches[0].clientY - touchStartY;
+  const dt = Date.now() - touchStartTime;
+  // Valid swipe: horizontal > 55px, more horizontal than vertical, fast enough
+  if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.8 && dt < 400) {
+    const idx = SWIPE_VIEWS.indexOf(currentView);
+    if (dx < 0 && idx < SWIPE_VIEWS.length - 1) navigate(SWIPE_VIEWS[idx + 1], 'left');
+    else if (dx > 0 && idx > 0) navigate(SWIPE_VIEWS[idx - 1], 'right');
+  }
+}, { passive: true });
+
 // ═══════════════════════════════════════════════════
 // SUPABASE
 // ═══════════════════════════════════════════════════
@@ -1111,7 +1403,17 @@ function setSyncStatus(type, label) {
   el.className = type === 'hidden' ? 'hidden' : type;
   document.getElementById('sync-label').textContent = label || '';
   dot.className = 'sync-dot' + (type === 'syncing' ? ' pulse' : '');
-  if (type === 'synced') setTimeout(() => el.classList.add('hidden'), 2500);
+  if (type === 'synced') {
+    lastSyncTime = new Date();
+    syncConnectionStatus = 'connected';
+    setTimeout(() => el.classList.add('hidden'), 2500);
+  } else if (type === 'error') {
+    syncConnectionStatus = 'error';
+  } else if (type === 'syncing') {
+    syncConnectionStatus = 'connected';
+  }
+  // Refresh sync page if open
+  if (currentView === 'sync' && type !== 'hidden') renderView('sync');
 }
 
 // ── Row mappers ────────────────────────────────────
@@ -1416,9 +1718,12 @@ function monthLabel(month, year) {
 let currentView = 'dashboard';
 let sortState = {};
 
-function navigate(view) {
+function navigate(view, swipeDir = null) {
+  const prevView = currentView;
   currentView = view;
-  document.querySelectorAll('.nav-item').forEach(el => {
+
+  // Update all nav active states (sidebar + bottom nav)
+  document.querySelectorAll('.nav-item, .bottom-nav-item').forEach(el => {
     el.classList.toggle('active', el.dataset.view === view);
   });
 
@@ -1429,6 +1734,7 @@ function navigate(view) {
     monthly: 'Monthly View',
     pl: 'Profit & Loss',
     balance: 'Balance Sheet',
+    sync: 'Sync & Status',
     settings: 'Settings'
   };
 
@@ -1436,7 +1742,25 @@ function navigate(view) {
   document.getElementById('page-subtitle').textContent =
     `${state.settings.businessName} · ${state.settings.periodLabel}`;
 
-  renderView(view);
+  // Scroll main back to top
+  document.getElementById('main').scrollTop = 0;
+
+  if (swipeDir) {
+    const content = document.getElementById('page-content');
+    const outClass = swipeDir === 'left' ? 'slide-out-left' : 'slide-out-right';
+    const inClass  = swipeDir === 'left' ? 'slide-in-left'  : 'slide-in-right';
+    content.classList.add(outClass);
+    setTimeout(() => {
+      content.classList.remove(outClass);
+      content.classList.add(inClass);
+      renderView(view);
+      requestAnimationFrame(() => {
+        content.classList.remove(inClass);
+      });
+    }, 180);
+  } else {
+    renderView(view);
+  }
 }
 
 function renderView(view) {
@@ -1450,6 +1774,7 @@ function renderView(view) {
   else if (view === 'monthly') renderMonthly(content, actions);
   else if (view === 'pl')      renderPL(content, actions);
   else if (view === 'balance') renderBalance(content, actions);
+  else if (view === 'sync')    renderSync(content, actions);
   else if (view === 'settings') renderSettings(content, actions);
 }
 
@@ -2372,6 +2697,145 @@ function renderBalance(el, actions) {
 }
 
 // ═══════════════════════════════════════════════════
+// SYNC PAGE
+// ═══════════════════════════════════════════════════
+
+function renderSync(el, actions) {
+  const now = new Date();
+  const lastSync = lastSyncTime
+    ? lastSyncTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) +
+      ' on ' + lastSyncTime.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    : 'Not yet synced this session';
+
+  const connLabel = syncConnectionStatus === 'connected' ? 'Connected'
+    : syncConnectionStatus === 'error' ? 'Connection error'
+    : 'Connecting…';
+  const connCls = syncConnectionStatus === 'connected' ? 'ok'
+    : syncConnectionStatus === 'error' ? 'err' : 'warn';
+
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+    || window.navigator.standalone === true;
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const canInstall = !!deferredInstallPrompt;
+
+  const installSection = isStandalone
+    ? `<div class="sync-info-row">
+        <span class="sync-info-label">Install status</span>
+        <span class="sync-info-value ok">✓ Installed as app</span>
+       </div>`
+    : canInstall
+    ? `<div class="sync-info-row" style="flex-direction:column;align-items:flex-start;gap:10px">
+        <span class="sync-info-label">Install to home screen / taskbar</span>
+        <button class="btn btn-primary" onclick="installApp()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Install Nova Finance
+        </button>
+       </div>`
+    : isIOS
+    ? `<div class="sync-page-card" style="margin-top:0;margin-bottom:0">
+        <h3>Add to Home Screen (iPhone / iPad)</h3>
+        <div class="install-instruction-step">
+          <div class="install-step-num">1</div>
+          <div>Tap the <strong>Share</strong> button (box with arrow) in Safari's toolbar</div>
+        </div>
+        <div class="install-instruction-step">
+          <div class="install-step-num">2</div>
+          <div>Scroll down and tap <strong>"Add to Home Screen"</strong></div>
+        </div>
+        <div class="install-instruction-step">
+          <div class="install-step-num">3</div>
+          <div>Tap <strong>Add</strong> — Nova Finance will appear on your home screen</div>
+        </div>
+       </div>`
+    : `<div class="sync-info-row">
+        <span class="sync-info-label">Install status</span>
+        <span class="sync-info-value warn">Open in Chrome or Edge to install</span>
+       </div>`;
+
+  el.innerHTML = `
+    <div class="sync-page-card">
+      <h3>Connection</h3>
+      <div class="sync-info-row">
+        <span class="sync-info-label">Supabase status</span>
+        <span class="sync-info-value ${connCls}">${connLabel}</span>
+      </div>
+      <div class="sync-info-row">
+        <span class="sync-info-label">Last sync</span>
+        <span class="sync-info-value">${lastSync}</span>
+      </div>
+      <div class="sync-info-row">
+        <span class="sync-info-label">Orders in db</span>
+        <span class="sync-info-value">${state.orders.length}</span>
+      </div>
+      <div class="sync-info-row">
+        <span class="sync-info-label">Transactions in db</span>
+        <span class="sync-info-value">${state.transactions.length}</span>
+      </div>
+    </div>
+
+    <div class="sync-page-card">
+      <h3>Manual Sync</h3>
+      <div class="sync-info-row" style="flex-direction:column;align-items:flex-start;gap:10px">
+        <span class="sync-info-label" style="margin-bottom:2px">Pull the latest data from Supabase right now.</span>
+        <button class="btn btn-primary" onclick="manualSync()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+          Sync now
+        </button>
+      </div>
+    </div>
+
+    <div class="sync-page-card">
+      <h3>App Version</h3>
+      <div class="sync-info-row">
+        <span class="sync-info-label">Version</span>
+        <span class="sync-info-value">${APP_VERSION}</span>
+      </div>
+      <div class="sync-info-row">
+        <span class="sync-info-label">Cached for offline use</span>
+        <span class="sync-info-value ${'serviceWorker' in navigator ? 'ok">✓ Yes' : 'warn">Not available'}</span>
+      </div>
+      <div class="sync-info-row" style="flex-direction:column;align-items:flex-start;gap:10px">
+        <span class="sync-info-label">If the app looks outdated, force a full reload.</span>
+        <button class="btn btn-secondary btn-sm" onclick="hardReload()">Force reload</button>
+      </div>
+    </div>
+
+    <div class="sync-page-card">
+      <h3>Install App</h3>
+      ${installSection}
+    </div>
+
+    <div class="sync-page-card" style="background:var(--neg-bg);border-color:var(--neg)">
+      <h3 style="color:var(--neg)">Danger Zone</h3>
+      <div class="sync-info-row" style="flex-direction:column;align-items:flex-start;gap:10px">
+        <span class="sync-info-label">Reset all data back to the original spreadsheet values.</span>
+        <button class="btn btn-danger btn-sm" onclick="resetData()">Reset to defaults</button>
+      </div>
+    </div>
+  `;
+}
+
+async function manualSync() {
+  setSyncStatus('syncing', 'Syncing…');
+  try {
+    await loadFromSupabase();
+    setSyncStatus('synced', 'Synced');
+    renderView(currentView);
+    toast('Data refreshed ✓');
+  } catch (e) {
+    setSyncStatus('error', 'Sync failed');
+    toast('Sync failed — check connection');
+  }
+}
+
+function hardReload() {
+  if (swRegistration?.waiting) swRegistration.waiting.postMessage('skipWaiting');
+  caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).finally(() => {
+    window.location.reload(true);
+  });
+}
+
+// ═══════════════════════════════════════════════════
 // SETTINGS
 // ═══════════════════════════════════════════════════
 
@@ -2563,9 +3027,12 @@ document.getElementById('sidebar-date').textContent =
 (async () => {
   try {
     await loadFromSupabase();
+    lastSyncTime = new Date();
+    syncConnectionStatus = 'connected';
     subscribeRealtime();
   } catch (e) {
     console.error('Supabase load failed:', e);
+    syncConnectionStatus = 'error';
     // Fallback to defaults in memory so UI is still usable
     state.orders       = JSON.parse(JSON.stringify(DEFAULT_DATA.orders));
     state.transactions = JSON.parse(JSON.stringify(DEFAULT_DATA.transactions));
