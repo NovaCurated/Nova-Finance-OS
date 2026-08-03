@@ -3147,14 +3147,13 @@ async function gcConnectBank() {
   if (!clientId) { toast('Enter your TrueLayer Client ID first.'); return; }
   state.settings.bankConfig = { ...state.settings.bankConfig, clientId };
   await dbSaveSettings();
-  const params = new URLSearchParams({
-    response_type: 'code',
-    client_id: clientId,
-    scope: 'accounts transactions balance offline_access',
-    redirect_uri: TL_REDIRECT,
-    providers: 'uk-ob-all uk-oauth-all',
-  });
-  window.location.href = `https://auth.truelayer-sandbox.com/?${params}`;
+  const authUrl = 'https://auth.truelayer-sandbox.com/'
+    + '?response_type=code'
+    + '&client_id=' + encodeURIComponent(clientId)
+    + '&scope=' + encodeURIComponent('accounts transactions balance offline_access')
+    + '&redirect_uri=' + encodeURIComponent(TL_REDIRECT)
+    + '&providers=mock';
+  window.location.href = authUrl;
 }
 
 async function gcCompleteAuth() {
