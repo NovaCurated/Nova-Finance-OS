@@ -1333,7 +1333,7 @@ const DEFAULT_DATA = {
     { id: 7,  date: '2026-07-21', orderNum: '#1009', customer: 'Aidan Hewison',      skuType: 'Silk 90',   qty: 1, revenue: 82,    shippingMethod: 'Standard',   outsideShopify: false },
     { id: 8,  date: '2026-07-22', orderNum: '#1010', customer: 'Lorraine Tunley',    skuType: 'Silk 90',   qty: 1, revenue: 82,    shippingMethod: 'Collection', outsideShopify: false },
     { id: 9,  date: '2026-07-22', orderNum: '#1011', customer: 'Joanna Hibbert',     skuType: 'Silk 90',   qty: 1, revenue: 78,    shippingMethod: 'Collection', outsideShopify: false },
-    { id: 10, date: '2026-07-22', orderNum: '#1011', customer: 'Bronte Fishwick',    skuType: 'Silk 90',   qty: 1, revenue: 85.99, shippingMethod: 'Standard',   outsideShopify: false },
+    { id: 10, date: '2026-07-22', orderNum: '#1012', customer: 'Bronte Fishwick',    skuType: 'Silk 90',   qty: 1, revenue: 85.99, shippingMethod: 'Standard',   outsideShopify: false },
   ],
   settings: {
     businessName: 'Nova Curated',
@@ -1419,8 +1419,8 @@ function setSyncStatus(type, label) {
 // ── Row mappers ────────────────────────────────────
 function rowToOrder(r) {
   return { id: r.id, date: r.date, orderNum: r.order_num, customer: r.customer,
-           skuType: r.sku_type, qty: r.qty, revenue: parseFloat(r.revenue),
-           shippingMethod: r.shipping_method, outsideShopify: r.outside_shopify };
+           skuType: r.sku_type, qty: parseInt(r.qty) || 1, revenue: parseFloat(r.revenue) || 0,
+           shippingMethod: r.shipping_method, outsideShopify: !!r.outside_shopify };
 }
 
 function orderToRow(o) {
@@ -1431,7 +1431,7 @@ function orderToRow(o) {
 
 function rowToTx(r) {
   return { id: r.id, date: r.date, description: r.description,
-           category: r.category, amount: parseFloat(r.amount) };
+           category: r.category, amount: parseFloat(r.amount) || 0 };
 }
 
 function txToRow(t) {
@@ -1503,6 +1503,34 @@ async function loadFromSupabase() {
   state.nextId.tx    = (state.transactions.length ? Math.max(...state.transactions.map(t => t.id)) : 0) + 1;
 }
 
+// ── Recurring expenses ─────────────────────────────
+// Edit this list to add/remove recurring expenses.
+// dayOfMonth: the expense is auto-logged on or after this day each month.
+const RECURRING_EXPENSES = [
+  { description: 'Shopify Website Monthly Cost',   category: 'Software & Subscriptions', amount: 25,    dayOfMonth: 10 },
+  { description: 'Adobe Illustrator Monthly Cost', category: 'Software & Subscriptions', amount: 21.98, dayOfMonth: 20 },
+];
+
+async function checkRecurringExpenses() {
+  const now = new Date();
+  const thisMonth = now.toISOString().slice(0, 7); // "2026-08"
+  let added = 0;
+  for (const rec of RECURRING_EXPENSES) {
+    const alreadyLogged = state.transactions.some(t =>
+      t.description === rec.description && t.date.startsWith(thisMonth)
+    );
+    if (!alreadyLogged && now.getDate() >= rec.dayOfMonth) {
+      const date = `${thisMonth}-${String(rec.dayOfMonth).padStart(2, '0')}`;
+      const tx = { id: state.nextId.tx++, date, description: rec.description, category: rec.category, amount: rec.amount };
+      state.transactions.push(tx);
+      skipNextRefresh = true;
+      await dbUpsertTx(tx);
+      added++;
+    }
+  }
+  if (added > 0) toast(`Auto-logged ${added} recurring expense${added > 1 ? 's' : ''} ✓`);
+}
+
 // ── Real-time subscriptions ────────────────────────
 let realtimeChannel = null;
 let skipNextRefresh = false; // avoids double-render after own write
@@ -1535,9 +1563,10 @@ function getSkuCost(skuType) {
 
 function getShippingCost(method) {
   const s = state.settings;
-  if (!method) return s.defaultShipping;
+  const def = parseFloat(s.defaultShipping) || 0;
+  if (!method) return def;
   const entry = s.shippingMethods.find(x => x.method === method);
-  return entry !== undefined ? entry.cost : s.defaultShipping;
+  return entry !== undefined ? (parseFloat(entry.cost) || 0) : def;
 }
 
 function calcOrder(order) {
@@ -2042,110 +2071,112 @@ function sortOrders(col) {
   renderView('orders');
 }
 
-function openAddOrder() {
-  const skuOptions = state.settings.skuCosts.map(s =>
-    `<option value="${s.sku}">${s.sku} – £${s.cost}/unit</option>`).join('');
-  const methodOptions = state.settings.shippingMethods.map(m =>
-    `<option value="${m.method}">${m.method} (£${m.cost})</option>`).join('');
+function orderPreviewHTML() {
+  const s = state.settings;
+  const sku = document.getElementById('o-sku')?.value || '';
+  const qty = parseInt(document.getElementById('o-qty')?.value) || 1;
+  const revenue = parseFloat(document.getElementById('o-rev')?.value) || 0;
+  const method = document.getElementById('o-ship')?.value || '';
+  const outside = document.getElementById('o-direct')?.checked || false;
 
-  document.getElementById('modal-title').textContent = 'Add Order';
-  document.getElementById('modal-body').innerHTML = `
+  const productCost = qty * (parseFloat(s.skuCosts.find(x=>x.sku===sku)?.cost)||0);
+  const shippingOut = getShippingCost(method);
+  const shopifyCut = (outside || !revenue) ? 0 :
+    Math.round((revenue * (parseFloat(s.shopifyFeeRate)||0) + (parseFloat(s.shopifyFixedFee)||0)) * 100) / 100;
+  const cm = revenue - productCost - shippingOut - shopifyCut;
+
+  const c = (n, pos) => `<span style="color:${pos?'var(--pos)':n<0?'var(--neg)':'var(--text-2)'};font-weight:600">${fmt(n)}</span>`;
+
+  return `<div style="background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;margin-top:14px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;font-size:12px">
+    <div><div style="color:var(--text-3);margin-bottom:3px;font-size:10px;text-transform:uppercase;letter-spacing:.07em">Prod Cost</div>${c(productCost,false)}</div>
+    <div><div style="color:var(--text-3);margin-bottom:3px;font-size:10px;text-transform:uppercase;letter-spacing:.07em">Shipping</div>${c(shippingOut,false)}</div>
+    <div><div style="color:var(--text-3);margin-bottom:3px;font-size:10px;text-transform:uppercase;letter-spacing:.07em">Shopify Fee</div>${outside?`<span style="color:var(--text-3)">Exempt</span>`:c(shopifyCut,false)}</div>
+    <div><div style="color:var(--text-3);margin-bottom:3px;font-size:10px;text-transform:uppercase;letter-spacing:.07em">Contribution</div>${c(cm, cm>=0)}</div>
+  </div>`;
+}
+
+function refreshOrderPreview() {
+  const el = document.getElementById('order-preview');
+  if (el) el.innerHTML = orderPreviewHTML();
+  // Highlight Outside Shopify row when checked
+  const direct = document.getElementById('o-direct');
+  const row = document.getElementById('o-direct-row');
+  if (direct && row) {
+    row.style.background = direct.checked ? 'var(--warn-bg)' : '';
+    row.style.borderRadius = direct.checked ? 'var(--radius)' : '';
+  }
+}
+
+function orderFormHTML(o = null) {
+  const today = new Date().toISOString().split('T')[0];
+  const s = state.settings;
+  const skuOptions = s.skuCosts.map(sk =>
+    `<option value="${sk.sku}" ${o?.skuType===sk.sku?'selected':''}>${sk.sku} – £${sk.cost}/unit</option>`).join('');
+  const methodOptions = s.shippingMethods.map(m =>
+    `<option value="${m.method}" ${o?.shippingMethod===m.method?'selected':''}>${m.method} (£${m.cost})</option>`).join('');
+
+  return `
     <div class="form-grid">
       <div class="form-group">
         <label>Date</label>
-        <input type="date" id="o-date" value="${new Date().toISOString().split('T')[0]}">
+        <input type="date" id="o-date" value="${o?.date || today}" onchange="refreshOrderPreview()">
       </div>
       <div class="form-group">
         <label>Order #</label>
-        <input type="text" id="o-num" placeholder="#1012">
+        <input type="text" id="o-num" value="${o?.orderNum||''}" placeholder="#1013">
       </div>
       <div class="form-group full">
         <label>Customer Name</label>
-        <input type="text" id="o-customer" placeholder="Full name">
+        <input type="text" id="o-customer" value="${o?.customer||''}" placeholder="Full name">
       </div>
       <div class="form-group">
         <label>SKU Type</label>
-        <select id="o-sku">${skuOptions}</select>
+        <select id="o-sku" onchange="refreshOrderPreview()">${skuOptions}</select>
       </div>
       <div class="form-group">
         <label>Quantity</label>
-        <input type="number" id="o-qty" value="1" min="1">
+        <input type="number" id="o-qty" value="${o?.qty||1}" min="1" onchange="refreshOrderPreview()">
       </div>
       <div class="form-group">
         <label>Revenue (£)</label>
-        <input type="number" id="o-rev" value="" placeholder="78.00" step="0.01" min="0">
+        <input type="number" id="o-rev" value="${o?.revenue||''}" placeholder="78.00" step="0.01" min="0" oninput="refreshOrderPreview()">
       </div>
       <div class="form-group">
         <label>Shipping Method</label>
-        <select id="o-ship">${methodOptions}</select>
+        <select id="o-ship" onchange="refreshOrderPreview()">${methodOptions}</select>
       </div>
       <div class="form-group" style="align-self:end">
-        <div class="checkbox-row" style="padding-bottom:10px">
-          <input type="checkbox" id="o-direct">
-          <label for="o-direct" style="text-transform:none;letter-spacing:0;font-size:13px;font-weight:400;">Outside Shopify (no Shopify fee)</label>
+        <div id="o-direct-row" class="checkbox-row" style="padding:8px;transition:background 0.2s">
+          <input type="checkbox" id="o-direct" ${o?.outsideShopify?'checked':''} onchange="refreshOrderPreview()">
+          <label for="o-direct" style="text-transform:none;letter-spacing:0;font-size:13px;font-weight:400;cursor:pointer">Direct sale — no Shopify fee</label>
         </div>
       </div>
     </div>
-  `;
+    <div id="order-preview"></div>`;
+}
+
+function openAddOrder() {
+  document.getElementById('modal-title').textContent = 'Add Order';
+  document.getElementById('modal-body').innerHTML = orderFormHTML(null);
   document.getElementById('modal-footer').innerHTML = `
     <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
     <button class="btn btn-primary" onclick="saveOrder()">Add Order</button>
   `;
   openModal();
+  setTimeout(refreshOrderPreview, 0);
 }
 
 function editOrder(id) {
   const o = state.orders.find(x => x.id === id);
   if (!o) return;
-  const skuOptions = state.settings.skuCosts.map(s =>
-    `<option value="${s.sku}" ${o.skuType===s.sku?'selected':''}>${s.sku} – £${s.cost}/unit</option>`).join('');
-  const methodOptions = state.settings.shippingMethods.map(m =>
-    `<option value="${m.method}" ${o.shippingMethod===m.method?'selected':''}>${m.method} (£${m.cost})</option>`).join('');
-
   document.getElementById('modal-title').textContent = 'Edit Order';
-  document.getElementById('modal-body').innerHTML = `
-    <div class="form-grid">
-      <div class="form-group">
-        <label>Date</label>
-        <input type="date" id="o-date" value="${o.date}">
-      </div>
-      <div class="form-group">
-        <label>Order #</label>
-        <input type="text" id="o-num" value="${o.orderNum}">
-      </div>
-      <div class="form-group full">
-        <label>Customer Name</label>
-        <input type="text" id="o-customer" value="${o.customer}">
-      </div>
-      <div class="form-group">
-        <label>SKU Type</label>
-        <select id="o-sku">${skuOptions}</select>
-      </div>
-      <div class="form-group">
-        <label>Quantity</label>
-        <input type="number" id="o-qty" value="${o.qty}" min="1">
-      </div>
-      <div class="form-group">
-        <label>Revenue (£)</label>
-        <input type="number" id="o-rev" value="${o.revenue}" step="0.01" min="0">
-      </div>
-      <div class="form-group">
-        <label>Shipping Method</label>
-        <select id="o-ship">${methodOptions}</select>
-      </div>
-      <div class="form-group" style="align-self:end">
-        <div class="checkbox-row" style="padding-bottom:10px">
-          <input type="checkbox" id="o-direct" ${o.outsideShopify?'checked':''}>
-          <label for="o-direct" style="text-transform:none;letter-spacing:0;font-size:13px;font-weight:400;">Outside Shopify (no Shopify fee)</label>
-        </div>
-      </div>
-    </div>
-  `;
+  document.getElementById('modal-body').innerHTML = orderFormHTML(o);
   document.getElementById('modal-footer').innerHTML = `
     <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
     <button class="btn btn-primary" onclick="updateOrder(${id})">Save Changes</button>
   `;
   openModal();
+  setTimeout(refreshOrderPreview, 0);
 }
 
 async function updateOrder(id) {
@@ -3027,6 +3058,7 @@ document.getElementById('sidebar-date').textContent =
 (async () => {
   try {
     await loadFromSupabase();
+    await checkRecurringExpenses();
     lastSyncTime = new Date();
     syncConnectionStatus = 'connected';
     subscribeRealtime();
