@@ -1351,7 +1351,8 @@ const DEFAULT_DATA = {
     shippingMethods: [
       { method: 'Standard',   cost: 3.40, notes: 'Royal Mail tracked' },
       { method: 'Collection', cost: 0,    notes: 'Customer collection' },
-    ]
+    ],
+    bankConfig: {}
   },
   nextId: { tx: 18, order: 11 }
 };
@@ -1498,6 +1499,7 @@ async function loadFromSupabase() {
   state.orders       = (oRes.data || []).map(rowToOrder);
   state.transactions = (tRes.data || []).map(rowToTx);
   if (sRes.data?.value) state.settings = sRes.data.value;
+  state.settings.bankConfig = state.settings.bankConfig || {};
 
   state.nextId.order = (state.orders.length       ? Math.max(...state.orders.map(o => o.id))       : 0) + 1;
   state.nextId.tx    = (state.transactions.length ? Math.max(...state.transactions.map(t => t.id)) : 0) + 1;
@@ -2959,6 +2961,40 @@ function renderSettings(el, actions) {
       </div>
     </div>
 
+    <div class="settings-section">
+      <div class="settings-section-header">Bank Connection</div>
+      <div class="settings-section-body">
+        ${(()=>{
+          const cfg = state.settings.bankConfig || {};
+          if (cfg.accountId) return `
+            <div class="sync-info-row" style="margin-bottom:10px">
+              <span style="display:flex;align-items:center;gap:8px">
+                <span style="width:8px;height:8px;border-radius:50%;background:var(--pos);display:inline-block"></span>
+                <strong>${cfg.institutionName || 'Bank'} connected</strong>
+              </span>
+              <span style="font-size:12px;color:var(--text-2)">Last synced: ${cfg.lastSync || 'never'}</span>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <button class="btn btn-primary" onclick="gcFetchTransactions()">Review New Transactions</button>
+              <button class="btn btn-ghost" onclick="gcDisconnect()">Disconnect</button>
+            </div>`;
+          return `
+            <p style="font-size:13px;color:var(--text-2);margin-bottom:14px">
+              Connect your bank via Open Banking to pull in outgoing expenses for review.
+              Enter your TrueLayer Client ID below — you'll be redirected to authorise with your bank.
+            </p>
+            <div class="settings-form-grid">
+              <div class="form-group">
+                <label>Client ID</label>
+                <input type="text" id="gc-id" placeholder="sandbox-yourapp-xxxxxxxx"
+                  value="${state.settings.bankConfig?.clientId || ''}">
+              </div>
+            </div>
+            <button class="btn btn-primary" onclick="gcConnectBank()">Connect Bank</button>`;
+        })()}
+      </div>
+    </div>
+
     <div class="settings-section" style="border-color:var(--neg-bg)">
       <div class="settings-section-header" style="color:var(--neg)">Danger Zone</div>
       <div class="settings-section-body">
@@ -3054,6 +3090,226 @@ function toast(msg) {
 document.getElementById('sidebar-date').textContent =
   new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 
+// ── TrueLayer Bank Integration ────────────────────
+const TL_PROXY    = `${SUPABASE_URL}/functions/v1/truelayer-proxy`;
+const TL_REDIRECT = 'https://novacurated.github.io/Nova-Finance-OS/?bankauth=1';
+
+// Auto-categorisation rules — add more as needed
+const BANK_RULES = [
+  { keywords: ['ADOBE'],                  description: 'Adobe Illustrator Monthly Cost', category: 'Software & Subscriptions' },
+  { keywords: ['SHOPIFY'],                description: 'Shopify Website Monthly Cost',   category: 'Software & Subscriptions' },
+  { keywords: ['CANVA'],                  description: 'Canva Monthly Cost',             category: 'Software & Subscriptions' },
+  { keywords: ['GOOGLE'],                 description: 'Google Services',                category: 'Software & Subscriptions' },
+  { keywords: ['ROYAL MAIL', 'RM GROUP'], description: 'Postage & Delivery',            category: 'Shipping & Postage' },
+  { keywords: ['DPD', 'EVRI', 'HERMES', 'PARCELFORCE'], description: 'Courier Delivery', category: 'Shipping & Postage' },
+  { keywords: ['AMAZON', 'AMZN'],         description: 'Amazon Purchase',                category: 'Other Expenses' },
+  { keywords: ['META', 'FACEBOOK ADS', 'INSTAGRAM'], description: 'Social Media Ads',   category: 'Marketing & Advertising' },
+];
+
+let _pendingBankTxs = [];
+
+function gcMatchRule(raw) {
+  const up = raw.toUpperCase();
+  return BANK_RULES.find(r => r.keywords.some(k => up.includes(k))) || null;
+}
+
+async function tlProxy(action, params = {}) {
+  const res = await fetch(TL_PROXY, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'apikey': SUPABASE_KEY,
+    },
+    body: JSON.stringify({ action, ...params }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'TrueLayer proxy error');
+  return data;
+}
+
+async function gcEnsureToken() {
+  const cfg = state.settings.bankConfig || {};
+  const now = Date.now();
+  if (cfg.accessToken && (cfg.accessExpires || 0) > now + 60000) return;
+  if (!cfg.refreshToken) throw new Error('Not connected to bank. Please reconnect.');
+  const d = await tlProxy('refresh_token', { refresh_token: cfg.refreshToken });
+  if (!d.access_token) throw new Error(d.error || 'Failed to refresh token. Please reconnect.');
+  cfg.accessToken   = d.access_token;
+  cfg.accessExpires = now + (d.expires_in || 3600) * 1000;
+  if (d.refresh_token) cfg.refreshToken = d.refresh_token;
+  state.settings.bankConfig = cfg;
+  await dbSaveSettings();
+}
+
+async function gcConnectBank() {
+  const clientId = document.getElementById('gc-id')?.value?.trim();
+  if (!clientId) { toast('Enter your TrueLayer Client ID first.'); return; }
+  state.settings.bankConfig = { ...state.settings.bankConfig, clientId };
+  await dbSaveSettings();
+  const params = new URLSearchParams({
+    response_type: 'code',
+    client_id: clientId,
+    scope: 'accounts transactions balance offline_access',
+    redirect_uri: TL_REDIRECT,
+    providers: 'uk-ob-all uk-oauth-all',
+  });
+  window.location.href = `https://auth.truelayer-sandbox.com/?${params}`;
+}
+
+async function gcCompleteAuth() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const code      = urlParams.get('code');
+  if (!code) { toast('No auth code received — please try connecting again.'); return; }
+  try {
+    setSyncStatus('syncing', 'Completing bank setup…');
+    const d = await tlProxy('exchange_code', { code, redirect_uri: TL_REDIRECT });
+    if (!d.access_token) throw new Error(d.error || 'Token exchange failed.');
+    const cfg = state.settings.bankConfig || {};
+    const now = Date.now();
+    cfg.accessToken   = d.access_token;
+    cfg.accessExpires = now + (d.expires_in || 3600) * 1000;
+    cfg.refreshToken  = d.refresh_token;
+    // Get account list to find account ID
+    const accounts = await tlProxy('get_accounts', { access_token: d.access_token });
+    const account  = accounts.results?.[0];
+    if (!account) throw new Error('No accounts found.');
+    cfg.accountId       = account.account_id;
+    cfg.institutionName = account.provider?.display_name || account.display_name || 'Bank';
+    state.settings.bankConfig = cfg;
+    await dbSaveSettings();
+    setSyncStatus('synced', 'Bank connected');
+    toast('Bank connected ✓');
+    window.history.replaceState({}, '', window.location.pathname);
+    renderView('settings');
+  } catch (e) {
+    setSyncStatus('error', 'Setup failed');
+    toast('Bank setup failed: ' + e.message);
+  }
+}
+
+async function gcFetchTransactions() {
+  const cfg = state.settings.bankConfig || {};
+  if (!cfg.accountId) { toast('No bank account connected.'); return; }
+  try {
+    setSyncStatus('syncing', 'Fetching transactions…');
+    await gcEnsureToken();
+    const dateFrom = cfg.lastSync
+      || new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10);
+    const data = await tlProxy('get_transactions', {
+      access_token: cfg.accessToken,
+      account_id:   cfg.accountId,
+      date_from:    dateFrom,
+    });
+    const txs = data.results || [];
+    // Keep debits only (amount < 0 = money out)
+    const debits = txs.filter(t => (t.amount || 0) < 0);
+    // Exclude anything already in the app (same date + same amount within 1p)
+    const pending = debits.filter(bt => {
+      const d = bt.timestamp?.slice(0, 10);
+      const a = Math.abs(bt.amount);
+      return !state.transactions.some(t => t.date === d && Math.abs(t.amount - a) < 0.01);
+    });
+    setSyncStatus('synced', 'Synced');
+    if (!pending.length) { toast('No new transactions to review.'); return; }
+    _pendingBankTxs = pending;
+    showBankReviewModal();
+  } catch (e) {
+    setSyncStatus('error', 'Fetch failed');
+    toast('Failed to fetch transactions: ' + e.message);
+  }
+}
+
+function showBankReviewModal() {
+  const rows = _pendingBankTxs.map((bt, i) => {
+    const amount  = Math.abs(bt.amount || 0);
+    const date    = bt.timestamp?.slice(0, 10) || '';
+    const rawDesc = bt.description || bt.merchant_name || 'Unknown';
+    const rule    = gcMatchRule(rawDesc);
+    const sugDesc = rule ? rule.description : rawDesc.replace(/"/g, '\'').slice(0, 60);
+    const sugCat  = rule ? rule.category : 'Other Expenses';
+    return `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:8px 4px">
+        <input type="checkbox" class="gc-chk" data-i="${i}" checked style="width:15px;height:15px;cursor:pointer">
+      </td>
+      <td style="padding:8px 6px;font-size:12px;color:var(--text-2);white-space:nowrap">${date}</td>
+      <td style="padding:8px 6px">
+        <input type="text" class="gc-desc" data-i="${i}" value="${sugDesc}"
+          style="width:100%;font-size:13px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--bg-2);color:var(--text-1)">
+      </td>
+      <td style="padding:8px 6px">
+        <select class="gc-cat" data-i="${i}"
+          style="width:100%;font-size:13px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--bg-2);color:var(--text-1)">
+          ${CATEGORIES.map(c => `<option${c===sugCat?' selected':''}>${c}</option>`).join('')}
+        </select>
+      </td>
+      <td style="padding:8px 6px;text-align:right;font-weight:600;white-space:nowrap">£${amount.toFixed(2)}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('modal-title').textContent = 'Review Bank Transactions';
+  document.getElementById('modal-body').innerHTML = `
+    <p style="font-size:13px;color:var(--text-2);margin-bottom:12px">
+      ${_pendingBankTxs.length} new outgoing transaction${_pendingBankTxs.length > 1 ? 's' : ''} from your bank.
+      Tick the ones to log, adjust descriptions/categories, then click Log.
+    </p>
+    <div style="overflow-x:auto;max-height:52vh;overflow-y:auto">
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="font-size:11px;color:var(--text-3);text-transform:uppercase;border-bottom:1px solid var(--border)">
+          <th style="padding:4px 4px"></th>
+          <th style="padding:4px 6px;text-align:left">Date</th>
+          <th style="padding:4px 6px;text-align:left">Description</th>
+          <th style="padding:4px 6px;text-align:left">Category</th>
+          <th style="padding:4px 6px;text-align:right">Amount</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  document.getElementById('modal-footer').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-primary" onclick="logBankTransactions()">Log Selected</button>`;
+  openModal();
+}
+
+async function logBankTransactions() {
+  const checks = document.querySelectorAll('.gc-chk');
+  const descs  = document.querySelectorAll('.gc-desc');
+  const cats   = document.querySelectorAll('.gc-cat');
+  let added = 0;
+  for (let i = 0; i < _pendingBankTxs.length; i++) {
+    if (!checks[i]?.checked) continue;
+    const bt     = _pendingBankTxs[i];
+    const amount = Math.abs(bt.amount || 0);
+    const date   = bt.timestamp?.slice(0, 10) || new Date().toISOString().slice(0, 10);
+    const tx = {
+      id: state.nextId.tx++,
+      date,
+      description: descs[i]?.value?.trim() || 'Bank Transaction',
+      category:    cats[i]?.value || 'Other Expenses',
+      amount
+    };
+    state.transactions.push(tx);
+    skipNextRefresh = true;
+    await dbUpsertTx(tx);
+    added++;
+  }
+  if (added > 0) {
+    state.settings.bankConfig.lastSync = new Date().toISOString().slice(0, 10);
+    await dbSaveSettings();
+  }
+  closeModal();
+  renderView('transactions');
+  toast(`Logged ${added} transaction${added !== 1 ? 's' : ''} ✓`);
+}
+
+async function gcDisconnect() {
+  if (!confirm('Disconnect your bank account?')) return;
+  state.settings.bankConfig = {};
+  await dbSaveSettings();
+  renderView('settings');
+  toast('Bank disconnected.');
+}
+
 // Boot
 (async () => {
   try {
@@ -3074,7 +3330,14 @@ document.getElementById('sidebar-date').textContent =
   const splash = document.getElementById('loading-splash');
   splash.classList.add('hidden');
   setTimeout(() => splash.remove(), 500);
-  navigate('dashboard');
+
+  // Complete bank auth if returning from bank redirect
+  if (new URLSearchParams(window.location.search).get('bankauth') === '1') {
+    navigate('settings');
+    await gcCompleteAuth();
+  } else {
+    navigate('dashboard');
+  }
 })();
 </script>
 </body>
