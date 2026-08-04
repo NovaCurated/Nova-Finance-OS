@@ -1324,16 +1324,16 @@ const DEFAULT_DATA = {
     { id: 17, date: '2026-07-16', description: 'Purchase of Packaging – Cotton Bags',                     category: 'Packaging',                 amount: 16.99  },
   ],
   orders: [
-    { id: 1,  date: '2026-07-19', orderNum: '#1005', customer: 'Lily Ker',           skuType: 'Silk 90',   qty: 1, revenue: 78,    shippingMethod: 'Standard',   outsideShopify: false },
-    { id: 2,  date: '2026-07-20', orderNum: '#1006', customer: 'Cheyenna Devenish',  skuType: 'Silk 90',   qty: 1, revenue: 78,    shippingMethod: 'Standard',   outsideShopify: false },
-    { id: 3,  date: '2026-07-20', orderNum: '#1007', customer: 'Janine Calder',      skuType: 'Silk 90',   qty: 1, revenue: 82,    shippingMethod: 'Standard',   outsideShopify: false },
-    { id: 4,  date: '2026-07-20', orderNum: '#1008', customer: 'Melanie Simpson',    skuType: 'Silk 90',   qty: 1, revenue: 85.99, shippingMethod: 'Standard',   outsideShopify: false },
-    { id: 5,  date: '2026-07-17', orderNum: '#1001', customer: 'Kendra Tunley',      skuType: 'Silk 90',   qty: 1, revenue: 0,     shippingMethod: 'Collection', outsideShopify: true  },
-    { id: 6,  date: '2026-07-17', orderNum: '#1002', customer: 'Bethany Cantley',    skuType: 'Cotton 50', qty: 3, revenue: 0,     shippingMethod: 'Collection', outsideShopify: true  },
-    { id: 7,  date: '2026-07-21', orderNum: '#1009', customer: 'Aidan Hewison',      skuType: 'Silk 90',   qty: 1, revenue: 82,    shippingMethod: 'Standard',   outsideShopify: false },
-    { id: 8,  date: '2026-07-22', orderNum: '#1010', customer: 'Lorraine Tunley',    skuType: 'Silk 90',   qty: 1, revenue: 82,    shippingMethod: 'Collection', outsideShopify: false },
-    { id: 9,  date: '2026-07-22', orderNum: '#1011', customer: 'Joanna Hibbert',     skuType: 'Silk 90',   qty: 1, revenue: 78,    shippingMethod: 'Collection', outsideShopify: false },
-    { id: 10, date: '2026-07-22', orderNum: '#1012', customer: 'Bronte Fishwick',    skuType: 'Silk 90',   qty: 1, revenue: 85.99, shippingMethod: 'Standard',   outsideShopify: false },
+    { id: 1,  date: '2026-07-19', orderNum: '#1005', customer: 'Lily Ker',           skuType: 'Silk 90',   qty: 1, revenue: 78,    shippingMethod: 'Standard',   outsideShopify: false, channel: 'shopify' },
+    { id: 2,  date: '2026-07-20', orderNum: '#1006', customer: 'Cheyenna Devenish',  skuType: 'Silk 90',   qty: 1, revenue: 78,    shippingMethod: 'Standard',   outsideShopify: false, channel: 'shopify' },
+    { id: 3,  date: '2026-07-20', orderNum: '#1007', customer: 'Janine Calder',      skuType: 'Silk 90',   qty: 1, revenue: 82,    shippingMethod: 'Standard',   outsideShopify: false, channel: 'shopify' },
+    { id: 4,  date: '2026-07-20', orderNum: '#1008', customer: 'Melanie Simpson',    skuType: 'Silk 90',   qty: 1, revenue: 85.99, shippingMethod: 'Standard',   outsideShopify: false, channel: 'shopify' },
+    { id: 5,  date: '2026-07-17', orderNum: '#1001', customer: 'Kendra Tunley',      skuType: 'Silk 90',   qty: 1, revenue: 0,     shippingMethod: 'Collection', outsideShopify: true,  channel: 'direct'  },
+    { id: 6,  date: '2026-07-17', orderNum: '#1002', customer: 'Bethany Cantley',    skuType: 'Cotton 50', qty: 3, revenue: 0,     shippingMethod: 'Collection', outsideShopify: true,  channel: 'direct'  },
+    { id: 7,  date: '2026-07-21', orderNum: '#1009', customer: 'Aidan Hewison',      skuType: 'Silk 90',   qty: 1, revenue: 82,    shippingMethod: 'Standard',   outsideShopify: false, channel: 'shopify' },
+    { id: 8,  date: '2026-07-22', orderNum: '#1010', customer: 'Lorraine Tunley',    skuType: 'Silk 90',   qty: 1, revenue: 82,    shippingMethod: 'Collection', outsideShopify: false, channel: 'shopify' },
+    { id: 9,  date: '2026-07-22', orderNum: '#1011', customer: 'Joanna Hibbert',     skuType: 'Silk 90',   qty: 1, revenue: 78,    shippingMethod: 'Collection', outsideShopify: false, channel: 'shopify' },
+    { id: 10, date: '2026-07-22', orderNum: '#1012', customer: 'Bronte Fishwick',    skuType: 'Silk 90',   qty: 1, revenue: 85.99, shippingMethod: 'Standard',   outsideShopify: false, channel: 'shopify' },
   ],
   settings: {
     businessName: 'Nova Curated',
@@ -1419,15 +1419,17 @@ function setSyncStatus(type, label) {
 
 // ── Row mappers ────────────────────────────────────
 function rowToOrder(r) {
+  const channel = r.channel || (r.outside_shopify ? 'direct' : 'shopify');
   return { id: r.id, date: r.date, orderNum: r.order_num, customer: r.customer,
            skuType: r.sku_type, qty: parseInt(r.qty) || 1, revenue: parseFloat(r.revenue) || 0,
-           shippingMethod: r.shipping_method, outsideShopify: !!r.outside_shopify };
+           shippingMethod: r.shipping_method, outsideShopify: channel === 'direct', channel };
 }
 
 function orderToRow(o) {
+  const channel = o.channel || (o.outsideShopify ? 'direct' : 'shopify');
   return { id: o.id, date: o.date, order_num: o.orderNum, customer: o.customer,
            sku_type: o.skuType, qty: o.qty, revenue: o.revenue,
-           shipping_method: o.shippingMethod, outside_shopify: o.outsideShopify };
+           shipping_method: o.shippingMethod, outside_shopify: channel === 'direct', channel };
 }
 
 function rowToTx(r) {
@@ -1573,13 +1575,17 @@ function getShippingCost(method) {
 
 function calcOrder(order) {
   const s = state.settings;
+  const channel = order.channel || (order.outsideShopify ? 'direct' : 'shopify');
   const productCost = order.qty * getSkuCost(order.skuType);
   const shippingOut = getShippingCost(order.shippingMethod);
-  const shopifyCut = (order.outsideShopify || !order.revenue) ? 0 :
-    Math.round((order.revenue * s.shopifyFeeRate + s.shopifyFixedFee) * 100) / 100;
-  const cm = Math.round((order.revenue - productCost - shippingOut - shopifyCut) * 100) / 100;
-  const netCash = Math.round((order.revenue - shippingOut - shopifyCut) * 100) / 100;
-  return { productCost, shippingOut, shopifyCut, cm, netCash };
+  const shopifyCut = (channel === 'shopify' && order.revenue) ?
+    Math.round((order.revenue * s.shopifyFeeRate + s.shopifyFixedFee) * 100) / 100 : 0;
+  const foldCut = (channel === 'fold' && order.revenue) ?
+    Math.round(order.revenue * 0.15 * 100) / 100 : 0;
+  const platformCut = shopifyCut + foldCut;
+  const cm = Math.round((order.revenue - productCost - shippingOut - platformCut) * 100) / 100;
+  const netCash = Math.round((order.revenue - shippingOut - platformCut) * 100) / 100;
+  return { productCost, shippingOut, shopifyCut, foldCut, platformCut, cm, netCash, channel };
 }
 
 function calcDash() {
@@ -1650,8 +1656,9 @@ function calcPL(fromMonth, toMonth, year) {
   const shippingOut = filtOrders.reduce((a,o)=>a+calcOrder(o).shippingOut,0) +
     filtTxs.filter(t=>t.category==='Shipping & Postage').reduce((a,t)=>a+t.amount,0);
   const shopifyFees = filtOrders.reduce((a,o)=>a+calcOrder(o).shopifyCut,0);
+  const foldFees = filtOrders.reduce((a,o)=>a+calcOrder(o).foldCut,0);
   const closingStock = fromMonth ? 0 : s.closingStock; // only subtract closing stock on full year
-  const cogs = openingStock + stockPurchases + packaging + shippingOut + shopifyFees - closingStock;
+  const cogs = openingStock + stockPurchases + packaging + shippingOut + shopifyFees + foldFees - closingStock;
   const grossProfit = totalRev - cogs;
   const grossMarginPct = totalRev ? grossProfit / totalRev : 0;
 
@@ -1665,7 +1672,7 @@ function calcPL(fromMonth, toMonth, year) {
   const netMarginPct = totalRev ? netProfit / totalRev : 0;
 
   return { salesRev, otherIncome, totalRev, openingStock, stockPurchases, packaging,
-           shippingOut, shopifyFees, closingStock, cogs, grossProfit, grossMarginPct,
+           shippingOut, shopifyFees, foldFees, closingStock, cogs, grossProfit, grossMarginPct,
            opex, totalOpEx, netProfit, netMarginPct };
 }
 
@@ -1993,8 +2000,10 @@ function renderOrders(el, actions) {
 
   const rows = orders.map(o => {
     const c = calcOrder(o);
+    const ch = c.channel || 'shopify';
     const shTag = o.shippingMethod ? `<span class="tag">${o.shippingMethod}</span>` : '';
-    const extTag = o.outsideShopify ? `<span class="tag" style="color:var(--accent)">Direct</span>` : '';
+    const chTag = ch === 'fold' ? `<span class="tag" style="color:#7c3aed">Fold</span>`
+                : ch === 'direct' ? `<span class="tag" style="color:var(--accent)">Direct</span>` : '';
     return `<tr>
       <td>${fmtDate(o.date)}</td>
       <td><strong>${o.orderNum}</strong></td>
@@ -2004,9 +2013,9 @@ function renderOrders(el, actions) {
       <td class="num">${fmt(o.revenue)}</td>
       <td class="num muted">${fmt(c.productCost)}</td>
       <td class="num muted">${fmt(c.shippingOut)}</td>
-      <td class="num muted">${fmt(c.shopifyCut)}</td>
+      <td class="num muted">${fmt(c.platformCut)}</td>
       <td class="num">${colorFmt(c.cm)}</td>
-      <td>${shTag}${extTag ? ' '+extTag : ''}</td>
+      <td>${shTag}${chTag ? ' '+chTag : ''}</td>
       <td>
         <div class="row-actions">
           <button class="edit-btn" onclick="editOrder(${o.id})" title="Edit">
@@ -2054,7 +2063,7 @@ function renderOrders(el, actions) {
               ${thSort('revenue','Revenue')}
               <th>Prod Cost</th>
               <th>Shipping</th>
-              <th>Shopify Fee</th>
+              <th>Platform Fee</th>
               ${thSort('cm','Contribution')}
               <th>Details</th>
               <th></th>
@@ -2079,20 +2088,25 @@ function orderPreviewHTML() {
   const qty = parseInt(document.getElementById('o-qty')?.value) || 1;
   const revenue = parseFloat(document.getElementById('o-rev')?.value) || 0;
   const method = document.getElementById('o-ship')?.value || '';
-  const outside = document.getElementById('o-direct')?.checked || false;
+  const channel = document.getElementById('o-channel')?.value || 'shopify';
 
   const productCost = qty * (parseFloat(s.skuCosts.find(x=>x.sku===sku)?.cost)||0);
   const shippingOut = getShippingCost(method);
-  const shopifyCut = (outside || !revenue) ? 0 :
-    Math.round((revenue * (parseFloat(s.shopifyFeeRate)||0) + (parseFloat(s.shopifyFixedFee)||0)) * 100) / 100;
-  const cm = revenue - productCost - shippingOut - shopifyCut;
+  const shopifyCut = (channel === 'shopify' && revenue) ?
+    Math.round((revenue * (parseFloat(s.shopifyFeeRate)||0) + (parseFloat(s.shopifyFixedFee)||0)) * 100) / 100 : 0;
+  const foldCut = (channel === 'fold' && revenue) ?
+    Math.round(revenue * 0.15 * 100) / 100 : 0;
+  const platformCut = shopifyCut + foldCut;
+  const cm = revenue - productCost - shippingOut - platformCut;
 
   const c = (n, pos) => `<span style="color:${pos?'var(--pos)':n<0?'var(--neg)':'var(--text-2)'};font-weight:600">${fmt(n)}</span>`;
+  const feeLabel = channel === 'fold' ? 'Fold (15%)' : channel === 'direct' ? 'Platform Fee' : 'Shopify Fee';
+  const feeDisplay = channel === 'direct' ? `<span style="color:var(--text-3)">Exempt</span>` : c(platformCut, false);
 
   return `<div style="background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;margin-top:14px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;font-size:12px">
     <div><div style="color:var(--text-3);margin-bottom:3px;font-size:10px;text-transform:uppercase;letter-spacing:.07em">Prod Cost</div>${c(productCost,false)}</div>
     <div><div style="color:var(--text-3);margin-bottom:3px;font-size:10px;text-transform:uppercase;letter-spacing:.07em">Shipping</div>${c(shippingOut,false)}</div>
-    <div><div style="color:var(--text-3);margin-bottom:3px;font-size:10px;text-transform:uppercase;letter-spacing:.07em">Shopify Fee</div>${outside?`<span style="color:var(--text-3)">Exempt</span>`:c(shopifyCut,false)}</div>
+    <div><div style="color:var(--text-3);margin-bottom:3px;font-size:10px;text-transform:uppercase;letter-spacing:.07em">${feeLabel}</div>${feeDisplay}</div>
     <div><div style="color:var(--text-3);margin-bottom:3px;font-size:10px;text-transform:uppercase;letter-spacing:.07em">Contribution</div>${c(cm, cm>=0)}</div>
   </div>`;
 }
@@ -2100,12 +2114,13 @@ function orderPreviewHTML() {
 function refreshOrderPreview() {
   const el = document.getElementById('order-preview');
   if (el) el.innerHTML = orderPreviewHTML();
-  // Highlight Outside Shopify row when checked
-  const direct = document.getElementById('o-direct');
-  const row = document.getElementById('o-direct-row');
-  if (direct && row) {
-    row.style.background = direct.checked ? 'var(--warn-bg)' : '';
-    row.style.borderRadius = direct.checked ? 'var(--radius)' : '';
+  // Highlight channel row when non-Shopify
+  const chSel = document.getElementById('o-channel');
+  const row = document.getElementById('o-channel-row');
+  if (chSel && row) {
+    const isAlt = chSel.value !== 'shopify';
+    row.style.background = isAlt ? 'var(--warn-bg)' : '';
+    row.style.borderRadius = isAlt ? 'var(--radius)' : '';
   }
 }
 
@@ -2147,10 +2162,14 @@ function orderFormHTML(o = null) {
         <label>Shipping Method</label>
         <select id="o-ship" onchange="refreshOrderPreview()">${methodOptions}</select>
       </div>
-      <div class="form-group" style="align-self:end">
-        <div id="o-direct-row" class="checkbox-row" style="padding:8px;transition:background 0.2s">
-          <input type="checkbox" id="o-direct" ${o?.outsideShopify?'checked':''} onchange="refreshOrderPreview()">
-          <label for="o-direct" style="text-transform:none;letter-spacing:0;font-size:13px;font-weight:400;cursor:pointer">Direct sale — no Shopify fee</label>
+      <div class="form-group">
+        <label>Channel</label>
+        <div id="o-channel-row" style="padding:4px;transition:background 0.2s;border-radius:var(--radius)">
+          <select id="o-channel" onchange="refreshOrderPreview()">
+            <option value="shopify" ${(!o || o.channel==='shopify')?'selected':''}>Shopify</option>
+            <option value="fold" ${o?.channel==='fold'?'selected':''}>Fold (15% commission)</option>
+            <option value="direct" ${o?.channel==='direct'?'selected':''}>Direct — no fee</option>
+          </select>
         </div>
       </div>
     </div>
@@ -2187,6 +2206,7 @@ async function updateOrder(id) {
   const date = document.getElementById('o-date').value;
   const customer = document.getElementById('o-customer').value.trim();
   if (!date || !customer) { toast('Please fill in date and customer name.'); return; }
+  const channel = document.getElementById('o-channel').value || 'shopify';
   const updated = {
     ...state.orders[idx],
     date,
@@ -2196,7 +2216,8 @@ async function updateOrder(id) {
     qty:            parseInt(document.getElementById('o-qty').value) || 1,
     revenue:        parseFloat(document.getElementById('o-rev').value) || 0,
     shippingMethod: document.getElementById('o-ship').value,
-    outsideShopify: document.getElementById('o-direct').checked,
+    channel,
+    outsideShopify: channel === 'direct',
   };
   state.orders[idx] = updated;
   skipNextRefresh = true;
@@ -2214,11 +2235,12 @@ async function saveOrder() {
   const qty = parseInt(document.getElementById('o-qty').value) || 1;
   const revenue = parseFloat(document.getElementById('o-rev').value) || 0;
   const shippingMethod = document.getElementById('o-ship').value;
-  const outsideShopify = document.getElementById('o-direct').checked;
+  const channel = document.getElementById('o-channel').value || 'shopify';
+  const outsideShopify = channel === 'direct';
 
   if (!date || !customer) { toast('Please fill in date and customer name.'); return; }
 
-  const order = { id: state.nextId.order++, date, orderNum, customer, skuType, qty, revenue, shippingMethod, outsideShopify };
+  const order = { id: state.nextId.order++, date, orderNum, customer, skuType, qty, revenue, shippingMethod, channel, outsideShopify };
   state.orders.push(order);
   skipNextRefresh = true;
   closeModal();
@@ -2653,7 +2675,8 @@ function renderPL(el, actions) {
       ${row('Stock purchases', p.stockPurchases, '', true)}
       ${p.packaging ? row('Packaging', p.packaging, '', true) : ''}
       ${row('Outwards shipping', p.shippingOut, '', true)}
-      ${row('Shopify transaction fees', p.shopifyFees, '', true)}
+      ${p.shopifyFees ? row('Shopify transaction fees', p.shopifyFees, '', true) : ''}
+      ${p.foldFees ? row('Fold commission (15%)', p.foldFees, '', true) : ''}
       ${!plFromMonth && p.closingStock ? row('Less: closing stock', -p.closingStock, '', true) : ''}
       ${row('Cost of Goods Sold', p.cogs, 'subtotal')}
 
@@ -3311,6 +3334,16 @@ async function gcDisconnect() {
 
 // Boot
 (async () => {
+  // Exchange bank auth code FIRST — codes expire in ~30s, before Supabase loads
+  const _urlParams  = new URLSearchParams(window.location.search);
+  const _isBankAuth = _urlParams.get('bankauth') === '1';
+  const _bankCode   = _urlParams.get('code');
+  let   _bankTokens = null;
+  if (_isBankAuth && _bankCode) {
+    try { _bankTokens = await tlProxy('exchange_code', { code: _bankCode, redirect_uri: TL_REDIRECT }); }
+    catch(e) { console.error('Early token exchange failed:', e); }
+  }
+
   try {
     await loadFromSupabase();
     await checkRecurringExpenses();
@@ -3330,10 +3363,9 @@ async function gcDisconnect() {
   splash.classList.add('hidden');
   setTimeout(() => splash.remove(), 500);
 
-  // Complete bank auth if returning from bank redirect
-  if (new URLSearchParams(window.location.search).get('bankauth') === '1') {
+  if (_isBankAuth) {
     navigate('settings');
-    await gcCompleteAuth();
+    await gcCompleteAuth(_bankTokens);
   } else {
     navigate('dashboard');
   }
