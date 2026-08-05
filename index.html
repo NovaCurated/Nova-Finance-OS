@@ -2513,7 +2513,7 @@ function renderMonthly(el, actions) {
   const totalRev   = filtered.reduce((a,o) => a + o.revenue, 0);
   const totalCost  = filtered.reduce((a,o) => a + calcOrder(o).productCost, 0);
   const totalShip  = filtered.reduce((a,o) => a + calcOrder(o).shippingOut, 0);
-  const totalShop  = filtered.reduce((a,o) => a + calcOrder(o).shopifyCut, 0);
+  const totalShop  = filtered.reduce((a,o) => a + calcOrder(o).platformCut, 0);
   const totalCM    = filtered.reduce((a,o) => a + calcOrder(o).cm, 0);
   const cmPct      = totalRev ? totalCM / totalRev : 0;
 
@@ -2530,7 +2530,7 @@ function renderMonthly(el, actions) {
         <td class="num">${fmt(o.revenue)}</td>
         <td class="num muted">${fmt(c.productCost)}</td>
         <td class="num muted">${fmt(c.shippingOut)}</td>
-        <td class="num muted">${fmt(c.shopifyCut)}</td>
+        <td class="num muted">${fmt(c.platformCut)}</td>
         <td class="num">${colorFmt(c.cm)}</td>
       </tr>`;
     }).join('');
@@ -2570,7 +2570,7 @@ function renderMonthly(el, actions) {
         <div class="kpi-value neg">${fmt(totalShip)}</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">Shopify Fees</div>
+        <div class="kpi-label">Platform Fees</div>
         <div class="kpi-value neg">${fmt(totalShop)}</div>
       </div>
       <div class="kpi-card">
@@ -2590,7 +2590,7 @@ function renderMonthly(el, actions) {
             <tr>
               <th>Date</th><th>Order</th><th>Customer</th><th>SKU</th>
               <th>Qty</th><th>Revenue</th><th>Prod Cost</th>
-              <th>Shipping</th><th>Shopify Fee</th><th>Contribution</th>
+              <th>Shipping</th><th>Platform Fee</th><th>Contribution</th>
             </tr>
           </thead>
           <tbody>
