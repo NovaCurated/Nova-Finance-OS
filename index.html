@@ -1348,6 +1348,7 @@ const DEFAULT_DATA = {
     defaultShipping: 3.80,
     shopifyFeeRate: 0.02,
     shopifyFixedFee: 0.25,
+    platformPayoutLagDays: 5,
     shippingMethods: [
       { method: 'Standard',   cost: 3.40, notes: 'Royal Mail tracked' },
       { method: 'Collection', cost: 0,    notes: 'Customer collection' },
@@ -1604,11 +1605,9 @@ function calcDash() {
   const opProfit = totalCM - fixedCosts;
   const opMarginPct = revenue ? opProfit / revenue : 0;
 
-  // Cash: sum all In txs + order net cash - sum all Out txs
-  const txIn = txs.filter(t => CAT_CFG[t.category]?.d === 'In').reduce((a,t) => a+t.amount, 0);
-  const txOut = txs.filter(t => CAT_CFG[t.category]?.d === 'Out').reduce((a,t) => a+t.amount, 0);
-  const orderNetCash = orders.reduce((a,o) => a + calcOrder(o).netCash, 0);
-  const cash = txIn - txOut + orderNetCash;
+  // Cash: use calcBS for consistent payout-lag-aware figure
+  const bs = calcBS();
+  const cash = bs.cash;
 
   // P&L net profit (full year)
   const plFull = calcPL(0, 0, new Date().getFullYear());
@@ -1680,14 +1679,34 @@ function calcBS() {
   const s = state.settings;
   const txs = state.transactions;
   const orders = state.orders;
+  const lagDays = s.platformPayoutLagDays ?? 5;
+
+  const cutoff = new Date();
+  cutoff.setHours(0,0,0,0);
+  cutoff.setDate(cutoff.getDate() - lagDays);
 
   const txIn = txs.filter(t => CAT_CFG[t.category]?.d === 'In').reduce((a,t)=>a+t.amount,0);
   const txOut = txs.filter(t => CAT_CFG[t.category]?.d === 'Out').reduce((a,t)=>a+t.amount,0);
-  const orderNetCash = orders.reduce((a,o) => a+calcOrder(o).netCash, 0);
-  const cash = txIn - txOut + orderNetCash;
+  const txNet = txIn - txOut;
+
+  // Split: platform-channel orders within lag window are in transit (not yet in bank)
+  let clearedNetCash = 0, inTransit = 0;
+  orders.forEach(o => {
+    const c = calcOrder(o);
+    const isPlatform = c.channel === 'shopify' || c.channel === 'fold';
+    const orderDate = new Date(o.date + 'T00:00:00');
+    if (isPlatform && orderDate > cutoff) {
+      inTransit += c.netCash;
+    } else {
+      clearedNetCash += c.netCash;
+    }
+  });
+
+  const cash = Math.round((txNet + clearedNetCash) * 100) / 100;
+  const platformInTransit = Math.round(inTransit * 100) / 100;
 
   const inventory = s.closingStock;
-  const totalAssets = cash + inventory;
+  const totalAssets = Math.round((cash + platformInTransit + inventory) * 100) / 100;
 
   const directorLoan = txs.filter(t=>t.category==='Loan Received').reduce((a,t)=>a+t.amount,0) -
     txs.filter(t=>t.category==='Loan Repayment').reduce((a,t)=>a+t.amount,0);
@@ -1704,7 +1723,7 @@ function calcBS() {
 
   const balanced = Math.abs(totalAssets - totalLiabEquity) < 0.01;
 
-  return { cash, inventory, totalAssets, directorLoan, totalLiabilities,
+  return { cash, platformInTransit, inventory, totalAssets, directorLoan, totalLiabilities,
            ownerCapital, retainedEarnings, totalEquity, totalLiabEquity, balanced };
 }
 
@@ -2720,7 +2739,8 @@ function renderBalance(el, actions) {
 
     <div class="bs-section">
       <div class="bs-header">Assets</div>
-      ${row('Cash at bank', b.cash)}
+      ${row('Cash at bank (cleared)', b.cash)}
+      ${b.platformInTransit > 0 ? row(`Platform payouts in transit (≤${state.settings.platformPayoutLagDays ?? 5}d)`, b.platformInTransit) : ''}
       ${row('Inventory (stock at cost)', b.inventory)}
       ${row('Total Assets', b.totalAssets, 'total')}
     </div>
@@ -2958,6 +2978,11 @@ function renderSettings(el, actions) {
             <label>Shopify Fixed Fee per Order (£)</label>
             <input type="number" id="s-sffixed" value="${s.shopifyFixedFee}" step="0.01" min="0">
           </div>
+          <div class="form-group">
+            <label>Platform Payout Lag (days)</label>
+            <input type="number" id="s-payoutlag" value="${s.platformPayoutLagDays ?? 5}" step="1" min="0" max="30">
+            <p class="form-hint">Days before Shopify/Fold payouts clear. Orders within this window show as "in transit" on the balance sheet.</p>
+          </div>
         </div>
       </div>
     </div>
@@ -3034,8 +3059,9 @@ async function saveSettings() {
   state.settings.openingStock     = parseFloat(document.getElementById('s-os').value) || 0;
   state.settings.closingStock     = parseFloat(document.getElementById('s-cs').value) || 0;
   state.settings.defaultShipping  = parseFloat(document.getElementById('s-defship').value) || 0;
-  state.settings.shopifyFeeRate   = parseFloat(document.getElementById('s-sfrate').value) || 0;
-  state.settings.shopifyFixedFee  = parseFloat(document.getElementById('s-sffixed').value) || 0;
+  state.settings.shopifyFeeRate        = parseFloat(document.getElementById('s-sfrate').value) || 0;
+  state.settings.shopifyFixedFee       = parseFloat(document.getElementById('s-sffixed').value) || 0;
+  state.settings.platformPayoutLagDays = parseInt(document.getElementById('s-payoutlag').value) ?? 5;
   document.getElementById('page-subtitle').textContent =
     `${state.settings.businessName} · ${state.settings.periodLabel}`;
   toast('Settings saved.');
