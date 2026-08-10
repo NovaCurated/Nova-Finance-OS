@@ -1326,7 +1326,7 @@ const DEFAULT_DATA = {
   orders: [
     { id: 1,  date: '2026-07-19', orderNum: '#1005', customer: 'Lily Ker',           skuType: 'Silk 90',   qty: 1, revenue: 78,    shippingMethod: 'Standard',   outsideShopify: false, channel: 'shopify' },
     { id: 2,  date: '2026-07-20', orderNum: '#1006', customer: 'Cheyenna Devenish',  skuType: 'Silk 90',   qty: 1, revenue: 78,    shippingMethod: 'Standard',   outsideShopify: false, channel: 'shopify' },
-    { id: 3,  date: '2026-07-20', orderNum: '#1007', customer: 'Janine Calder',      skuType: 'Silk 90',   qty: 1, revenue: 82,    shippingMethod: 'Standard',   outsideShopify: false, channel: 'shopify' },
+    { id: 3,  date: '2026-07-20', orderNum: '#1007', customer: 'Janine Calder',      skuType: 'Silk 90',   qty: 1, revenue: 78,    shippingMethod: 'Standard',   outsideShopify: false, channel: 'shopify' },
     { id: 4,  date: '2026-07-20', orderNum: '#1008', customer: 'Melanie Simpson',    skuType: 'Silk 90',   qty: 1, revenue: 85.99, shippingMethod: 'Standard',   outsideShopify: false, channel: 'shopify' },
     { id: 5,  date: '2026-07-17', orderNum: '#1001', customer: 'Kendra Tunley',      skuType: 'Silk 90',   qty: 1, revenue: 0,     shippingMethod: 'Collection', outsideShopify: true,  channel: 'direct'  },
     { id: 6,  date: '2026-07-17', orderNum: '#1002', customer: 'Bethany Cantley',    skuType: 'Cotton 50', qty: 3, revenue: 0,     shippingMethod: 'Collection', outsideShopify: true,  channel: 'direct'  },
@@ -1349,6 +1349,7 @@ const DEFAULT_DATA = {
     shopifyFeeRate: 0.02,
     shopifyFixedFee: 0.25,
     platformPayoutLagDays: 5,
+    foldPayoutLagDays: 14,
     shippingMethods: [
       { method: 'Standard',   cost: 3.40, notes: 'Royal Mail tracked' },
       { method: 'Collection', cost: 0,    notes: 'Customer collection' },
@@ -1608,6 +1609,7 @@ function calcDash() {
   // Cash: use calcBS for consistent payout-lag-aware figure
   const bs = calcBS();
   const cash = bs.cash;
+  const platformInTransit = bs.platformInTransit;
 
   // P&L net profit (full year)
   const plFull = calcPL(0, 0, new Date().getFullYear());
@@ -1623,7 +1625,7 @@ function calcDash() {
   const totalEquity = ownerCapital + netProfit;
 
   return { ordersCount, revenue, totalCM, cmPct, fixedCosts, opProfit, opMarginPct,
-           cash, netProfit, inventory, directorLoan, totalAssets, totalLiabilities, totalEquity };
+           cash, platformInTransit, netProfit, inventory, directorLoan, totalAssets, totalLiabilities, totalEquity };
 }
 
 function calcPL(fromMonth, toMonth, year) {
@@ -1679,23 +1681,24 @@ function calcBS() {
   const s = state.settings;
   const txs = state.transactions;
   const orders = state.orders;
-  const lagDays = s.platformPayoutLagDays ?? 5;
+  const shopifyLag = s.platformPayoutLagDays ?? 5;
+  const foldLag    = s.foldPayoutLagDays ?? 14;
 
-  const cutoff = new Date();
-  cutoff.setHours(0,0,0,0);
-  cutoff.setDate(cutoff.getDate() - lagDays);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const shopifyCutoff = new Date(today); shopifyCutoff.setDate(today.getDate() - shopifyLag);
+  const foldCutoff    = new Date(today); foldCutoff.setDate(today.getDate() - foldLag);
 
   const txIn = txs.filter(t => CAT_CFG[t.category]?.d === 'In').reduce((a,t)=>a+t.amount,0);
   const txOut = txs.filter(t => CAT_CFG[t.category]?.d === 'Out').reduce((a,t)=>a+t.amount,0);
   const txNet = txIn - txOut;
 
-  // Split: platform-channel orders within lag window are in transit (not yet in bank)
+  // Split: platform-channel orders within their lag window are in transit
   let clearedNetCash = 0, inTransit = 0;
   orders.forEach(o => {
     const c = calcOrder(o);
-    const isPlatform = c.channel === 'shopify' || c.channel === 'fold';
     const orderDate = new Date(o.date + 'T00:00:00');
-    if (isPlatform && orderDate > cutoff) {
+    const cutoff = c.channel === 'fold' ? foldCutoff : shopifyCutoff;
+    if ((c.channel === 'shopify' || c.channel === 'fold') && orderDate >= cutoff) {
       inTransit += c.netCash;
     } else {
       clearedNetCash += c.netCash;
@@ -1879,6 +1882,11 @@ function renderDashboard(el, actions) {
         <div class="kpi-label">Cash at Bank</div>
         ${kpiValue(fmt(d.cash), d.cash >= 0 ? '' : 'neg')}
       </div>
+      ${d.platformInTransit > 0 ? `<div class="kpi-card">
+        <div class="kpi-label">Payouts Pending</div>
+        ${kpiValue(fmt(d.platformInTransit), '')}
+        <div class="kpi-sub">Shopify/Fold in transit</div>
+      </div>` : ''}
       <div class="kpi-card">
         <div class="kpi-label">Net Profit</div>
         ${kpiValue(fmt(d.netProfit), d.netProfit >= 0 ? 'pos' : 'neg')}
@@ -2740,7 +2748,7 @@ function renderBalance(el, actions) {
     <div class="bs-section">
       <div class="bs-header">Assets</div>
       ${row('Cash at bank (cleared)', b.cash)}
-      ${b.platformInTransit > 0 ? row(`Platform payouts in transit (≤${state.settings.platformPayoutLagDays ?? 5}d)`, b.platformInTransit) : ''}
+      ${b.platformInTransit > 0 ? row(`Platform payouts in transit`, b.platformInTransit) : ''}
       ${row('Inventory (stock at cost)', b.inventory)}
       ${row('Total Assets', b.totalAssets, 'total')}
     </div>
@@ -2979,9 +2987,14 @@ function renderSettings(el, actions) {
             <input type="number" id="s-sffixed" value="${s.shopifyFixedFee}" step="0.01" min="0">
           </div>
           <div class="form-group">
-            <label>Platform Payout Lag (days)</label>
+            <label>Shopify Payout Lag (days)</label>
             <input type="number" id="s-payoutlag" value="${s.platformPayoutLagDays ?? 5}" step="1" min="0" max="30">
-            <p class="form-hint">Days before Shopify/Fold payouts clear. Orders within this window show as "in transit" on the balance sheet.</p>
+            <p class="form-hint">Days before Shopify payouts clear into your bank account.</p>
+          </div>
+          <div class="form-group">
+            <label>Fold Payout Lag (days)</label>
+            <input type="number" id="s-foldlag" value="${s.foldPayoutLagDays ?? 14}" step="1" min="0" max="60">
+            <p class="form-hint">Days before Fold retailer payouts clear into your bank account.</p>
           </div>
         </div>
       </div>
@@ -3062,6 +3075,7 @@ async function saveSettings() {
   state.settings.shopifyFeeRate        = parseFloat(document.getElementById('s-sfrate').value) || 0;
   state.settings.shopifyFixedFee       = parseFloat(document.getElementById('s-sffixed').value) || 0;
   state.settings.platformPayoutLagDays = parseInt(document.getElementById('s-payoutlag').value) ?? 5;
+  state.settings.foldPayoutLagDays     = parseInt(document.getElementById('s-foldlag').value) ?? 14;
   document.getElementById('page-subtitle').textContent =
     `${state.settings.businessName} · ${state.settings.periodLabel}`;
   toast('Settings saved.');
