@@ -874,6 +874,69 @@
     .loading-logo  { width: 140px; height: auto; opacity: 0.85; }
     .loading-sub   { font-size: 12px; font-weight: 300; color: var(--text-3); letter-spacing: 0.18em; text-transform: uppercase; }
 
+    /* Password screen */
+    #pw-screen {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 300;
+      gap: 20px;
+    }
+    #pw-screen.hidden { display: none; }
+    .pw-logo { width: 120px; height: auto; opacity: 0.85; }
+    .pw-sub { font-size: 11px; font-weight: 300; color: var(--text-3); letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 8px; }
+    .pw-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      width: 260px;
+    }
+    .pw-box input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      font-family: 'Sono', monospace;
+      font-size: 15px;
+      color: var(--text);
+      text-align: center;
+      letter-spacing: 0.1em;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .pw-box input:focus { border-color: var(--accent); }
+    .pw-box input.shake {
+      border-color: var(--neg);
+      animation: shake 0.3s ease;
+    }
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      25% { transform: translateX(-6px); }
+      75% { transform: translateX(6px); }
+    }
+    .pw-box button {
+      width: 100%;
+      padding: 10px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-family: 'Sono', monospace;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .pw-box button:hover { opacity: 0.88; }
+    .pw-error { font-size: 12px; color: var(--neg); min-height: 16px; }
+
     .loading-spinner {
       width: 28px; height: 28px;
       border: 2px solid var(--border);
@@ -1062,6 +1125,17 @@
   </style>
 </head>
 <body>
+
+<!-- Password screen -->
+<div id="pw-screen">
+  <img class="pw-logo" src="https://cdn.shopify.com/s/files/1/1061/5327/9827/files/Brown.png?v=1784311199" alt="Nova Curated">
+  <div class="pw-sub">Finance OS</div>
+  <div class="pw-box">
+    <input type="password" id="pw-input" placeholder="Password" onkeydown="if(event.key==='Enter')checkPassword()">
+    <button onclick="checkPassword()">Unlock</button>
+    <div class="pw-error" id="pw-error"></div>
+  </div>
+</div>
 
 <!-- Loading splash -->
 <div id="loading-splash">
@@ -1881,6 +1955,7 @@ function renderDashboard(el, actions) {
       <div class="kpi-card">
         <div class="kpi-label">Cash at Bank</div>
         ${kpiValue(fmt(d.cash), d.cash >= 0 ? '' : 'neg')}
+        ${d.platformInTransit > 0 ? `<div class="kpi-sub">(${fmt(d.cash + d.platformInTransit)} incl. pending)</div>` : ''}
       </div>
       ${d.platformInTransit > 0 ? `<div class="kpi-card">
         <div class="kpi-label">Payouts Pending</div>
@@ -3372,8 +3447,55 @@ async function gcDisconnect() {
   toast('Bank disconnected.');
 }
 
+// ── Password protection ──────────────────────────────────────────
+const PW_HASH = '46cde98529630458a95bb5974210c1b1a0a76debaf8f4024301dd84782024db2'; // sha256 of current password
+const PW_SESSION_KEY = 'nova_auth';
+const PW_STORE = localStorage;
+
+async function hashString(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function checkPassword() {
+  const input = document.getElementById('pw-input');
+  const error = document.getElementById('pw-error');
+  const hash = await hashString(input.value);
+  if (hash === PW_HASH) {
+    PW_STORE.setItem(PW_SESSION_KEY, '1');
+    document.getElementById('pw-screen').classList.add('hidden');
+    input.value = '';
+    error.textContent = '';
+  } else {
+    input.classList.add('shake');
+    error.textContent = 'Incorrect password';
+    setTimeout(() => { input.classList.remove('shake'); input.value = ''; input.focus(); }, 350);
+  }
+}
+
+// Show/hide password screen
+if (PW_STORE.getItem(PW_SESSION_KEY) === '1') {
+  document.getElementById('pw-screen').classList.add('hidden');
+} else {
+  // Keep loading splash hidden until auth
+  document.getElementById('loading-splash').style.display = 'none';
+  setTimeout(() => document.getElementById('pw-input').focus(), 100);
+}
+
 // Boot
 (async () => {
+  // Wait for password if not yet authenticated
+  if (PW_STORE.getItem(PW_SESSION_KEY) !== '1') {
+    await new Promise(resolve => {
+      const interval = setInterval(() => {
+        if (PW_STORE.getItem(PW_SESSION_KEY) === '1') {
+          clearInterval(interval);
+          document.getElementById('loading-splash').style.display = '';
+          resolve();
+        }
+      }, 100);
+    });
+  }
   // Exchange bank auth code FIRST — codes expire in ~30s, before Supabase loads
   const _urlParams  = new URLSearchParams(window.location.search);
   const _isBankAuth = _urlParams.get('bankauth') === '1';
