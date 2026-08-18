@@ -606,19 +606,31 @@
 
     .pl-row.total {
       background: var(--surface-alt);
-      font-weight: 600;
+      font-weight: 700;
+      font-size: 14.5px;
       border-top: 2px solid var(--border);
       border-bottom: 2px solid var(--border);
     }
 
-    .pl-row.subtotal { font-weight: 600; }
+    .pl-row.total .pl-value { font-weight: 700; }
+
+    .pl-row.subtotal {
+      font-weight: 700;
+      font-size: 14px;
+      border-top: 1px solid var(--border);
+    }
+
+    .pl-row.subtotal .pl-value { font-weight: 700; }
 
     .pl-row.net-profit {
       background: var(--accent-light);
-      font-weight: 700;
-      font-size: 15px;
+      font-weight: 800;
+      font-size: 16px;
       border-top: 2px solid var(--accent-mid);
+      letter-spacing: 0.01em;
     }
+
+    .pl-row.net-profit .pl-value { font-weight: 800; }
 
     .pl-value { font-variant-numeric: tabular-nums; font-weight: 500; }
     .pl-value.indent { padding-left: 20px; }
@@ -1281,7 +1293,7 @@
 // VERSION & PWA
 // ═══════════════════════════════════════════════════
 
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.5.0';
 let swRegistration = null;
 let deferredInstallPrompt = null;
 let lastSyncTime = null;
@@ -2638,7 +2650,7 @@ function renderMonthly(el, actions) {
   const cmPct      = totalRev ? totalCM / totalRev : 0;
 
   const rows = [...filtered]
-    .sort((a,b) => a.date < b.date ? -1 : 1)
+    .sort((a,b) => a.date < b.date ? 1 : -1)
     .map(o => {
       const c = calcOrder(o);
       return `<tr>
@@ -2989,6 +3001,8 @@ function renderSync(el, actions) {
         <button class="btn btn-danger btn-sm" onclick="resetData()">Reset to defaults</button>
       </div>
     </div>
+
+    <div style="text-align:center;padding:12px 0 4px;color:var(--text-muted);font-size:11px;letter-spacing:0.04em;opacity:0.6">built by Tyler Barnes</div>
   `;
 }
 
