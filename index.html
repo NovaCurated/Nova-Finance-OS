@@ -1498,14 +1498,16 @@ function rowToOrder(r) {
   const channel = r.channel || (r.outside_shopify ? 'direct' : 'shopify');
   return { id: r.id, date: r.date, orderNum: r.order_num, customer: r.customer,
            skuType: r.sku_type, qty: parseInt(r.qty) || 1, revenue: parseFloat(r.revenue) || 0,
-           shippingMethod: r.shipping_method, outsideShopify: channel === 'direct', channel };
+           shippingMethod: r.shipping_method, outsideShopify: channel === 'direct', channel,
+           foldCommissionRate: r.fold_commission_rate != null ? parseFloat(r.fold_commission_rate) : null };
 }
 
 function orderToRow(o) {
   const channel = o.channel || (o.outsideShopify ? 'direct' : 'shopify');
   return { id: o.id, date: o.date, order_num: o.orderNum, customer: o.customer,
            sku_type: o.skuType, qty: o.qty, revenue: o.revenue,
-           shipping_method: o.shippingMethod, outside_shopify: channel === 'direct', channel };
+           shipping_method: o.shippingMethod, outside_shopify: channel === 'direct', channel,
+           fold_commission_rate: o.foldCommissionRate ?? null };
 }
 
 function rowToTx(r) {
@@ -1656,12 +1658,13 @@ function calcOrder(order) {
   const shippingOut = getShippingCost(order.shippingMethod);
   const shopifyCut = (channel === 'shopify' && order.revenue) ?
     Math.round((order.revenue * s.shopifyFeeRate + s.shopifyFixedFee) * 100) / 100 : 0;
+  const foldRate = order.foldCommissionRate ?? 0.15;
   const foldCut = (channel === 'fold' && order.revenue) ?
-    Math.round(order.revenue * 0.15 * 100) / 100 : 0;
+    Math.round(order.revenue * foldRate * 100) / 100 : 0;
   const platformCut = shopifyCut + foldCut;
   const cm = Math.round((order.revenue - productCost - shippingOut - platformCut) * 100) / 100;
   const netCash = Math.round((order.revenue - shippingOut - platformCut) * 100) / 100;
-  return { productCost, shippingOut, shopifyCut, foldCut, platformCut, cm, netCash, channel };
+  return { productCost, shippingOut, shopifyCut, foldCut, platformCut, cm, netCash, channel, foldRate };
 }
 
 function calcDash() {
@@ -2104,7 +2107,8 @@ function renderOrders(el, actions) {
     const c = calcOrder(o);
     const ch = c.channel || 'shopify';
     const shTag = o.shippingMethod ? `<span class="tag">${o.shippingMethod}</span>` : '';
-    const chTag = ch === 'fold' ? `<span class="tag" style="color:#7c3aed">Fold</span>`
+    const foldPct = ch === 'fold' ? Math.round((c.foldRate ?? 0.15) * 100) : null;
+    const chTag = ch === 'fold' ? `<span class="tag" style="color:#7c3aed">Fold ${foldPct}%</span>`
                 : ch === 'direct' ? `<span class="tag" style="color:var(--accent)">Direct</span>` : '';
     return `<tr>
       <td>${fmtDate(o.date)}</td>
@@ -2196,8 +2200,9 @@ function orderPreviewHTML() {
   const shippingOut = getShippingCost(method);
   const shopifyCut = (channel === 'shopify' && revenue) ?
     Math.round((revenue * (parseFloat(s.shopifyFeeRate)||0) + (parseFloat(s.shopifyFixedFee)||0)) * 100) / 100 : 0;
+  const foldPreviewRate = parseFloat(document.getElementById('o-fold-rate')?.value) || 0.15;
   const foldCut = (channel === 'fold' && revenue) ?
-    Math.round(revenue * 0.15 * 100) / 100 : 0;
+    Math.round(revenue * foldPreviewRate * 100) / 100 : 0;
   const platformCut = shopifyCut + foldCut;
   const cm = revenue - productCost - shippingOut - platformCut;
 
@@ -2267,12 +2272,21 @@ function orderFormHTML(o = null) {
       <div class="form-group">
         <label>Channel</label>
         <div id="o-channel-row" style="padding:4px;transition:background 0.2s;border-radius:var(--radius)">
-          <select id="o-channel" onchange="refreshOrderPreview()">
+          <select id="o-channel" onchange="refreshOrderPreview(); document.getElementById('o-fold-rate-row').style.display=this.value==='fold'?'':'none'">
             <option value="shopify" ${(!o || o.channel==='shopify')?'selected':''}>Shopify</option>
-            <option value="fold" ${o?.channel==='fold'?'selected':''}>Fold (15% commission)</option>
+            <option value="fold" ${o?.channel==='fold'?'selected':''}>Fold</option>
             <option value="direct" ${o?.channel==='direct'?'selected':''}>Direct — no fee</option>
           </select>
         </div>
+      </div>
+      <div class="form-group" id="o-fold-rate-row" style="display:${o?.channel==='fold'?'':'none'}">
+        <label>Fold Commission Rate</label>
+        <select id="o-fold-rate" onchange="refreshOrderPreview()">
+          <option value="0.15" ${(!o?.foldCommissionRate || o.foldCommissionRate===0.15)?'selected':''}>15% (standard)</option>
+          <option value="0.20" ${o?.foldCommissionRate===0.20?'selected':''}>20%</option>
+          <option value="0.25" ${o?.foldCommissionRate===0.25?'selected':''}>25%</option>
+          <option value="0.30" ${o?.foldCommissionRate===0.30?'selected':''}>30%</option>
+        </select>
       </div>
     </div>
     <div id="order-preview"></div>`;
@@ -2309,17 +2323,19 @@ async function updateOrder(id) {
   const customer = document.getElementById('o-customer').value.trim();
   if (!date || !customer) { toast('Please fill in date and customer name.'); return; }
   const channel = document.getElementById('o-channel').value || 'shopify';
+  const foldRate = document.getElementById('o-fold-rate')?.value;
   const updated = {
     ...state.orders[idx],
     date,
-    orderNum:       document.getElementById('o-num').value.trim(),
+    orderNum:           document.getElementById('o-num').value.trim(),
     customer,
-    skuType:        document.getElementById('o-sku').value,
-    qty:            parseInt(document.getElementById('o-qty').value) || 1,
-    revenue:        parseFloat(document.getElementById('o-rev').value) || 0,
-    shippingMethod: document.getElementById('o-ship').value,
+    skuType:            document.getElementById('o-sku').value,
+    qty:                parseInt(document.getElementById('o-qty').value) || 1,
+    revenue:            parseFloat(document.getElementById('o-rev').value) || 0,
+    shippingMethod:     document.getElementById('o-ship').value,
     channel,
-    outsideShopify: channel === 'direct',
+    outsideShopify:     channel === 'direct',
+    foldCommissionRate: channel === 'fold' && foldRate ? parseFloat(foldRate) : null,
   };
   state.orders[idx] = updated;
   skipNextRefresh = true;
@@ -2339,10 +2355,12 @@ async function saveOrder() {
   const shippingMethod = document.getElementById('o-ship').value;
   const channel = document.getElementById('o-channel').value || 'shopify';
   const outsideShopify = channel === 'direct';
+  const foldRateVal = document.getElementById('o-fold-rate')?.value;
+  const foldCommissionRate = channel === 'fold' && foldRateVal ? parseFloat(foldRateVal) : null;
 
   if (!date || !customer) { toast('Please fill in date and customer name.'); return; }
 
-  const order = { id: state.nextId.order++, date, orderNum, customer, skuType, qty, revenue, shippingMethod, channel, outsideShopify };
+  const order = { id: state.nextId.order++, date, orderNum, customer, skuType, qty, revenue, shippingMethod, channel, outsideShopify, foldCommissionRate };
   state.orders.push(order);
   skipNextRefresh = true;
   closeModal();
