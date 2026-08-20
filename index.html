@@ -1714,7 +1714,8 @@ function calcDash() {
   const totalEquity = ownerCapital + netProfit;
 
   return { ordersCount, revenue, totalCM, cmPct, fixedCosts, opProfit, opMarginPct,
-           cash, platformInTransit, netProfit, inventory, directorLoan, totalAssets, totalLiabilities, totalEquity };
+           cash, platformInTransit, shopifyInTransit: bs.shopifyInTransit, foldInTransit: bs.foldInTransit,
+           netProfit, inventory, directorLoan, totalAssets, totalLiabilities, totalEquity };
 }
 
 function calcPL(fromMonth, toMonth, year) {
@@ -1782,20 +1783,24 @@ function calcBS() {
   const txNet = txIn - txOut;
 
   // Split: platform-channel orders within their lag window are in transit
-  let clearedNetCash = 0, inTransit = 0;
+  let clearedNetCash = 0, shopifyInTransit = 0, foldInTransit = 0;
   orders.forEach(o => {
     const c = calcOrder(o);
     const orderDate = new Date(o.date + 'T00:00:00');
     const cutoff = c.channel === 'fold' ? foldCutoff : shopifyCutoff;
-    if ((c.channel === 'shopify' || c.channel === 'fold') && orderDate >= cutoff) {
-      inTransit += c.netCash;
+    if (c.channel === 'shopify' && orderDate >= cutoff) {
+      shopifyInTransit += c.netCash;
+    } else if (c.channel === 'fold' && orderDate >= cutoff) {
+      foldInTransit += c.netCash;
     } else {
       clearedNetCash += c.netCash;
     }
   });
 
   const cash = Math.round((txNet + clearedNetCash) * 100) / 100;
-  const platformInTransit = Math.round(inTransit * 100) / 100;
+  const shopifyInTransitRounded = Math.round(shopifyInTransit * 100) / 100;
+  const foldInTransitRounded = Math.round(foldInTransit * 100) / 100;
+  const platformInTransit = Math.round((shopifyInTransit + foldInTransit) * 100) / 100;
 
   const inventory = s.closingStock;
   const totalAssets = Math.round((cash + platformInTransit + inventory) * 100) / 100;
@@ -1815,7 +1820,8 @@ function calcBS() {
 
   const balanced = Math.abs(totalAssets - totalLiabEquity) < 0.01;
 
-  return { cash, platformInTransit, inventory, totalAssets, directorLoan, totalLiabilities,
+  return { cash, platformInTransit, shopifyInTransit: shopifyInTransitRounded, foldInTransit: foldInTransitRounded,
+           inventory, totalAssets, directorLoan, totalLiabilities,
            ownerCapital, retainedEarnings, totalEquity, totalLiabEquity, balanced };
 }
 
@@ -1975,7 +1981,11 @@ function renderDashboard(el, actions) {
       ${d.platformInTransit > 0 ? `<div class="kpi-card">
         <div class="kpi-label">Payouts Pending</div>
         ${kpiValue(fmt(d.platformInTransit), '')}
-        <div class="kpi-sub">Shopify/Fold in transit</div>
+        ${d.shopifyInTransit > 0 && d.foldInTransit > 0
+          ? `<div class="kpi-sub">Shopify ${fmt(d.shopifyInTransit)} · Fold ${fmt(d.foldInTransit)}</div>`
+          : d.shopifyInTransit > 0
+          ? `<div class="kpi-sub">Shopify in transit</div>`
+          : `<div class="kpi-sub">Fold in transit</div>`}
       </div>` : ''}
       <div class="kpi-card">
         <div class="kpi-label">Net Profit</div>
