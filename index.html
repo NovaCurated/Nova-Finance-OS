@@ -1770,7 +1770,7 @@ function calcBS() {
   const s = state.settings;
   const txs = state.transactions;
   const orders = state.orders;
-  const shopifyLag = s.platformPayoutLagDays ?? 5;
+  const shopifyLag = s.platformPayoutLagDays ?? 7;
   const foldLag    = s.foldPayoutLagDays ?? 14;
 
   const today = new Date(); today.setHours(0,0,0,0);
@@ -3095,7 +3095,7 @@ function renderSettings(el, actions) {
           </div>
           <div class="form-group">
             <label>Shopify Payout Lag (days)</label>
-            <input type="number" id="s-payoutlag" value="${s.platformPayoutLagDays ?? 5}" step="1" min="0" max="30">
+            <input type="number" id="s-payoutlag" value="${s.platformPayoutLagDays ?? 7}" step="1" min="0" max="30">
             <p class="form-hint">Days before Shopify payouts clear into your bank account.</p>
           </div>
           <div class="form-group">
