@@ -1831,7 +1831,8 @@ function calcBS() {
 
 function fmt(n, decimals = 2) {
   if (n === null || n === undefined || isNaN(n)) return '—';
-  return '£' + Math.abs(n).toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const abs = '£' + Math.abs(n).toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return n < 0 ? `(${abs})` : abs;
 }
 
 function fmtPct(n) {
