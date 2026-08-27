@@ -1684,7 +1684,10 @@ function calcDash() {
   const orders = state.orders;
   const txs = state.transactions;
 
-  const ordersCount = orders.filter(o => o.revenue > 0).length;
+  const paidOrders = orders.filter(o => o.revenue > 0);
+  const ordersCount = paidOrders.length;
+  const novaOrdersCount = paidOrders.filter(o => (o.channel || 'shopify') === 'shopify').length;
+  const foldOrdersCount = paidOrders.filter(o => o.channel === 'fold').length;
   const revenue = orders.reduce((a, o) => a + o.revenue, 0);
   const totalCM = orders.reduce((a, o) => a + calcOrder(o).cm, 0);
   const cmPct = revenue ? totalCM / revenue : 0;
@@ -1713,7 +1716,7 @@ function calcDash() {
   const totalLiabilities = directorLoan;
   const totalEquity = ownerCapital + netProfit;
 
-  return { ordersCount, revenue, totalCM, cmPct, fixedCosts, opProfit, opMarginPct,
+  return { ordersCount, novaOrdersCount, foldOrdersCount, revenue, totalCM, cmPct, fixedCosts, opProfit, opMarginPct,
            cash, platformInTransit, shopifyInTransit: bs.shopifyInTransit, foldInTransit: bs.foldInTransit,
            netProfit, inventory, directorLoan, totalAssets, totalLiabilities, totalEquity };
 }
@@ -1951,6 +1954,7 @@ function renderDashboard(el, actions) {
       <div class="kpi-card">
         <div class="kpi-label">Orders (YTD)</div>
         ${kpiValue(d.ordersCount)}
+        <div class="kpi-sub">Nova ${d.novaOrdersCount} · Fold ${d.foldOrdersCount}</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label">Revenue (YTD)</div>
