@@ -2130,6 +2130,13 @@ function renderOrders(el, actions) {
     return 0;
   });
 
+  const _s = state.settings;
+  const _shopifyLag = _s.platformPayoutLagDays ?? 7;
+  const _foldLag = _s.foldPayoutLagDays ?? 14;
+  const _today = new Date(); _today.setHours(0,0,0,0);
+  const _shopifyCutoff = new Date(_today); _shopifyCutoff.setDate(_today.getDate() - _shopifyLag);
+  const _foldCutoff = new Date(_today); _foldCutoff.setDate(_today.getDate() - _foldLag);
+
   const rows = orders.map(o => {
     const c = calcOrder(o);
     const ch = c.channel || 'shopify';
@@ -2137,6 +2144,10 @@ function renderOrders(el, actions) {
     const foldPct = ch === 'fold' ? Math.round((c.foldRate ?? 0.15) * 100) : null;
     const chTag = ch === 'fold' ? `<span class="tag" style="color:#7c3aed">Fold ${foldPct}%</span>`
                 : ch === 'direct' ? `<span class="tag" style="color:var(--accent)">Direct</span>` : '';
+    const orderDate = new Date(o.date + 'T00:00:00');
+    const cutoff = ch === 'fold' ? _foldCutoff : _shopifyCutoff;
+    const payoutCleared = (ch === 'shopify' || ch === 'fold') && orderDate < cutoff;
+    const payoutTag = payoutCleared ? `<span title="Payout received" style="color:#16a34a;font-size:12px;font-weight:700">£✓</span>` : '';
     return `<tr>
       <td>${fmtDate(o.date)}</td>
       <td><strong>${o.orderNum}</strong></td>
@@ -2148,7 +2159,7 @@ function renderOrders(el, actions) {
       <td class="num muted">${fmt(c.shippingOut)}</td>
       <td class="num muted">${fmt(c.platformCut)}</td>
       <td class="num">${colorFmt(c.cm)}</td>
-      <td>${shTag}${chTag ? ' '+chTag : ''}</td>
+      <td>${shTag}${chTag ? ' '+chTag : ''}${payoutTag ? ' '+payoutTag : ''}</td>
       <td>
         <div class="row-actions">
           <button class="edit-btn" onclick="editOrder(${o.id})" title="Edit">
