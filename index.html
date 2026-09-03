@@ -1511,7 +1511,8 @@ function rowToOrder(r) {
   return { id: r.id, date: r.date, orderNum: r.order_num, customer: r.customer,
            skuType: r.sku_type, qty: parseInt(r.qty) || 1, revenue: parseFloat(r.revenue) || 0,
            shippingMethod: r.shipping_method, outsideShopify: channel === 'direct', channel,
-           foldCommissionRate: r.fold_commission_rate != null ? parseFloat(r.fold_commission_rate) : null };
+           foldCommissionRate: r.fold_commission_rate != null ? parseFloat(r.fold_commission_rate) : null,
+           refunded: r.refunded || false };
 }
 
 function orderToRow(o) {
@@ -1519,7 +1520,8 @@ function orderToRow(o) {
   return { id: o.id, date: o.date, order_num: o.orderNum, customer: o.customer,
            sku_type: o.skuType, qty: o.qty, revenue: o.revenue,
            shipping_method: o.shippingMethod, outside_shopify: channel === 'direct', channel,
-           fold_commission_rate: o.foldCommissionRate ?? null };
+           fold_commission_rate: o.foldCommissionRate ?? null,
+           refunded: o.refunded || false };
 }
 
 function rowToTx(r) {
@@ -1667,11 +1669,14 @@ function getShippingCost(method) {
 function calcOrder(order) {
   const s = state.settings;
   const channel = order.channel || (order.outsideShopify ? 'direct' : 'shopify');
+  const foldRate = order.foldCommissionRate ?? 0.15;
+  if (order.refunded) {
+    return { productCost: 0, shippingOut: 0, shopifyCut: 0, foldCut: 0, platformCut: 0, cm: 0, netCash: 0, channel, foldRate };
+  }
   const productCost = order.qty * getSkuCost(order.skuType);
   const shippingOut = getShippingCost(order.shippingMethod);
   const shopifyCut = (channel === 'shopify' && order.revenue) ?
     Math.round((order.revenue * s.shopifyFeeRate + s.shopifyFixedFee) * 100) / 100 : 0;
-  const foldRate = order.foldCommissionRate ?? 0.15;
   const foldCut = (channel === 'fold' && order.revenue) ?
     Math.round(order.revenue * foldRate * 100) / 100 : 0;
   const platformCut = shopifyCut + foldCut;
@@ -2160,11 +2165,14 @@ function renderOrders(el, actions) {
       <td class="num muted">${fmt(c.shippingOut)}</td>
       <td class="num muted">${fmt(c.platformCut)}</td>
       <td class="num">${colorFmt(c.cm)}</td>
-      <td>${shTag}${chTag ? ' '+chTag : ''}${payoutTag ? ' '+payoutTag : ''}</td>
+      <td>${shTag}${chTag ? ' '+chTag : ''}${payoutTag ? ' '+payoutTag : ''}${o.refunded ? ' <span style="display:inline-block;background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:4px;font-size:10px;font-weight:700;padding:1px 5px;letter-spacing:0.03em;vertical-align:middle">REFUNDED</span>' : ''}</td>
       <td>
         <div class="row-actions">
           <button class="edit-btn" onclick="editOrder(${o.id})" title="Edit">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="${o.refunded ? 'edit-btn' : 'delete-btn'}" onclick="toggleRefunded(${o.id})" title="${o.refunded ? 'Undo refund' : 'Mark as refunded'}" style="opacity:${o.refunded ? '1' : '0.6'}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.14"/></svg>
           </button>
           <button class="delete-btn" onclick="deleteOrder(${o.id})" title="Delete">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
@@ -2415,6 +2423,17 @@ async function deleteOrder(id) {
   renderView('orders');
   toast('Order deleted.');
   await dbDeleteOrder(id);
+}
+
+async function toggleRefunded(id) {
+  const order = state.orders.find(o => o.id === id);
+  if (!order) return;
+  const newVal = !order.refunded;
+  order.refunded = newVal;
+  skipNextRefresh = true;
+  renderView('orders');
+  toast(newVal ? 'Order marked as refunded.' : 'Refund reversed.');
+  await dbUpsertOrder(order);
 }
 
 // ═══════════════════════════════════════════════════
