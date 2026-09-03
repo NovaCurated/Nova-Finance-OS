@@ -1695,7 +1695,7 @@ function calcDash() {
   const novaOrdersCount = paidOrders.filter(o => (o.channel || 'shopify') === 'shopify').length;
   const foldOrdersCount = paidOrders.filter(o => o.channel === 'fold').length;
   const refundedCount = orders.filter(o => o.refunded).length;
-  const revenue = orders.reduce((a, o) => a + o.revenue, 0);
+  const revenue = orders.reduce((a, o) => a + effRev(o), 0);
   const totalCM = orders.reduce((a, o) => a + calcOrder(o).cm, 0);
   const cmPct = revenue ? totalCM / revenue : 0;
 
@@ -1747,7 +1747,7 @@ function calcPL(fromMonth, toMonth, year) {
   const filtOrders = orders.filter(o => inPeriod(o.date));
   const filtTxs = txs.filter(t => inPeriod(t.date));
 
-  const salesRev = filtOrders.reduce((a,o) => a+o.revenue, 0);
+  const salesRev = filtOrders.reduce((a,o) => a+effRev(o), 0);
   const otherIncome = filtTxs.filter(t=>t.category==='Other Income').reduce((a,t)=>a+t.amount,0);
   const totalRev = salesRev + otherIncome;
 
@@ -1838,6 +1838,9 @@ function calcBS() {
 // ═══════════════════════════════════════════════════
 // FORMATTING
 // ═══════════════════════════════════════════════════
+
+// Effective revenue: zero for refunded orders
+function effRev(o) { return o.refunded ? 0 : o.revenue; }
 
 function fmt(n, decimals = 2) {
   if (n === null || n === undefined || isNaN(n)) return '—';
@@ -2053,7 +2056,7 @@ function renderDashboard(el, actions) {
     const mo = d2.getMonth()+1;
     const label = months.find(m => monthMap[m] === mo);
     if (label) {
-      revByMonth[label] += o.revenue;
+      revByMonth[label] += effRev(o);
       cmByMonth[label] += calcOrder(o).cm;
     }
   });
@@ -2133,8 +2136,8 @@ function renderOrders(el, actions) {
     const col = orderSort.col;
     let va = a[col], vb = b[col];
     if (col === 'revenue' || col === 'cm' || col === 'netCash') {
-      va = col === 'cm' ? calcOrder(a).cm : col === 'netCash' ? calcOrder(a).netCash : a.revenue;
-      vb = col === 'cm' ? calcOrder(b).cm : col === 'netCash' ? calcOrder(b).netCash : b.revenue;
+      va = col === 'cm' ? calcOrder(a).cm : col === 'netCash' ? calcOrder(a).netCash : effRev(a);
+      vb = col === 'cm' ? calcOrder(b).cm : col === 'netCash' ? calcOrder(b).netCash : effRev(b);
     }
     if (va < vb) return -1 * orderSort.dir;
     if (va > vb) return 1 * orderSort.dir;
@@ -2165,7 +2168,7 @@ function renderOrders(el, actions) {
       <td>${o.customer}</td>
       <td><span class="tag">${o.skuType}</span></td>
       <td class="num">${o.qty}</td>
-      <td class="num">${fmt(o.revenue)}</td>
+      <td class="num">${fmt(effRev(o))}</td>
       <td class="num muted">${fmt(c.productCost)}</td>
       <td class="num muted">${fmt(c.shippingOut)}</td>
       <td class="num muted">${fmt(c.platformCut)}</td>
@@ -2193,7 +2196,7 @@ function renderOrders(el, actions) {
     return `<th class="${cls}" onclick="sortOrders('${col}')">${label}</th>`;
   };
 
-  const totalRev = orders.reduce((a,o)=>a+o.revenue,0);
+  const totalRev = orders.reduce((a,o)=>a+effRev(o),0);
   const totalCM = orders.reduce((a,o)=>a+calcOrder(o).cm,0);
 
   el.innerHTML = `
@@ -2693,7 +2696,7 @@ function renderMonthly(el, actions) {
   const filtered = state.orders.filter(o =>
     inRange(o.date, mvFromMonth, mvFromYear, mvToMonth, mvToYear));
 
-  const totalRev   = filtered.reduce((a,o) => a + o.revenue, 0);
+  const totalRev   = filtered.reduce((a,o) => a + effRev(o), 0);
   const totalCost  = filtered.reduce((a,o) => a + calcOrder(o).productCost, 0);
   const totalShip  = filtered.reduce((a,o) => a + calcOrder(o).shippingOut, 0);
   const totalShop  = filtered.reduce((a,o) => a + calcOrder(o).platformCut, 0);
@@ -2710,7 +2713,7 @@ function renderMonthly(el, actions) {
         <td>${o.customer}</td>
         <td><span class="tag">${o.skuType}</span></td>
         <td class="num">${o.qty}</td>
-        <td class="num">${fmt(o.revenue)}</td>
+        <td class="num">${fmt(effRev(o))}</td>
         <td class="num muted">${fmt(c.productCost)}</td>
         <td class="num muted">${fmt(c.shippingOut)}</td>
         <td class="num muted">${fmt(c.platformCut)}</td>
