@@ -1694,6 +1694,7 @@ function calcDash() {
   const ordersCount = paidOrders.length;
   const novaOrdersCount = paidOrders.filter(o => (o.channel || 'shopify') === 'shopify').length;
   const foldOrdersCount = paidOrders.filter(o => o.channel === 'fold').length;
+  const refundedCount = orders.filter(o => o.refunded).length;
   const revenue = orders.reduce((a, o) => a + o.revenue, 0);
   const totalCM = orders.reduce((a, o) => a + calcOrder(o).cm, 0);
   const cmPct = revenue ? totalCM / revenue : 0;
@@ -1722,7 +1723,7 @@ function calcDash() {
   const totalLiabilities = directorLoan;
   const totalEquity = ownerCapital + netProfit;
 
-  return { ordersCount, novaOrdersCount, foldOrdersCount, revenue, totalCM, cmPct, fixedCosts, opProfit, opMarginPct,
+  return { ordersCount, novaOrdersCount, foldOrdersCount, refundedCount, revenue, totalCM, cmPct, fixedCosts, opProfit, opMarginPct,
            cash, platformInTransit, shopifyInTransit: bs.shopifyInTransit, foldInTransit: bs.foldInTransit,
            netProfit, inventory, directorLoan, totalAssets, totalLiabilities, totalEquity };
 }
@@ -1961,6 +1962,10 @@ function renderDashboard(el, actions) {
         <div class="kpi-label">Orders (YTD)</div>
         ${kpiValue(d.ordersCount)}
         <div class="kpi-sub">Nova ${d.novaOrdersCount} · Fold ${d.foldOrdersCount}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Returns (YTD)</div>
+        ${kpiValue(d.refundedCount, d.refundedCount > 0 ? 'neg' : '')}
       </div>
       <div class="kpi-card">
         <div class="kpi-label">Revenue (YTD)</div>
