@@ -1715,7 +1715,7 @@ function calcDash() {
   const netProfit = plFull.netProfit;
 
   const inventory = s.closingStock;
-  const totalAssets = cash + inventory;
+  const totalAssets = cash + platformInTransit + inventory;
   const directorLoan = txs.filter(t=>t.category==='Loan Received').reduce((a,t)=>a+t.amount,0) -
     txs.filter(t=>t.category==='Loan Repayment').reduce((a,t)=>a+t.amount,0);
   const ownerCapital = txs.filter(t=>t.category==='Owner Investment').reduce((a,t)=>a+t.amount,0) -
@@ -1984,7 +1984,7 @@ function renderDashboard(el, actions) {
         ${kpiValue(fmt(d.fixedCosts), 'neg')}
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">Operating Profit</div>
+        <div class="kpi-label">Net Profit / EBITDA</div>
         ${kpiValue(fmt(d.opProfit), d.opProfit >= 0 ? 'pos' : 'neg')}
         <div class="kpi-sub">${fmtPct(d.opMarginPct)} margin</div>
       </div>
