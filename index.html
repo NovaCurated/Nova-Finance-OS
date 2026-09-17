@@ -1512,16 +1512,21 @@ function rowToOrder(r) {
            skuType: r.sku_type, qty: parseInt(r.qty) || 1, revenue: parseFloat(r.revenue) || 0,
            shippingMethod: r.shipping_method, outsideShopify: channel === 'direct', channel,
            foldCommissionRate: r.fold_commission_rate != null ? parseFloat(r.fold_commission_rate) : null,
-           refunded: r.refunded || false };
+           refunded: r.refunded || false,
+           lineItems: r.line_items || null };
 }
 
 function orderToRow(o) {
   const channel = o.channel || (o.outsideShopify ? 'direct' : 'shopify');
+  // For multi-item orders, derive legacy sku_type/qty from lineItems
+  const skuType = o.lineItems ? o.lineItems[0].sku : o.skuType;
+  const qty     = o.lineItems ? o.lineItems.reduce((a, li) => a + li.qty, 0) : o.qty;
   return { id: o.id, date: o.date, order_num: o.orderNum, customer: o.customer,
-           sku_type: o.skuType, qty: o.qty, revenue: o.revenue,
+           sku_type: skuType, qty, revenue: o.revenue,
            shipping_method: o.shippingMethod, outside_shopify: channel === 'direct', channel,
            fold_commission_rate: o.foldCommissionRate ?? null,
-           refunded: o.refunded || false };
+           refunded: o.refunded || false,
+           line_items: o.lineItems || null };
 }
 
 function rowToTx(r) {
@@ -1673,7 +1678,9 @@ function calcOrder(order) {
   if (order.refunded) {
     return { productCost: 0, shippingOut: 0, shopifyCut: 0, foldCut: 0, platformCut: 0, cm: 0, netCash: 0, channel, foldRate };
   }
-  const productCost = order.qty * getSkuCost(order.skuType);
+  const productCost = order.lineItems
+    ? order.lineItems.reduce((a, li) => a + li.qty * getSkuCost(li.sku), 0)
+    : order.qty * getSkuCost(order.skuType);
   const shippingOut = getShippingCost(order.shippingMethod);
   const shopifyCut = (channel === 'shopify' && order.revenue) ?
     Math.round((order.revenue * s.shopifyFeeRate + s.shopifyFixedFee) * 100) / 100 : 0;
@@ -2162,12 +2169,16 @@ function renderOrders(el, actions) {
     const cutoff = ch === 'fold' ? _foldCutoff : _shopifyCutoff;
     const payoutCleared = (ch === 'shopify' || ch === 'fold') && orderDate < cutoff;
     const payoutTag = payoutCleared ? `<span title="Payout received" style="color:#16a34a;font-size:12px;font-weight:700">£✓</span>` : '';
+    const skuDisplay = o.lineItems
+      ? o.lineItems.map(li => `<span class="tag">${li.sku}</span>${li.qty > 1 ? `<span style="font-size:10px;color:var(--text-3)"> ×${li.qty}</span>` : ''}`).join(' ')
+      : `<span class="tag">${o.skuType}</span>`;
+    const qtyDisplay = o.lineItems ? o.lineItems.reduce((a, li) => a + li.qty, 0) : o.qty;
     return `<tr>
       <td>${fmtDate(o.date)}</td>
       <td><strong>${o.orderNum}</strong></td>
       <td>${o.customer}</td>
-      <td><span class="tag">${o.skuType}</span></td>
-      <td class="num">${o.qty}</td>
+      <td>${skuDisplay}</td>
+      <td class="num">${qtyDisplay}</td>
       <td class="num">${fmt(effRev(o))}</td>
       <td class="num muted">${fmt(c.productCost)}</td>
       <td class="num muted">${fmt(c.shippingOut)}</td>
@@ -2245,13 +2256,17 @@ function sortOrders(col) {
 
 function orderPreviewHTML() {
   const s = state.settings;
-  const sku = document.getElementById('o-sku')?.value || '';
-  const qty = parseInt(document.getElementById('o-qty')?.value) || 1;
   const revenue = parseFloat(document.getElementById('o-rev')?.value) || 0;
   const method = document.getElementById('o-ship')?.value || '';
   const channel = document.getElementById('o-channel')?.value || 'shopify';
 
-  const productCost = qty * (parseFloat(s.skuCosts.find(x=>x.sku===sku)?.cost)||0);
+  // Sum product cost across all line items
+  let productCost = 0;
+  document.querySelectorAll('#line-items-list .order-line-item').forEach(el => {
+    const liSku = el.querySelector('.li-sku')?.value || '';
+    const liQty = parseInt(el.querySelector('.li-qty')?.value) || 1;
+    productCost += liQty * (parseFloat(s.skuCosts.find(x => x.sku === liSku)?.cost) || 0);
+  });
   const shippingOut = getShippingCost(method);
   const shopifyCut = (channel === 'shopify' && revenue) ?
     Math.round((revenue * (parseFloat(s.shopifyFeeRate)||0) + (parseFloat(s.shopifyFixedFee)||0)) * 100) / 100 : 0;
@@ -2286,11 +2301,54 @@ function refreshOrderPreview() {
   }
 }
 
+function lineItemRowHTML(sku, qty, showRemove) {
+  const s = state.settings;
+  const skuOpts = s.skuCosts.map(sk =>
+    `<option value="${sk.sku}" ${sk.sku===sku?'selected':''}>${sk.sku}</option>`).join('');
+  return `<div class="order-line-item" style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+    <select class="li-sku" onchange="refreshOrderPreview()" style="flex:2">${skuOpts}</select>
+    <input type="number" class="li-qty" value="${qty}" min="1" onchange="refreshOrderPreview()" style="flex:0 0 60px;width:60px">
+    <button type="button" onclick="removeLineItem(this)" style="display:${showRemove?'':'none'};opacity:0.5;background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;padding:2px 7px;font-size:14px;line-height:1" title="Remove">×</button>
+  </div>`;
+}
+
+function addLineItem() {
+  const list = document.getElementById('line-items-list');
+  const s = state.settings;
+  const defaultSku = s.skuCosts[0]?.sku || '';
+  const div = document.createElement('div');
+  div.innerHTML = lineItemRowHTML(defaultSku, 1, true);
+  list.appendChild(div.firstElementChild);
+  updateLineItemRemoveButtons();
+  refreshOrderPreview();
+}
+
+function removeLineItem(btn) {
+  btn.closest('.order-line-item').remove();
+  updateLineItemRemoveButtons();
+  refreshOrderPreview();
+}
+
+function updateLineItemRemoveButtons() {
+  const rows = document.querySelectorAll('#line-items-list .order-line-item');
+  rows.forEach(r => { r.querySelector('button').style.display = rows.length > 1 ? '' : 'none'; });
+}
+
+function getFormLineItems() {
+  return Array.from(document.querySelectorAll('#line-items-list .order-line-item')).map(el => ({
+    sku: el.querySelector('.li-sku').value,
+    qty: parseInt(el.querySelector('.li-qty').value) || 1
+  }));
+}
+
 function orderFormHTML(o = null) {
   const today = new Date().toISOString().split('T')[0];
   const s = state.settings;
-  const skuOptions = s.skuCosts.map(sk =>
-    `<option value="${sk.sku}" ${o?.skuType===sk.sku?'selected':''}>${sk.sku} – £${sk.cost}/unit</option>`).join('');
+
+  // Pre-populate line items from lineItems array, or fall back to single skuType/qty
+  const items = o?.lineItems || [{ sku: o?.skuType || s.skuCosts[0]?.sku || '', qty: o?.qty || 1 }];
+  const lineItemsHTML = items.map((li, i) => lineItemRowHTML(li.sku, li.qty, items.length > 1)).join('');
+
   const methodOptions = s.shippingMethods.map(m =>
     `<option value="${m.method}" ${o?.shippingMethod===m.method?'selected':''}>${m.method} (£${m.cost})</option>`).join('');
 
@@ -2308,13 +2366,10 @@ function orderFormHTML(o = null) {
         <label>Customer Name</label>
         <input type="text" id="o-customer" value="${o?.customer||''}" placeholder="Full name">
       </div>
-      <div class="form-group">
-        <label>SKU Type</label>
-        <select id="o-sku" onchange="refreshOrderPreview()">${skuOptions}</select>
-      </div>
-      <div class="form-group">
-        <label>Quantity</label>
-        <input type="number" id="o-qty" value="${o?.qty||1}" min="1" onchange="refreshOrderPreview()">
+      <div class="form-group full">
+        <label>Items</label>
+        <div id="line-items-list">${lineItemsHTML}</div>
+        <button type="button" class="btn btn-ghost" style="margin-top:6px;font-size:12px;padding:4px 10px" onclick="addLineItem()">+ Add item</button>
       </div>
       <div class="form-group">
         <label>Revenue (£)</label>
@@ -2379,18 +2434,21 @@ async function updateOrder(id) {
   if (!date || !customer) { toast('Please fill in date and customer name.'); return; }
   const channel = document.getElementById('o-channel').value || 'shopify';
   const foldRate = document.getElementById('o-fold-rate')?.value;
+  const lineItems = getFormLineItems();
+  const hasMultiple = lineItems.length > 1;
   const updated = {
     ...state.orders[idx],
     date,
     orderNum:           document.getElementById('o-num').value.trim(),
     customer,
-    skuType:            document.getElementById('o-sku').value,
-    qty:                parseInt(document.getElementById('o-qty').value) || 1,
+    skuType:            lineItems[0]?.sku || '',
+    qty:                lineItems.reduce((a, li) => a + li.qty, 0),
     revenue:            parseFloat(document.getElementById('o-rev').value) || 0,
     shippingMethod:     document.getElementById('o-ship').value,
     channel,
     outsideShopify:     channel === 'direct',
     foldCommissionRate: channel === 'fold' && foldRate ? parseFloat(foldRate) : null,
+    lineItems:          hasMultiple ? lineItems : null,
   };
   state.orders[idx] = updated;
   skipNextRefresh = true;
@@ -2404,18 +2462,22 @@ async function saveOrder() {
   const date = document.getElementById('o-date').value;
   const orderNum = document.getElementById('o-num').value.trim();
   const customer = document.getElementById('o-customer').value.trim();
-  const skuType = document.getElementById('o-sku').value;
-  const qty = parseInt(document.getElementById('o-qty').value) || 1;
   const revenue = parseFloat(document.getElementById('o-rev').value) || 0;
   const shippingMethod = document.getElementById('o-ship').value;
   const channel = document.getElementById('o-channel').value || 'shopify';
   const outsideShopify = channel === 'direct';
   const foldRateVal = document.getElementById('o-fold-rate')?.value;
   const foldCommissionRate = channel === 'fold' && foldRateVal ? parseFloat(foldRateVal) : null;
+  const lineItems = getFormLineItems();
+  const hasMultiple = lineItems.length > 1;
+  const skuType = lineItems[0]?.sku || '';
+  const qty = lineItems.reduce((a, li) => a + li.qty, 0);
 
   if (!date || !customer) { toast('Please fill in date and customer name.'); return; }
 
-  const order = { id: state.nextId.order++, date, orderNum, customer, skuType, qty, revenue, shippingMethod, channel, outsideShopify, foldCommissionRate };
+  const order = { id: state.nextId.order++, date, orderNum, customer, skuType, qty, revenue,
+                  shippingMethod, channel, outsideShopify, foldCommissionRate,
+                  lineItems: hasMultiple ? lineItems : null };
   state.orders.push(order);
   skipNextRefresh = true;
   closeModal();
@@ -2707,12 +2769,16 @@ function renderMonthly(el, actions) {
     .sort((a,b) => a.date < b.date ? 1 : -1)
     .map(o => {
       const c = calcOrder(o);
+      const mvSkuDisplay = o.lineItems
+        ? o.lineItems.map(li => `<span class="tag">${li.sku}</span>${li.qty > 1 ? `<span style="font-size:10px;color:var(--text-3)"> ×${li.qty}</span>` : ''}`).join(' ')
+        : `<span class="tag">${o.skuType}</span>`;
+      const mvQtyDisplay = o.lineItems ? o.lineItems.reduce((a, li) => a + li.qty, 0) : o.qty;
       return `<tr>
         <td>${fmtDate(o.date)}</td>
         <td><strong>${o.orderNum}</strong></td>
         <td>${o.customer}</td>
-        <td><span class="tag">${o.skuType}</span></td>
-        <td class="num">${o.qty}</td>
+        <td>${mvSkuDisplay}</td>
+        <td class="num">${mvQtyDisplay}</td>
         <td class="num">${fmt(effRev(o))}</td>
         <td class="num muted">${fmt(c.productCost)}</td>
         <td class="num muted">${fmt(c.shippingOut)}</td>
