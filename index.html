@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
   <title>Nova Finance OS</title>
   <link rel="manifest" href="./manifest.json">
   <meta name="theme-color" content="#18170F">
@@ -1164,17 +1164,10 @@
     body.view-overview .page-header { display: none; }
     :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     button:focus-visible, .perf-card:focus-visible, .order-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-    .ov-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
-    .ov-title { font-size: 22px; font-weight: 600; }
-    .ov-sub { font-size: 14px; color: var(--text-2); margin-top: 2px; }
-    .ov-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
     .seg { display: inline-flex; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 3px; gap: 2px; flex-wrap: wrap; }
     .seg button { font-family: 'Sono', monospace; font-size: 13px; border: 0; background: transparent; color: var(--text-2); padding: 7px 14px; border-radius: 999px; cursor: pointer; }
     .seg button[aria-pressed="true"] { background: var(--nav-bg); color: var(--nav-text); }
-    .period-wrap { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
-    .period-dates2 { font-size: 13px; color: var(--text-2); }
-    .period-dates2 strong { color: var(--text); font-weight: 600; }
     .custom-range { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--text-2); }
     .custom-range input { width: auto; padding: 6px 10px; }
 
@@ -1190,29 +1183,10 @@
 
     .cash-break { width: 100%; margin-top: 10px; border-collapse: collapse; font-size: 14px; }
     .cash-break td { padding: 7px 0; border-bottom: 1px solid var(--border-light); color: var(--text); vertical-align: top; }
-    .cash-break td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .cash-break td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; padding-left: 10px; }
     .cash-break tr.total td { font-weight: 700; border-bottom: 0; border-top: 1px solid var(--border); }
     .cash-note { font-size: 13px; color: var(--text-2); margin-top: 10px; line-height: 1.55; }
 
-    .perf-grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 1fr; gap: 12px; margin-bottom: 16px; }
-    .perf-card { display: flex; flex-direction: column; align-items: flex-start; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 20px; cursor: pointer; text-align: left; font-family: 'Sono', monospace; color: var(--text); width: 100%; transition: box-shadow .15s; }
-    .perf-card:hover { box-shadow: var(--shadow-md); }
-    .perf-label { font-size: 13px; color: var(--text-2); }
-    .perf-value { font-size: 28px; font-weight: 700; margin: 6px 0; font-variant-numeric: tabular-nums; }
-    .perf-value.muted-value { color: var(--text-3); }
-    .perf-cmp { font-size: 13.5px; color: var(--text-2); }
-    .perf-cmp.pos { color: var(--pos); } .perf-cmp.neg { color: var(--neg); }
-    .perf-status { display: inline-block; margin-top: 8px; font-size: 12.5px; color: var(--warn); }
-    .perf-status.err { color: var(--neg); }
-    .perf-status.ok { color: var(--text-2); }
-    .support-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
-    .support-item { flex: 1 1 200px; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; background: var(--surface-alt); border: 1px solid var(--border-light); border-radius: var(--radius); padding: 10px 14px; cursor: pointer; text-align: left; font-family: 'Sono', monospace; color: var(--text); }
-    .support-item:hover { border-color: var(--border); }
-    .support-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-    .support-label { font-size: 12.5px; color: var(--text-2); }
-    .support-item strong { font-size: 17px; font-variant-numeric: tabular-nums; }
-    .support-sub { font-size: 12.5px; color: var(--text-3); }
-    .support-sub.pos { color: var(--pos); } .support-sub.neg { color: var(--neg); }
     .cc-sec { border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
     .cc-sec h4 { font-size: 14.5px; margin: 0 0 10px; }
     .cc-opt { display: block; border: 1px solid var(--border-light); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 8px; font-size: 13.5px; text-transform: none; letter-spacing: 0; cursor: pointer; }
@@ -1238,9 +1212,6 @@
     .insights li:last-child { border-bottom: 0; }
     .linkbtn { background: none; border: 0; color: var(--accent); font-family: 'Sono', monospace; font-size: 13px; cursor: pointer; white-space: nowrap; text-decoration: underline; padding: 0; }
 
-    .ov-bottom { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
-    .stock-mini .big { font-size: 24px; font-weight: 700; margin: 6px 0; font-variant-numeric: tabular-nums; }
-    .stock-mini p { font-size: 13.5px; color: var(--text-2); line-height: 1.5; }
 
     .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 18px; flex-wrap: wrap; }
     .tabs button { font-family: 'Sono', monospace; font-size: 14px; background: none; border: 0; padding: 10px 14px; cursor: pointer; color: var(--text-2); border-bottom: 2px solid transparent; }
@@ -1272,11 +1243,112 @@
     #more-sheet button { font-family: 'Sono', monospace; font-size: 15px; text-align: left; padding: 14px 10px; background: none; border: 0; border-bottom: 1px solid var(--border-light); color: var(--text); cursor: pointer; }
 
     @media (max-width: 768px) {
-      .perf-grid { grid-template-columns: 1fr; }
-      .ov-bottom { grid-template-columns: 1fr; }
       .order-row { grid-template-columns: 1fr auto; }
       .order-row .col-date, .order-row .col-num { display: none; }
-      .ov-head { align-items: flex-start; }
+    }
+
+    /* ── Overview, Android first (1.5.014) ───────── */
+    .view-overview .page-header { display: none; }
+    .ov-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+    .ov-title { font-size: 17px; font-weight: 600; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+    .ov-actions { display: flex; gap: 8px; flex-shrink: 0; }
+    .ov-add-phone { display: none; }
+    .seg .sm { display: none; }
+    .period-wrap { gap: 2px; margin-bottom: 10px; }
+    .period-dates2 { display: flex; align-items: center; flex-wrap: wrap; column-gap: 10px; font-size: 14px; color: var(--text); }
+    .period-sel { font-weight: 600; }
+    .period-cmp-btn { min-height: 48px; padding: 0 4px; }
+    .period-cmp { flex-basis: 100%; color: var(--text-2); font-size: 13.5px; padding-bottom: 6px; }
+    .review-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--warn-bg); border: 1px solid #E8C98F; border-radius: var(--radius); padding: 4px 4px 4px 14px; margin-bottom: 12px; font-size: 14px; }
+    .review-row .btn { min-height: 48px; }
+    .sheet-note { font-size: 14px; color: var(--text-2); line-height: 1.55; margin: 0 0 12px; }
+    .badge.warn { background: var(--warn-bg); color: #8A5A12; border: 1px solid #E8C98F; }
+    .badge.err { background: var(--neg-bg); color: var(--neg); border: 1px solid #EBB5A9; }
+    .badge.ok { background: var(--pos-bg); color: var(--pos); }
+    .perf-badge-wrap .badge, .sheet-note .badge { font-size: 13px; font-weight: 600; padding: 2px 9px; }
+
+    /* three equal figures: desktop = matching cards */
+    .perf-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 12px; }
+    .perf-card { display: grid; grid-template-areas: "label" "value" "sub" "badge"; grid-template-rows: auto auto 1fr auto; justify-items: start; align-items: start;
+      row-gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 18px; cursor: pointer; text-align: left;
+      font-family: 'Sono', monospace; color: var(--text); width: 100%; min-height: 48px; -webkit-tap-highlight-color: transparent; transition: box-shadow .15s; }
+    .perf-card:active { background: var(--surface-alt); }
+    .perf-label { grid-area: label; font-size: 14px; color: var(--text-2); }
+    .perf-value { grid-area: value; font-size: 26px; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .perf-value.muted-value { color: var(--text-3); }
+    .perf-cmp { grid-area: sub; font-size: 13.5px; color: var(--text-2); }
+    .perf-cmp.pos { color: var(--pos); } .perf-cmp.neg, .perf-cmp.err { color: var(--neg); }
+    .perf-badge-wrap { grid-area: badge; }
+    .perf-badge-wrap:empty { display: none; }
+
+    .support-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-bottom: 12px; }
+    .support-item { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 1px; min-height: 52px; background: var(--surface-alt); border: 1px solid var(--border-light); border-radius: var(--radius);
+      padding: 6px 12px; cursor: pointer; text-align: left; font-family: 'Sono', monospace; font-size: 14px; color: var(--text); -webkit-tap-highlight-color: transparent; }
+    .support-item strong { font-size: 16px; }
+    .support-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .support-label { color: var(--text-2); }
+    .support-item strong { font-variant-numeric: tabular-nums; }
+    .stock-line { flex-direction: row; align-items: center; justify-content: flex-start; gap: 6px; width: 100%; margin: 0 0 8px; }
+
+    .win-line { display: flex; align-items: center; justify-content: space-between; gap: 6px; background: var(--accent-light); border: 1px solid var(--accent-mid);
+      border-radius: var(--radius); padding: 0 4px 0 0; margin-bottom: 12px; font-size: 14px; min-height: 48px; }
+    .win-line .win-text { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 48px; padding: 4px 10px 4px 14px; background: none; border: 0;
+      font-family: 'Sono', monospace; font-size: 14px; color: var(--text); text-align: left; cursor: pointer; }
+    .win-line.quiet .win-text { color: var(--text-2); }
+    .chev { color: var(--text-3); font-size: 20px; line-height: 1; }
+    .win-line.quiet { background: transparent; border-color: var(--border-light); color: var(--text-2); }
+    .win-line.new { animation: winIn .5s ease-out both; }
+    @media (prefers-reduced-motion: reduce) { .win-line.new { animation: none; } }
+    .linkbtn { min-height: 48px; min-width: 48px; padding: 0 8px; }
+    .ach-list { list-style: none; margin: 0; padding: 0; }
+    .ach-list li { padding: 10px 0; border-bottom: 1px solid var(--border-light); font-size: 14px; }
+    .ach-list li span { color: var(--text-2); font-size: 13.5px; }
+
+    .trend-card { margin-bottom: 12px; }
+    .trend-card .chart-wrap { height: 240px; touch-action: pan-y; }
+    .trend-detail { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-top: 8px; font-size: 14px; min-height: 48px; }
+    .trend-table summary { cursor: pointer; color: var(--accent); font-size: 14px; min-height: 48px; display: flex; align-items: center; }
+    .trend-table th { text-align: left; font-size: 13px; color: var(--text-2); font-weight: 500; padding: 4px 0; }
+    .trend-table th.num { text-align: right; }
+    .insight-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; line-height: 1.5; padding: 4px 0 4px 2px; margin-bottom: 8px; border-top: 1px solid var(--border-light); }
+    .add-sheet { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .add-sheet .btn { min-height: 56px; justify-content: center; font-size: 15px; }
+
+    @media (max-width: 768px) {
+      .ov-add-phone { display: inline-flex; min-height: 48px; padding: 0 18px; font-size: 15px; }
+      .ov-add-desk { display: none; }
+      .seg { display: flex; width: 100%; flex-wrap: nowrap; }
+      .seg button { flex: 1 1 auto; min-height: 48px; padding: 0 8px; font-size: 14px; white-space: nowrap; }
+      .seg .sm { display: inline; } .seg .lg { display: none; }
+      /* three compact full-width rows: label left, value right */
+      .perf-grid { grid-template-columns: 1fr; gap: 8px; }
+      .perf-card { grid-template-areas: "label value" "sub badge"; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; align-items: center;
+        column-gap: 12px; row-gap: 2px; padding: 12px 14px; border-radius: var(--radius); min-height: 64px; }
+      .perf-value { justify-self: end; font-size: 24px; }
+      .perf-badge-wrap { justify-self: end; }
+      .perf-cmp { min-width: 0; }
+      .perf-card:has(.perf-badge-wrap:empty) .perf-cmp { grid-column: 1 / -1; }
+      .perf-cmp:empty { display: none; }
+      .trend-card { padding: 14px; }
+      .trend-card .chart-wrap { height: 220px; }
+      .page-content { padding: 12px 16px calc(24px + env(safe-area-inset-bottom)); }
+      .page-header { position: static; }
+      #main { height: 100vh; height: 100dvh; }
+      .bottom-nav-item { font-size: 12px; min-height: 48px; }
+      /* sheets: bottom sheet that fits, scrolls inside, keeps Close/Save visible above the keyboard */
+      .modal-overlay { align-items: flex-end; }
+      .modal { margin: 0; max-width: none; border-radius: 16px 16px 0 0; max-height: calc(100vh - 12px); max-height: calc(100dvh - 12px - env(safe-area-inset-top));
+        display: flex; flex-direction: column; overflow: hidden; }
+      .modal-header { flex-shrink: 0; padding: 8px 8px 8px 18px; }
+      .modal-close { width: 48px; height: 48px; font-size: 22px; }
+      .modal > .modal-body { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; padding: 16px 18px; -webkit-overflow-scrolling: touch; }
+      .modal-footer { flex-shrink: 0; flex-wrap: wrap; padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); }
+      .modal-footer .btn { min-height: 48px; flex: 1 1 auto; justify-content: center; font-size: 14px; }
+      .review-item .btn, .trend-detail .btn, .win-line .btn { min-height: 48px; }
+      #more-sheet button { min-height: 52px; }
+      .view-overview .btn-sm, .modal .btn-sm { font-size: 14px; padding: 0 14px; }
+      .modal .review-item { flex-direction: column; align-items: stretch; gap: 8px; }
+      .modal .review-item .btn { align-self: flex-start; }
     }
 
   </style>
@@ -1384,7 +1456,7 @@
 // VERSION & PWA
 // ═══════════════════════════════════════════════════
 
-const APP_VERSION = '1.5.013';
+const APP_VERSION = '1.5.014';
 let swRegistration = null;
 let deferredInstallPrompt = null;
 let lastSyncTime = null;
@@ -1470,7 +1542,7 @@ document.addEventListener('touchstart', e => {
 
 document.addEventListener('touchend', e => {
   // Don't interfere if user is scrolling or interacting with a form element
-  if (e.target.closest('input,select,textarea,table,#modal-overlay')) return;
+  if (e.target.closest('input,select,textarea,table,canvas,button,details,.no-swipe,.seg,#modal-overlay,#more-sheet') || document.body.classList.contains('sheet-open')) return;
   const dx = e.changedTouches[0].clientX - touchStartX;
   const dy = e.changedTouches[0].clientY - touchStartY;
   const dt = Date.now() - touchStartTime;
@@ -2424,22 +2496,22 @@ function comparisonCoverage(prev) {
 
 function signedMoney(d) { return (d >= 0 ? '+' : '−') + fmt(Math.abs(d)); }
 function salesDelta(cur, prev, coverage) {
-  if (coverage === 'none') return { text: 'No earlier sales to compare', tone: '' };
-  if (Math.abs(prev) < 0.005 && Math.abs(cur) < 0.005) return { text: 'No sales in either period', tone: '' };
+  if (coverage === 'none') return { text: 'No earlier sales to compare', tone: '', na: true };
+  if (Math.abs(prev) < 0.005 && Math.abs(cur) < 0.005) return { text: 'No sales in either period', tone: '', na: true };
   if (Math.abs(prev) < 0.005) return { text: `First sales · ${signedMoney(cur)} vs £0`, tone: 'pos' };
   const d = cur - prev, pct = d / Math.abs(prev);
   return { text: `${signedMoney(d)} (${d >= 0 ? '+' : '−'}${Math.abs(pct * 100).toFixed(0)}%) vs ${fmt(prev)}`, tone: d > 0.005 ? 'pos' : d < -0.005 ? 'neg' : '' };
 }
 function profitDelta(cur, prev, coverage, curConf, prevConf) {
-  if (curConf === 'incomplete' || prevConf === 'incomplete') return { text: 'Comparison unavailable — product costs missing', tone: '' };
-  if (coverage === 'none') return { text: 'No earlier trading to compare', tone: '' };
+  if (curConf === 'incomplete' || prevConf === 'incomplete') return { text: 'Comparison unavailable — product costs missing', tone: '', na: true };
+  if (coverage === 'none') return { text: 'No earlier trading to compare', tone: '', na: true };
   const d = cur - prev;
   if (prev < 0 && cur > 0) return { text: `Back in profit · ${fmt(d)} better than ${fmt(prev)}`, tone: 'pos' };
   if (Math.abs(d) < 0.005) return { text: `Same as ${fmt(prev)}`, tone: '' };
   return { text: `${fmt(Math.abs(d))} ${d > 0 ? 'better' : 'lower'} than ${fmt(prev)}`, tone: d > 0 ? 'pos' : 'neg' };
 }
 function ordersDelta(cur, prev, coverage) {
-  if (coverage === 'none') return { text: 'No earlier orders to compare', tone: '' };
+  if (coverage === 'none') return { text: 'No earlier orders to compare', tone: '', na: true };
   const d = cur - prev;
   if (prev === 0 && cur > 0) return { text: `First paid orders · +${cur} vs 0`, tone: 'pos' };
   if (d === 0) return { text: `Same as before (${prev})`, tone: '' };
@@ -2483,6 +2555,7 @@ function computeMilestones(today = londonToday()) {
     .sort((x, y) => (x.o.date < y.o.date ? -1 : x.o.date > y.o.date ? 1 : x.o.id - y.o.id));
   [1, 10, 25, 50, 100].forEach(n => {
     if (paid.length >= n) out.push({ id: `orders-${n}`, kind: 'orders', title: n === 1 ? 'First paid order' : `${n} paid orders`, achievedOn: paid[n - 1].o.date,
+      short: n === 1 ? `First paid order · ${fmtDate(paid[0].o.date)}` : `${n} paid orders · ${fmtDate(paid[n - 1].o.date)}`,
       detail: n === 1 ? `${paid[0].o.orderNum || 'First order'} · ${fmtDateLong(paid[0].o.date)}` : `Reached on ${fmtDateLong(paid[n - 1].o.date)}`, status: 'met' });
   });
   // cumulative sales after refunds
@@ -2497,7 +2570,7 @@ function computeMilestones(today = londonToday()) {
   [1000, 2500, 5000].forEach(th => {
     let run = 0, hit = null;
     for (const e of events) { run += e.v; if (run >= th - 0.005 && !hit) hit = e.d; }
-    if (hit) out.push({ id: `sales-${th}`, kind: 'sales', title: `${fmt(th, 0)} in sales after refunds`, achievedOn: hit,
+    if (hit) out.push({ id: `sales-${th}`, kind: 'sales', title: `${fmt(th, 0)} in sales after refunds`, achievedOn: hit, short: `${fmt(th, 0)} total sales · ${fmtDate(hit)}`,
       detail: total >= th - 0.005 ? `First reached ${fmtDateLong(hit)}` : `Reached ${fmtDateLong(hit)}, now ${fmt(total)} after later refunds`,
       status: total >= th - 0.005 ? 'met' : 'no-longer' });
   });
@@ -2515,12 +2588,13 @@ function computeMilestones(today = londonToday()) {
     let prof = null;
     for (const m of months) { if (m.incomplete) break; if (m.profit > 0.005) { prof = m; break; } }
     if (prof) out.push({ id: `first-profit-${prof.y}-${prof.m}`, kind: 'profit', title: 'First profitable month',
-      achievedOn: addDays(monthEnd(prof.y, prof.m), 1), detail: `${MONTHS_LONG[prof.m - 1]} ${prof.y}: operating profit ${fmt(prof.profit)}`, status: 'met' });
+      short: `First profitable month · ${MONTHS_SHORT[prof.m - 1]} · ${fmt(prof.profit)} profit`, achievedOn: addDays(monthEnd(prof.y, prof.m), 1), detail: `${MONTHS_LONG[prof.m - 1]} ${prof.y}: operating profit ${fmt(prof.profit)}`, status: 'met' });
     if (months.length >= 3) {
       const best = Math.max(...months.map(m => m.sales));
       const tied = months.filter(m => Math.abs(m.sales - best) < 0.005);
       const latest = tied[tied.length - 1];
       if (best > 0) out.push({ id: `best-month-${latest.y}-${String(latest.m).padStart(2, '0')}`, kind: 'best', title: tied.length > 1 ? 'Joint best sales month' : 'Best sales month so far',
+        short: `${tied.length > 1 ? 'Joint best' : 'Best'} sales month · ${MONTHS_SHORT[latest.m - 1]} · ${fmt(best)}`,
         achievedOn: addDays(monthEnd(latest.y, latest.m), 1),
         detail: `${MONTHS_LONG[latest.m - 1]} ${latest.y}: ${fmt(best)} sales after refunds${tied.length > 1 ? ` (level with ${tied.slice(0, -1).map(m => `${MONTHS_SHORT[m.m - 1]} ${m.y}`).join(', ')})` : ''}. Sales only — not a profit record.`,
         status: 'met' });
@@ -2574,29 +2648,33 @@ function computeInsights(cmp) {
   const est = a.confidence.status !== 'ready' ? ' (estimated)' : '';
   // cash fell while profit was positive, explained by stock purchases
   if (a.cashMovement < -0.005 && a.operatingProfit > 0.005 && a.stockPurchases > a.operatingProfit && a.confidence.status !== 'incomplete') {
-    out.push({ text: `Cash fell by about ${fmt(-a.cashMovement)} while operating profit was ${fmt(a.operatingProfit)}: ${fmt(a.stockPurchases)} went on stock, which is held as stock rather than charged to profit.`, link: ['reports', 'cash'] });
+    out.push({ text: `Cash fell by about ${fmt(-a.cashMovement)} while operating profit was ${fmt(a.operatingProfit)}: ${fmt(a.stockPurchases)} went on stock, which is held as stock rather than charged to profit.`,
+      short: `Cash fell ${fmt(-a.cashMovement)} despite ${fmt(a.operatingProfit)} profit — ${fmt(a.stockPurchases)} went on stock.`, link: ['reports', 'cash'] });
   }
   // sales change driven by order count vs average order value
   if (coverage === 'full' && a.paidOrders >= 3 && b.paidOrders >= 3 && Math.abs(a.salesAfterRefunds - b.salesAfterRefunds) > 0.005) {
     const volume = (a.paidOrders - b.paidOrders) * b.avgOrder;
     const value = (a.avgOrder - b.avgOrder) * a.paidOrders;
     const driver = Math.abs(volume) >= Math.abs(value) ? (a.paidOrders > b.paidOrders ? 'more orders' : 'fewer orders') : (a.avgOrder > b.avgOrder ? 'a higher average order' : 'a lower average order');
-    out.push({ text: `Sales ${a.salesAfterRefunds > b.salesAfterRefunds ? 'rose' : 'fell'} mainly from ${driver}: ${a.paidOrders} orders averaging ${fmt(a.avgOrder)}, against ${b.paidOrders} averaging ${fmt(b.avgOrder)}.`, link: ['reports', 'orders'] });
+    out.push({ text: `Sales ${a.salesAfterRefunds > b.salesAfterRefunds ? 'rose' : 'fell'} mainly from ${driver}: ${a.paidOrders} orders averaging ${fmt(a.avgOrder)}, against ${b.paidOrders} averaging ${fmt(b.avgOrder)}.`,
+      short: Math.abs(volume) >= Math.abs(value) ? `Sales ${a.salesAfterRefunds > b.salesAfterRefunds ? 'rose' : 'fell'} mainly from ${driver}: ${a.paidOrders} vs ${b.paidOrders}.` : `Sales ${a.salesAfterRefunds > b.salesAfterRefunds ? 'rose' : 'fell'} mainly from ${driver} (${fmt(a.avgOrder)} vs ${fmt(b.avgOrder)}).`, link: ['reports', 'orders'] });
   }
   // channel contribution per order
   const sh = a.byChannel.shopify, fo = a.byChannel.fold;
   if (sh.n >= 3 && fo.n >= 2 && a.confidence.status !== 'incomplete') {
-    out.push({ text: `Contribution per order${est}: Shopify ${fmt(sh.contribution / sh.n)} (${sh.n} orders), Fold ${fmt(fo.contribution / fo.n)} (${fo.n}).`, link: ['reports', 'orders'] });
+    out.push({ text: `Contribution per order${est}: Shopify ${fmt(sh.contribution / sh.n)} (${sh.n} orders), Fold ${fmt(fo.contribution / fo.n)} (${fo.n}).`,
+      short: `Contribution per order${est}: Shopify ${fmt(sh.contribution / sh.n)}, Fold ${fmt(fo.contribution / fo.n)}.`, link: ['reports', 'orders'] });
   }
   // postage per shipped order, actual where matched
   const shipped = a.matchedOrders + a.unmatchedOrders, shippedB = b.matchedOrders + b.unmatchedOrders;
   if (shipped >= 3 && shippedB >= 3 && coverage === 'full') {
     const pa = a.postageOrders / shipped, pb = b.postageOrders / shippedB;
-    if (Math.abs(pa - pb) >= 0.1) out.push({ text: `Postage per shipped order ${fmt(pa)} vs ${fmt(pb)}${a.unmatchedOrders ? ' — partly estimated' : ''}.`, link: ['expenses', 'postage'] });
+    if (Math.abs(pa - pb) >= 0.1) out.push({ text: `Postage per shipped order ${fmt(pa)} vs ${fmt(pb)}${a.unmatchedOrders ? ' — partly estimated' : ''}.`,
+      short: `Postage per shipped order ${fmt(pa)} vs ${fmt(pb)}${a.unmatchedOrders ? ' (partly estimated)' : ''}.`, link: ['expenses', 'postage'] });
   }
   // units by product type (SKU types, not individual designs)
   const skus = Object.entries(a.unitsBySku).filter(([, n]) => n > 0).sort((x, y) => y[1] - x[1]);
-  if (skus.length >= 2 && out.length < 3) out.push({ text: `Units sold by product type: ${skus.map(([s, n]) => `${esc(s)} ${n}`).join(' · ')}.`, link: ['reports', 'orders'] });
+  if (skus.length >= 2 && out.length < 3) out.push({ text: `Units sold by product type: ${skus.map(([s, n]) => `${esc(s)} ${n}`).join(' · ')}.`, generic: true, link: ['reports', 'orders'] });
   return out.slice(0, 3);
 }
 
@@ -2610,10 +2688,11 @@ let reportsOrderFilter = 'all';   // all | paid | refunds | missing
 const VIEW_TITLES = { overview: 'Overview', orders: 'Orders', expenses: 'Expenses', reports: 'Reports', balance: 'Balance sheet', sync: 'Sync & backup', settings: 'Settings' };
 const LEGACY_VIEWS = { dashboard: 'overview', transactions: 'expenses', pl: 'reports', monthly: 'reports' };
 
-function navigate(view, swipeDir = null) {
+function navigate(view, swipeDir = null, { fromHistory = false } = {}) {
   view = LEGACY_VIEWS[view] || view;
   if (!VIEW_TITLES[view]) view = 'overview';
   closeMore();
+  if (!fromHistory) pushViewHistory(view);
   currentView = view;
   document.body.className = 'view-' + view;
   document.querySelectorAll('.nav-item, .bottom-nav-item').forEach(el => {
@@ -2669,26 +2748,37 @@ function setPeriod(kind) {
     const cur = periodRange(reportPeriod);
     reportPeriod = { kind: 'custom', from: cur.from, to: cur.to };
   } else reportPeriod = { kind };
+  rememberPeriod();
   renderView(currentView);
 }
 function setCustom(which, value) {
   if (!isValidYMD(value)) return;
   reportPeriod = { ...reportPeriod, kind: 'custom', [which]: value };
+  rememberPeriod();
   renderView(currentView);
+}
+// Compact dates: "1 Jan – 15 Oct 2026" (years shown on both sides only when they differ)
+function fmtRangeShort(from, to) {
+  const A = parseYMD(from), B = parseYMD(to);
+  if (A.y !== B.y) return `${fmtDateLong(from)} – ${fmtDateLong(to)}`;
+  return `${A.d} ${MONTHS_SHORT[A.m - 1]} – ${B.d} ${MONTHS_SHORT[B.m - 1]} ${B.y}`;
 }
 function periodBarHTML(cmp) {
   const k = reportPeriod.kind === 'monthOf' ? (cmp.cur.kind === 'mtd' ? 'month' : 'custom-month') : reportPeriod.kind;
-  const btn = (kind, label) => `<button type="button" aria-pressed="${k === kind}" onclick="setPeriod('${kind}')">${label}</button>`;
+  const btn = (kind, short, long) => `<button type="button" aria-pressed="${k === kind}" aria-label="${long}" onclick="setPeriod('${kind}')"><span class="sm">${short}</span><span class="lg">${long}</span></button>`;
   const custom = reportPeriod.kind === 'custom' ? `<div class="custom-range"><label for="pf">From</label>
       <input type="date" id="pf" value="${cmp.cur.from}" onchange="setCustom('from', this.value)">
       <label for="pt">to</label><input type="date" id="pt" value="${cmp.cur.to}" onchange="setCustom('to', this.value)"></div>` : '';
-  const cov = cmp.coverage === 'none' ? ' · no earlier trading to compare' : cmp.coverage === 'partial' ? ' · comparison includes time before trading began' : '';
-  const capped = cmp.cur.to > londonToday() ? ' (to today)' : '';
+  const cov = cmp.coverage === 'none' ? 'No earlier trading to compare.' : cmp.coverage === 'partial' ? 'The comparison period includes time before trading began.' : '';
+  const today = londonToday();
+  const to = cmp.cur.to > today ? today : cmp.cur.to;
+  const label = reportPeriod.kind === 'monthOf' && k === 'custom-month' ? `${MONTHS_LONG[reportPeriod.m - 1]} ${reportPeriod.y} · ` : '';
   return `<div class="period-wrap">
-    <div class="seg" role="group" aria-label="Reporting period">${btn('month', 'This month')}${btn('lastMonth', 'Last month')}${btn('ytd', 'YTD')}${btn('custom', 'Custom')}</div>
+    <div class="seg" role="group" aria-label="Reporting period">${btn('month', 'Month', 'This month')}${btn('lastMonth', 'Last month', 'Last month')}${btn('ytd', 'YTD', 'YTD')}${btn('custom', 'Custom', 'Custom')}</div>
     ${custom}
-    <div class="period-dates2"><strong>${fmtRange({ from: cmp.cur.from, to: cmp.cur.to > londonToday() ? londonToday() : cmp.cur.to })}</strong>${capped}
-      · compared with ${esc(cmp.prevRange.label)}${cmp.prevRange.note ? ` (${esc(cmp.prevRange.note)})` : ''}${cov}</div>
+    <div class="period-dates2"><span class="period-sel">${label}${fmtRangeShort(cmp.cur.from, to)}${cmp.cur.to > today ? ' (to today)' : ''}</span>
+      <button type="button" class="linkbtn period-cmp-btn" aria-expanded="false" aria-controls="period-cmp" onclick="const d=document.getElementById('period-cmp');const o=d.hidden;d.hidden=!o;this.setAttribute('aria-expanded',String(o))">Compared with…</button>
+      <span class="period-cmp" id="period-cmp" hidden>Compared with ${esc(cmp.prevRange.label)}${cmp.prevRange.note ? ` (${esc(cmp.prevRange.note)})` : ''}. ${cov}</span></div>
   </div>`;
 }
 
@@ -2709,12 +2799,35 @@ function reviewBarHTML(R, id = 'rv') {
       <div style="font-size:12.5px;color:var(--text-3)">A balancing balance sheet or an empty list doesn't confirm figures against the bank — cash is checked separately.</div></div>
   </div>`;
 }
-function reviewActionButton(action) {
+// Overview: one compact line; the full list opens in a sheet.
+function overviewIssues(R, today = londonToday()) {
+  const list = [...R.confidence.issues];
+  const sc = stockCountCheck(today);
+  if (sc.hasCount && (sc.impossible || sc.large)) list.push({ key: 'stock-count', level: 'warn',
+    title: sc.impossible ? 'Stock count is higher than everything bought' : `Stock count differs from book value by ${fmt(sc.variance)}`,
+    detail: sc.impossible ? `Saved count ${fmt(sc.value)} is more than all stock bought at cost (${fmt(sc.maxPossible)}) — check it isn't at retail value.` : `Count ${fmt(sc.value)} vs book value ${fmt(sc.book)}. The count is a check only; it isn't booked.`, action: 'stock' });
+  return list;
+}
+function reviewRowHTML(R) {
+  const n = overviewIssues(R).length;
+  if (!n) return '';
+  const lvl = R.confidence.status === 'incomplete' ? 'err' : 'warn';
+  return `<div class="review-row" data-testid="review-row"><span><span class="dot ${lvl}"></span>${n} item${n > 1 ? 's' : ''} to review</span>
+    <button class="btn btn-secondary btn-sm" onclick="openReviewSheet()">Review</button></div>`;
+}
+function openReviewSheet() {
+  const R = computeReport(periodRange(reportPeriod), londonToday());
+  const items = overviewIssues(R);
+  openFormModal('To review', `<p class="sheet-note">Profit status: <strong>${esc(R.confidence.label)}</strong>. A balancing balance sheet or an empty list doesn't confirm figures against the bank — cash is checked separately.</p>
+    ${items.map(i => `<div class="review-item"><div><span class="dot ${i.level}"></span><strong>${i.title}</strong><p>${i.detail}</p></div>${reviewActionButton(i.action, true)}</div>`).join('') || '<p>Nothing to review.</p>'}`,
+    `<button class="btn btn-primary" onclick="closeModal()">Close</button>`);
+}
+function reviewActionButton(action, fromSheet = false) {
   const map = { missing: ["Open orders", "openReview('missing')"], postage: ['Review postage', "openReview('postage')"],
     refunds: ['Open refunds', "openReview('refunds')"], lock: ['Lock costs', 'openLockCosts()'], expenses: ['Open expenses', "navigate('expenses')"],
-    zero: ['Open orders', "openReview('zero')"] };
+    zero: ['Open orders', "openReview('zero')"], stock: ['Open stock', 'openStockSheet()'] };
   const m = map[action];
-  return m ? `<button class="btn btn-ghost btn-sm" onclick="${m[1]}">${m[0]}</button>` : '';
+  return m ? `<button class="btn btn-ghost btn-sm" onclick="${fromSheet && !/^open(LockCosts|StockSheet)/.test(m[1]) ? 'closeModal();' : ''}${m[1]}">${m[0]}</button>` : '';
 }
 function openReview(kind) {
   if (kind === 'postage') { expenseFilter = 'postage'; navigate('expenses'); return; }
@@ -2755,22 +2868,81 @@ function openFormModal(title, bodyHTML, footerHTML) {
 }
 
 // ═══════════════════════════════════════════════════
-// OVERVIEW
+// OVERVIEW — Android first: three equal figures, one slim supporting row, chart, then extras.
+// Explanations live in detail sheets opened by tapping.
 // ═══════════════════════════════════════════════════
 let trendChart = null;
+let trendSelected = null;          // index of the month tapped on the chart
+const isPhone = () => window.matchMedia('(max-width: 768px)').matches;
 
+// One component for sales, profit and cash: same size, number style and emphasis.
+// Phone: full-width row (label left, value right). Desktop: matching cards side by side.
+function perfCard({ label, value, sub, subTone = '', badge, muted, onclick, testid, valueTestid, subTestid }) {
+  return `<button class="perf-card" onclick="${onclick}" data-testid="${testid}">
+    <span class="perf-label">${label}</span>
+    <span class="perf-value ${muted ? 'muted-value' : ''}" ${valueTestid ? `data-testid="${valueTestid}"` : ''}>${value}</span>
+    <span class="perf-cmp ${subTone}" ${subTestid ? `data-testid="${subTestid}"` : ''}>${sub || ''}</span>
+    <span class="perf-badge-wrap">${badge ? `<span class="badge ${badge.cls}" data-testid="${testid}-badge">${badge.text}</span>` : ''}</span>
+  </button>`;
+}
+function salesCardHTML(a, cmp) {
+  return perfCard({ label: 'Sales', value: fmt(a.salesAfterRefunds), testid: 'card-sales', onclick: "openFigureSheet('sales')",
+    sub: cmp.sales.na ? '' : cmp.sales.text, subTone: cmp.sales.tone });
+}
+function profitCardHTML(a, cmp) {
+  const st = a.confidence.status;
+  const incomplete = st === 'incomplete';
+  return perfCard({ label: 'Operating profit', value: incomplete ? `${fmt(a.operatingProfit)}*` : fmt(a.operatingProfit), muted: incomplete,
+    testid: 'card-profit', onclick: "openFigureSheet('profit')",
+    sub: incomplete ? `*${a.missingCost.length} order${a.missingCost.length > 1 ? 's' : ''} missing product costs` : cmp.profit.na ? '' : cmp.profit.text,
+    subTone: incomplete ? 'err' : cmp.profit.tone,
+    badge: incomplete ? { cls: 'err', text: 'Incomplete' } : st === 'estimated' ? { cls: 'warn', text: 'Estimated' } : null });
+}
 // Cash is an as-at figure: it never follows the reporting period.
 function cashCardHTML(today) {
   const C = cashAt(today);
   const conf = confirmedBalance(today);
   const confirmedToday = conf && conf.asAt === today;
-  return perfCard({
-    label: confirmedToday ? 'Cash at bank' : 'Estimated cash at bank',
-    value: fmt(confirmedToday ? conf.amount : C.cash), testid: 'card-cash', valueTestid: 'cash-figure',
-    cmp: { text: `As at ${fmtDateLong(today)} · not affected by the period`, tone: '', testid: 'cash-asat' },
-    status: confirmedToday ? { cls: 'ok', text: `Confirmed from ${esc(conf.source)}` } : { text: 'Estimated — not confirmed with the bank' },
-    onclick: 'openCashBreakdown()',
-  });
+  const t = parseYMD(today);
+  return perfCard({ label: 'Cash at bank', value: fmt(confirmedToday ? conf.amount : C.cash), testid: 'card-cash', valueTestid: 'cash-figure',
+    sub: `As at ${t.d} ${MONTHS_SHORT[t.m - 1]}`, subTestid: 'cash-asat', onclick: 'openCashBreakdown()',
+    badge: confirmedToday ? null : { cls: 'warn', text: 'Estimated' } });
+}
+
+// ── Detail sheets ──
+function openFigureSheet(kind) {
+  const today = londonToday();
+  const cmp = compareReports(reportPeriod, today);
+  const a = cmp.a;
+  const to = cmp.cur.to > today ? today : cmp.cur.to;
+  const row = (l, v, cls = '') => `<tr class="${cls}"><td>${l}</td><td class="num">${v}</td></tr>`;
+  const period = `<p class="sheet-note">${fmtRangeShort(cmp.cur.from, to)} · compared with ${esc(cmp.prevRange.label)}${cmp.prevRange.note ? ` (${esc(cmp.prevRange.note)})` : ''}.</p>`;
+  if (kind === 'sales') {
+    const ex = [a.fullRefundOrders ? `${a.fullRefundOrders} fully refunded` : '', a.giftCount ? `${a.giftCount} gift/sample` : ''].filter(Boolean).join(', ');
+    openFormModal('Sales', `${period}
+      <table class="cash-break" data-testid="sales-detail">
+        ${row(`Sales of orders dated in the period (${a.paidOrders} paid order${a.paidOrders !== 1 ? 's' : ''})`, fmt(a.grossSales))}
+        ${row(`Refunds recorded in the period${a.refundCount ? ` (${a.refundCount})` : ''}`, '−' + fmt(a.refunds))}
+        ${row('Sales after refunds', fmt(a.salesAfterRefunds), 'total')}
+      </table>
+      <p class="sheet-note">${esc(cmp.sales.text)}. Paid orders: ${a.paidOrders} — ${esc(cmp.orders.text)}${ex ? `; excludes ${ex}` : ''}.</p>
+      <p class="sheet-note">A refund reduces sales on the date it's recorded; the original sale stays on its own date.</p>`,
+      `<button class="btn btn-ghost" onclick="closeModal()">Close</button><button class="btn btn-primary" onclick="reportsTab='orders';reportsOrderFilter='all';navigate('reports')">Open in Reports</button>`);
+  } else {
+    const st = a.confidence;
+    openFormModal('Operating profit', `${period}
+      <p class="sheet-note"><span class="badge ${st.status === 'incomplete' ? 'err' : st.status === 'estimated' ? 'warn' : 'ok'}">${esc(st.label)}</span></p>
+      <table class="cash-break" data-testid="profit-detail">
+        ${row('Sales after refunds', fmt(a.salesAfterRefunds))}
+        ${row('Contribution (after scarves, postage and fees)', fmt(a.contribution))}
+        ${row('Packaging, gifts and unlinked postage', '−' + fmt(a.otherDirect))}
+        ${row('Operating expenses', '−' + fmt(a.totalOpEx))}
+        ${row('Operating profit', fmt(a.operatingProfit), 'total')}
+      </table>
+      <p class="sheet-note">${esc(cmp.profit.text)}.${st.status === 'incomplete' ? ` ${a.missingCost.length} order${a.missingCost.length > 1 ? 's have' : ' has'} no product cost, counted as £0 — profit is overstated until fixed.` : ''}</p>
+      ${st.issues.length ? `<button class="btn btn-secondary" style="width:100%" onclick="openReviewSheet()">Review ${st.issues.length} item${st.issues.length > 1 ? 's' : ''}</button>` : ''}`,
+      `<button class="btn btn-ghost" onclick="closeModal()">Close</button><button class="btn btn-primary" onclick="reportsTab='pl';navigate('reports')">Open P&amp;L</button>`);
+  }
 }
 
 function cashBreakdownHTML(today) {
@@ -2780,10 +2952,10 @@ function cashBreakdownHTML(today) {
   const lastConf = conf && !confirmedToday
     ? `<p class="cash-note">Last confirmed: <strong>${fmt(conf.amount)}</strong> on ${fmtDateLong(conf.asAt)} (${esc(conf.source)}). Your records estimated ${fmt(conf.estimateThen)} for that date — ${Math.abs(conf.difference) < 0.01 ? 'they matched' : `a difference of ${fmt(conf.difference)}`}.</p>`
     : confirmedToday ? `<p class="cash-note">Bank balance ${fmt(conf.amount)} confirmed from ${esc(conf.source)}. Your records estimate ${fmt(C.cash)} for today${Math.abs(conf.amount - C.cash) >= 0.01 ? ` — ${fmt(conf.amount - C.cash)} different from the bank` : ', matching the bank'}.</p>`
-    : '<p class="cash-note">No bank balance recorded yet, so this is an estimate from your records.</p>';
+    : '';
   const row = (l, v, sign = '') => `<tr><td>${l}</td><td class="num">${sign}${fmt(Math.abs(v))}</td></tr>`;
   return `<div data-testid="cash-breakdown">
-    <p class="cash-note" style="margin-top:0">As at ${fmtDateLong(today)}.</p>
+    <p class="cash-note" style="margin-top:0"><strong>${confirmedToday ? 'Confirmed' : 'Estimated — not confirmed with the bank'}</strong> · as at ${fmtDateLong(today)}. Not affected by the reporting period.</p>
     ${lastConf}
     <table class="cash-break">
       <tr><td>Starting cash</td><td class="num">${C.startingCashRecorded ? fmt(C.startingCash) : 'Not recorded'}</td></tr>
@@ -2798,131 +2970,156 @@ function cashBreakdownHTML(today) {
       ${row('Loan repayments and drawings', C.loanRepay + C.drawings, '−')}
       <tr class="total"><td>Estimated cash at bank</td><td class="num">${fmt(C.cash)}</td></tr>
     </table>
-    <p class="cash-note">Not included: expected platform payouts of ${fmt(C.pending)}${C.refundsOwed > 0.005 ? ` and refunds owed to customers of ${fmt(C.refundsOwed)}` : ''}.
-      Loans and your own money put in raise cash but are not sales or profit. The figure is confirmed only by a balance from your bank statement — a balancing balance sheet does not confirm it.</p>
+    <p class="cash-note">Not included: pending payouts of ${fmt(C.pending)}${C.refundsOwed > 0.005 ? ` and refunds owed to customers of ${fmt(C.refundsOwed)}` : ''}.
+      Loans and your own money put in raise cash but are not sales or profit. Only a balance from your bank statement confirms this figure.</p>
   </div>`;
 }
 function openCashBreakdown() {
-  const today = londonToday();
-  openFormModal(`How cash is worked out`, cashBreakdownHTML(today),
+  openFormModal('Cash at bank', cashBreakdownHTML(londonToday()),
     `<button class="btn btn-ghost" onclick="closeModal()">Close</button><button class="btn btn-primary" onclick="openBankBalanceForm()">Record a bank balance</button>`);
 }
+function openPayoutSheet() {
+  const today = londonToday(), C = cashAt(today);
+  const row = (l, v) => `<tr><td>${l}</td><td class="num">${fmt(v)}</td></tr>`;
+  openFormModal('Pending payouts', `<p class="sheet-note"><strong>Excluded from cash at bank.</strong> Platform payouts for recent orders that haven't reached the bank yet (Shopify after ${C.shopifyLag} days, Fold after ${C.foldLag}), as at ${fmtDateLong(today)}.</p>
+    <table class="cash-break" data-testid="payout-detail">${row('Shopify', C.shopifyPending)}${row('Fold', C.foldPending)}<tr class="total"><td>Pending payouts</td><td class="num">${fmt(C.pending)}</td></tr></table>
+    ${C.refundsOwed > 0.005 ? `<p class="sheet-note">Refunds owed to customers (recorded, not yet paid): <strong>${fmt(C.refundsOwed)}</strong>.</p>` : ''}
+    <p class="sheet-note">Payout delays are set in Settings → Cash.</p>`,
+    `<button class="btn btn-primary" onclick="closeModal()">Close</button>`);
+}
+function openStockSheet() {
+  const today = londonToday(), sc = stockCountCheck(today), asAt = computeAsAt(today);
+  openFormModal('Stock', `<p class="sheet-note">Book value <strong>${fmt(asAt.inventory)}</strong> as at ${fmtDateLong(today)}, at landed cost: opening stock plus purchases, less the cost of scarves sold or given away, plus resaleable returns.</p>
+    ${sc.hasCount ? `<p class="sheet-note">Last count ${fmt(sc.value)}${sc.date ? ` on ${fmtDateLong(sc.date)}` : ' (undated)'}${sc.impossible ? ` — <span class="neg-text">higher than everything bought (${fmt(sc.maxPossible)}); check it isn't at retail value</span>` : sc.large ? ` — differs from book value by ${fmt(sc.variance)}` : ' — close to book value'}. Counts are a check only and aren't booked.</p>` : '<p class="sheet-note">No stock count recorded.</p>'}`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Close</button><button class="btn btn-primary" onclick="navigate('settings')">Stock settings</button>`);
+}
+function openAddSheet() {
+  openFormModal('Add', `<div class="add-sheet">
+      <button class="btn btn-primary" onclick="openAddOrder()">Order</button>
+      <button class="btn btn-secondary" onclick="openAddTx()">Expense</button></div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Close</button>`);
+}
 
-// Compact supporting figures beneath the three primary cards.
-function supportRowHTML(a, cmp, today) {
+// Slim supporting row beneath the three figures.
+function supportRowHTML(a, today) {
   const C = cashAt(today);
-  const ex = [a.fullRefundOrders ? `${a.fullRefundOrders} fully refunded` : '', a.giftCount ? `${a.giftCount} gift/sample` : ''].filter(Boolean).join(', ');
-  const item = (testid, label, value, valueTestid, sub, onclick, tone = '') => `<button class="support-item" data-testid="${testid}" onclick="${onclick}">
+  const item = (testid, label, value, valueTestid, onclick) => `<button class="support-item" data-testid="${testid}" onclick="${onclick}">
       <span class="support-label">${label}</span>
-      <strong ${valueTestid ? `data-testid="${valueTestid}"` : ''}>${value}</strong>
-      <span class="support-sub ${tone}">${sub}</span></button>`;
+      <strong ${valueTestid ? `data-testid="${valueTestid}"` : ''}>${value}</strong></button>`;
   return `<div class="support-row">
-    ${item('card-orders', 'Paid orders', String(a.paidOrders), '', `${cmp.orders.text}${ex ? ` · excludes ${ex}` : ''}`,
-      "reportsTab='orders';reportsOrderFilter='paid';navigate('reports')", cmp.orders.tone)}
-    ${item('card-payouts', 'Expected payouts', fmt(C.pending), 'cash-pending',
-      `Not in cash at bank${C.pending ? ` · Shopify ${fmt(C.shopifyPending)}${C.foldPending ? ` · Fold ${fmt(C.foldPending)}` : ''}` : ''} · as at ${fmtDate(today)}`, 'openCashBreakdown()')}
-    ${C.refundsOwed > 0.005 ? item('card-owed', 'Refunds owed', fmt(C.refundsOwed), '', 'Recorded but not yet paid', "reportsTab='refunds';navigate('reports')") : ''}
+    ${item('card-orders', 'Paid orders', String(a.paidOrders), '', "reportsTab='orders';reportsOrderFilter='paid';navigate('reports')")}
+    ${item('card-payouts', 'Pending payouts', fmt(C.pending), 'cash-pending', 'openPayoutSheet()')}
+    ${C.refundsOwed > 0.005 ? item('card-owed', 'Refunds owed', fmt(C.refundsOwed), '', 'openPayoutSheet()') : ''}
   </div>`;
 }
 
-// One card component for sales, profit and cash: same size, type, background and emphasis.
-function perfCard({ label, value, cmp, status, muted, onclick, testid, valueTestid }) {
-  return `<button class="perf-card" onclick="${onclick}" data-testid="${testid}">
-    <div class="perf-label">${label}</div>
-    <div class="perf-value ${muted ? 'muted-value' : ''}" ${valueTestid ? `data-testid="${valueTestid}"` : ''}>${value}</div>
-    <div class="perf-cmp ${cmp.tone}" ${cmp.testid ? `data-testid="${cmp.testid}"` : ''}>${cmp.text}</div>
-    ${status ? `<div class="perf-status ${status.cls || ''}">${status.text}</div>` : ''}
-  </button>`;
-}
-
-function winBannerHTML() {
+// One compact celebration line; history opens in a sheet.
+function winLineHTML() {
   const mv = milestoneView();
   if (!mv.all.length) return '';
-  const history = `<details><summary>Achievements (${mv.all.length})</summary><ul>${mv.all.map(m =>
-    `<li>${esc(m.title)} · ${fmtDateLong(m.achievedOn)}${m.status === 'no-longer' ? ' — no longer met after later refunds' : m.status === 'superseded' ? '' : ''}</li>`).join('')}</ul></details>`;
+  const short = m => esc(m.short || m.title);
   const fresh = mv.fresh[0];
-  if (fresh) return `<div class="win new" role="status" data-testid="win">
-      <div><strong>New win: ${esc(fresh.title)}</strong><br><small>${esc(fresh.detail)}</small></div>
-      <button class="btn btn-secondary btn-sm" onclick="acknowledgeMilestone('${fresh.id}','${fresh.achievedOn}')">Got it</button>${history}</div>`;
+  if (fresh) return `<div class="win-line new" role="status" data-testid="win">
+      <button class="win-text" onclick="openAchievements()" aria-label="New: ${short(fresh)} — open achievements">★ ${short(fresh)}</button>
+      <button class="btn btn-secondary btn-sm" onclick="acknowledgeMilestone('${fresh.id}','${fresh.achievedOn}')">Got it</button></div>`;
   const recent = mv.all.find(m => m.status === 'met' && daysBetween(m.achievedOn, londonToday()) <= 60);
-  if (recent) return `<div class="win" data-testid="win"><div><strong>Recent win: ${esc(recent.title)}</strong><br><small>${esc(recent.detail)}</small></div>${history}</div>`;
-  return `<div class="win" data-testid="win" style="background:var(--surface);border-color:var(--border)"><div><small>Your achievements so far</small></div>${history}</div>`;
+  const text = recent ? `★ ${short(recent)}` : `${mv.all.length} achievement${mv.all.length > 1 ? 's' : ''}`;
+  return `<div class="win-line ${recent ? '' : 'quiet'}" data-testid="win">
+      <button class="win-text" onclick="openAchievements()" aria-label="${text.replace('★ ', '')} — open achievements">${text}<span class="chev" aria-hidden="true">›</span></button></div>`;
+}
+function openAchievements() {
+  const mv = milestoneView();
+  openFormModal('Achievements', `<ul class="ach-list">${mv.all.map(m => `<li><strong>${esc(m.title)}</strong> · ${fmtDateLong(m.achievedOn)}${m.detail ? `<br><span>${esc(m.detail)}</span>` : ''}${m.status === 'no-longer' ? '<br><span>No longer met after later refunds</span>' : ''}</li>`).join('')}</ul>
+    <p class="sheet-note">Recognised automatically from your records — sales wins are about sales only, not profit.</p>`,
+    `<button class="btn btn-primary" onclick="closeModal()">Close</button>`);
+}
+function openInsights() {
+  const list = computeInsights(compareReports(reportPeriod, londonToday()));
+  const go = i => i.link[0] === 'reports' ? `reportsTab='${i.link[1]}';navigate('reports')` : `expenseFilter='${i.link[1]}';navigate('expenses')`;
+  openFormModal('Insights', list.map(i => `<div class="review-item"><div><p style="margin:0">${i.text}</p></div><button class="btn btn-ghost btn-sm" onclick="${go(i)}">Open</button></div>`).join('') || '<p>No insights for this period.</p>',
+    `<button class="btn btn-primary" onclick="closeModal()">Close</button>`);
 }
 
 function renderOverview(el) {
   const today = londonToday();
   const cmp = compareReports(reportPeriod, today);
   const a = cmp.a;
-  const incomplete = a.confidence.status === 'incomplete';
-  const sc = stockCountCheck(today);
   const asAt = computeAsAt(today);
-  const insights = computeInsights(cmp);
-
+  const insight = computeInsights(cmp).find(i => !i.generic && i.short);
   el.innerHTML = `
     <div class="ov-head">
-      <div><div class="ov-title">${esc(state.settings.businessName)}</div><div class="ov-sub">Your business at a glance</div></div>
+      <h2 class="ov-title">${esc(state.settings.businessName)}</h2>
       <div class="ov-actions">
-        <button class="btn btn-primary" onclick="openAddOrder()">+ Add order</button>
-        <button class="btn btn-secondary" onclick="openAddTx()">+ Add expense</button>
+        <button class="btn btn-primary ov-add-phone" onclick="openAddSheet()" aria-haspopup="dialog">+ Add</button>
+        <button class="btn btn-primary ov-add-desk" onclick="openAddOrder()">+ Add order</button>
+        <button class="btn btn-secondary ov-add-desk" onclick="openAddTx()">+ Add expense</button>
       </div>
     </div>
     ${periodBarHTML(cmp)}
-    ${reviewBarHTML(a)}
+    ${reviewRowHTML(a)}
     <div class="perf-grid">
-      ${perfCard({ label: 'Sales after refunds', value: fmt(a.salesAfterRefunds), cmp: cmp.sales, testid: 'card-sales',
-        onclick: "reportsTab='orders';reportsOrderFilter='all';navigate('reports')",
-        status: a.refunds ? { text: `Includes ${fmt(a.refunds)} refunded` } : null })}
-      ${perfCard({ label: 'Operating profit', value: incomplete ? `${fmt(a.operatingProfit)}*` : fmt(a.operatingProfit), muted: incomplete, testid: 'card-profit',
-        cmp: incomplete ? { text: 'Comparison unavailable — product costs missing', tone: '' } : cmp.profit,
-        onclick: "reportsTab='pl';navigate('reports')",
-        status: incomplete ? { cls: 'err', text: `*Incomplete — ${a.missingCost.length} order${a.missingCost.length > 1 ? 's' : ''} missing product costs` }
-              : a.confidence.status === 'estimated' ? { text: a.confidence.label } : null })}
+      ${salesCardHTML(a, cmp)}
+      ${profitCardHTML(a, cmp)}
       ${cashCardHTML(today)}
     </div>
-    ${supportRowHTML(a, cmp, today)}
-    ${winBannerHTML()}
-    ${insights.length ? `<section class="insights"><h3>Insights</h3><ul>${insights.map(i =>
-      `<li><span>${i.text}</span><button class="linkbtn" onclick="${i.link[0] === 'reports' ? `reportsTab='${i.link[1]}';navigate('reports')` : `expenseFilter='${i.link[1]}';navigate('expenses')`}">Details</button></li>`).join('')}</ul></section>` : ''}
-    <div class="ov-bottom">
-      <section class="card"><h3>Sales and operating profit by month</h3>
-        <div class="chart-wrap"><canvas id="trend-chart" aria-label="Monthly sales and operating profit"></canvas></div>
-        <div id="trend-months" style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap" aria-label="Open a month"></div>
-      </section>
-      <section class="card stock-mini"><h3>Stock — as at today</h3>
-        <div class="big">${fmt(asAt.inventory)}</div>
-        <p>Book value at landed cost: purchases less the cost of scarves sold or given away.</p>
-        ${sc.hasCount ? `<p style="margin-top:8px">Last count ${fmt(sc.value)}${sc.date ? ` on ${fmtDateLong(sc.date)}` : ' (undated)'}${sc.impossible ? ' — <span class="neg-text">higher than everything bought; check it</span>' : sc.large ? ` — differs by ${fmt(sc.variance)}` : ''}.</p>` : ''}
-      </section>
-    </div>`;
+    ${supportRowHTML(a, today)}
+    ${winLineHTML()}
+    <section class="card trend-card no-swipe"><h3>Sales &amp; profit</h3>
+      <div class="chart-wrap"><canvas id="trend-chart" role="img" aria-label="Monthly sales and operating profit — figures in the table below"></canvas></div>
+      <div id="trend-detail" class="trend-detail" aria-live="polite"></div>
+      <details class="trend-table"><summary>Monthly figures</summary><div id="trend-months"></div></details>
+    </section>
+    ${insight ? `<div class="insight-line" data-testid="insight"><span>${insight.short}</span><button class="linkbtn" onclick="openInsights()">Details</button></div>` : ''}
+    <button class="support-item stock-line" data-testid="stock-line" onclick="openStockSheet()"><span class="support-label">Stock value</span> <strong>${fmt(asAt.inventory)}</strong> <span class="support-label">· As at today</span></button>`;
+  trendSelected = null;
   drawTrend(today);
 }
 
 function openMonthReport(y, m) { reportPeriod = { kind: 'monthOf', y, m }; reportsTab = 'pl'; navigate('reports'); }
 
+function trendLabel(s, i, series) {
+  const yr = (i === 0 || s.m === 1) && series.some(x => x.y !== s.y) ? ` ${String(s.y).slice(-2)}` : '';
+  return `${MONTHS_SHORT[s.m - 1]}${yr}${s.complete ? '' : '*'}`;
+}
+function selectTrendMonth(i) {
+  const series = window.__trend || []; const s = series[i]; if (!s) return;
+  trendSelected = i;
+  const el = document.getElementById('trend-detail'); if (!el) return;
+  el.innerHTML = `<span><strong>${MONTHS_LONG[s.m - 1]} ${s.y}${s.complete ? '' : ' so far'}</strong> · Sales ${fmt(s.sales)} · Profit ${s.incomplete ? 'incomplete' : fmt(s.profit)}</span>
+    <button class="btn btn-secondary btn-sm" onclick="openMonthReport(${s.y},${s.m})">Open report</button>`;
+}
 function drawTrend(today) {
-  const series = monthlySeries(today, 12);
+  const series = monthlySeries(today, isPhone() ? 6 : 12);
   window.__trend = series;
+  const anyIncomplete = series.some(s => s.incomplete);
+  const detail = document.getElementById('trend-detail');
+  if (detail) detail.innerHTML = `<span class="sheet-note" style="margin:0">Tap a month for its figures.${series.some(s => !s.complete) ? ' * so far.' : ''}${anyIncomplete ? ' Profit is left out where product costs are missing.' : ''}</span>`;
   const months = document.getElementById('trend-months');
-  if (months) months.innerHTML = series.map(s => `<button class="chip" onclick="openMonthReport(${s.y},${s.m})">${s.label}</button>`).join('');
+  if (months) months.innerHTML = `<table class="cash-break"><tr><th>Month</th><th class="num">Sales</th><th class="num">Profit</th><th></th></tr>${series.slice().reverse().map(s =>
+    `<tr><td>${MONTHS_SHORT[s.m - 1]} ${s.y}${s.complete ? '' : '*'}</td><td class="num">${fmt(s.sales)}</td><td class="num">${s.incomplete ? 'incomplete' : fmt(s.profit)}</td>
+      <td class="num"><button class="linkbtn" onclick="openMonthReport(${s.y},${s.m})" aria-label="Open ${MONTHS_LONG[s.m - 1]} ${s.y} report">Open</button></td></tr>`).join('')}</table>`;
   if (typeof Chart === 'undefined') return;
   if (trendChart) trendChart.destroy();
   const ctx = document.getElementById('trend-chart');
   if (!ctx) return;
+  const money = v => Math.abs(v) >= 1000 ? `£${(v / 1000).toFixed(v % 1000 === 0 ? 0 : 1)}k` : `£${v}`;
   trendChart = new Chart(ctx.getContext('2d'), {
     data: {
-      labels: series.map(s => s.label + (s.complete ? '' : ' (so far)')),
+      labels: series.map((s, i) => trendLabel(s, i, series)),
       datasets: [
-        { type: 'bar', label: 'Sales after refunds', data: series.map(s => s.sales), backgroundColor: '#C4A88A', borderRadius: 5, order: 2 },
-        { type: 'line', label: 'Operating profit', data: series.map(s => (s.incomplete ? null : s.profit)), borderColor: '#3E7055', backgroundColor: '#3E7055', spanGaps: false, tension: .25, order: 1 },
+        { type: 'bar', label: 'Sales', data: series.map(s => s.sales), backgroundColor: '#C4A88A', borderRadius: 5, order: 2 },
+        { type: 'line', label: 'Operating profit', data: series.map(s => (s.incomplete ? null : s.profit)), borderColor: '#3E7055', backgroundColor: '#3E7055', borderWidth: 2.5, pointRadius: 4, spanGaps: false, tension: .25, order: 1 },
       ],
     },
     options: {
       maintainAspectRatio: false, responsive: true,
-      onClick: (e, els) => { if (els && els.length) { const s = series[els[0].index]; openMonthReport(s.y, s.m); } },
-      plugins: { legend: { display: true, labels: { font: { family: 'Sono', size: 12 } } },
-        tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.raw == null ? 'incomplete costs' : fmt(c.raw)}` } } },
-      scales: { x: { grid: { color: '#F2EEE8' }, ticks: { font: { family: 'Sono', size: 11 } } },
-                y: { grid: { color: '#F2EEE8' }, ticks: { font: { family: 'Sono', size: 11 }, callback: v => '£' + v.toLocaleString() } } },
+      animation: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? false : { duration: 500 },
+      interaction: { mode: 'index', intersect: false },
+      onClick: (e, els) => { if (els && els.length) selectTrendMonth(els[0].index); },
+      plugins: { legend: { display: true, labels: { font: { family: 'Sono, monospace', size: 13 }, boxWidth: 14 } },
+        tooltip: { enabled: !isPhone(), callbacks: { label: c => `${c.dataset.label}: ${c.raw == null ? 'incomplete costs' : fmt(c.raw)}` } } },
+      scales: { x: { grid: { display: false }, ticks: { font: { family: 'Sono, monospace', size: 13 }, maxRotation: 0, autoSkip: false } },
+                y: { grid: { color: '#F2EEE8' }, ticks: { font: { family: 'Sono, monospace', size: 12 }, maxTicksLimit: 5, callback: money } } },
     },
   });
 }
@@ -4423,14 +4620,7 @@ async function exportBackup() {
 // MODAL
 // ═══════════════════════════════════════════════════
 
-function openModal() {
-  document.getElementById('modal-overlay').classList.add('open');
-}
 
-function closeModal() {
-  document.getElementById('modal-overlay').classList.remove('open');
-  if (!_busy && pendingRemoteChange) setTimeout(handleRemoteChange, 0);   // apply remote changes held while the form was open
-}
 
 function closeModalOnOverlay(e) {
   if (e.target === document.getElementById('modal-overlay')) closeModal();
@@ -4703,6 +4893,78 @@ if (PW_STORE.getItem(PW_SESSION_KEY) === '1') {
   setTimeout(() => document.getElementById('pw-input').focus(), 100);
 }
 
+
+// ═══════════════════════════════════════════════════
+// ANDROID BACK, SHEETS AND KEYBOARD
+// ═══════════════════════════════════════════════════
+// Back closes an open sheet first, then returns to the previous app view (with the reporting
+// period it had), and only then leaves the app.
+let modalEntry = false;     // a history entry exists for the open sheet
+let skipPop = 0;            // pops we caused ourselves
+let modalReturnFocus = null;
+
+function historyState(view) { return { nova: 1, view, period: clone(reportPeriod) }; }
+function pushViewHistory(view) {
+  try {
+    if (!history.state || !history.state.nova) { history.replaceState(historyState(view), ''); return; }
+    if (modalEntry) {
+      // navigating from a sheet: its history entry becomes the new view, so Back returns to the view under the sheet
+      modalEntry = false;
+      if (modalOverlay().classList.contains('open')) hideModal();
+      history.replaceState(historyState(view), '');
+      return;
+    }
+    if (history.state.view !== view) history.pushState(historyState(view), '');
+  } catch (e) { /* history unavailable (e.g. sandboxed preview) — navigation still works */ }
+}
+
+// called whenever the period changes, so Back restores the period each view was showing
+function rememberPeriod() { try { if (history.state && history.state.nova) history.replaceState({ ...history.state, period: clone(reportPeriod) }, ''); } catch (e) {} }
+
+function modalOverlay() { return document.getElementById('modal-overlay'); }
+function openModal() {
+  const ov = modalOverlay();
+  if (!ov.classList.contains('open')) modalReturnFocus = document.activeElement;
+  ov.classList.add('open');
+  document.body.classList.add('sheet-open');
+  if (!modalEntry) { try { history.pushState({ ...(history.state || {}), sheet: 1 }, ''); modalEntry = true; } catch (e) {} }
+}
+function hideModal() {
+  modalOverlay().classList.remove('open');
+  document.body.classList.remove('sheet-open');
+  const f = modalReturnFocus; modalReturnFocus = null;
+  if (f && f.isConnected && typeof f.focus === 'function') { try { f.focus({ preventScroll: true }); } catch (e) {} }
+  if (!_busy && pendingRemoteChange) setTimeout(handleRemoteChange, 0);   // apply remote changes held while the form was open
+}
+function closeModal() {
+  hideModal();
+  // drop the sheet's history entry — unless another sheet opened straight away and is using it
+  setTimeout(() => {
+    if (modalEntry && !modalOverlay().classList.contains('open')) { modalEntry = false; skipPop++; try { history.back(); } catch (e) { skipPop--; } }
+  }, 0);
+}
+window.addEventListener('popstate', e => {
+  if (skipPop > 0) { skipPop--; return; }
+  if (modalOverlay().classList.contains('open') || modalEntry) {
+    modalEntry = false;
+    if (_busy) { try { history.pushState({ ...(history.state || {}), sheet: 1 }, ''); modalEntry = true; } catch (err) {} return; }  // never abandon a save in progress
+    hideModal(); return;
+  }
+  if (document.getElementById('more-sheet')?.classList.contains('open')) { closeMore(); }
+  const st = e.state;
+  if (st && st.nova && st.view) {
+    if (st.period) reportPeriod = st.period;
+    navigate(st.view, null, { fromHistory: true });
+  }
+});
+
+// Android keyboard: keep the focused field in view inside a sheet (the layout viewport resizes
+// with interactive-widget=resizes-content; the sheet's body scrolls, its header and footer stay put).
+document.addEventListener('focusin', e => {
+  const t = e.target;
+  if (!t || !t.closest || !t.closest('#modal') || !/^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName)) return;
+  setTimeout(() => { try { t.scrollIntoView({ block: 'center', behavior: 'instant' }); } catch (err) {} }, 250);
+});
 
 document.getElementById('sidebar-date').textContent =
   new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: LONDON_TZ });
