@@ -1,6 +1,6 @@
 // Keep APP_VERSION identical to APP_VERSION in index.html — bump both on every release.
 // Changing this file's bytes is what makes browsers install the new service worker.
-const APP_VERSION = '1.5.014';
+const APP_VERSION = '1.5.016';
 const CACHE_NAME = `nova-finance-${APP_VERSION}`;
 const CORE_ASSETS = ['./index.html', './manifest.json'];
 
@@ -27,7 +27,7 @@ self.addEventListener('fetch', e => {
   // Supabase and CDN requests are not intercepted.
   if (e.request.mode === 'navigate') {
     e.respondWith(
-      fetch(e.request)
+      fetch(e.request.url, { cache: 'no-cache', credentials: 'same-origin' })   // revalidate: never a stale HTTP-cached page
         .then(res => {
           if (res.ok) { const copy = res.clone(); caches.open(CACHE_NAME).then(c => c.put('./index.html', copy)); }
           return res;

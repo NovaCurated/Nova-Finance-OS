@@ -1351,6 +1351,48 @@
       .modal .review-item .btn { align-self: flex-start; }
     }
 
+    /* ── Home page back to basics (1.5.015) ──────── */
+    .review-icon { min-width: 48px; min-height: 48px; padding: 0 12px; gap: 6px; justify-content: center; border-radius: 999px; font-size: 15px; font-weight: 600; }
+    .review-icon svg { width: 20px; height: 20px; }
+    .review-icon.warn { background: var(--warn-bg); color: #8A5A12; border: 1px solid #E8C98F; }
+    .review-icon.err { background: var(--neg-bg); color: var(--neg); border: 1px solid #EBB5A9; }
+    .period-wrap.minimal { margin-bottom: 10px; }
+    .badge.plain { background: var(--surface-alt); color: var(--text-2); border: 1px solid var(--border-light); }
+    .perf-cmp:empty { display: none; }
+    .view-overview .perf-card { grid-template-rows: auto auto auto; }
+    .support-item .support-label { display: inline-flex; align-items: center; gap: 5px; }
+    .trophy { width: 17px; height: 17px; color: #A0712A; flex-shrink: 0; }
+    .trend-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; margin-bottom: 2px; }
+    .view-overview .trend-head h3 { margin: 0 0 0 4px; white-space: nowrap; }
+    .win-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 48px; padding: 0 10px; background: #FBF3E4; border: 1px solid #EBD5AE; border-radius: 999px;
+      font-family: 'Sono', monospace; font-size: 14px; color: var(--text-2); cursor: pointer; white-space: nowrap; }
+    .win-chip strong { color: var(--text); }
+    .win-chip.new { box-shadow: 0 0 0 2px #E8C98F inset; animation: winIn .5s ease-out both; }
+    @media (prefers-reduced-motion: reduce) { .win-chip.new { animation: none; } }
+    .view-overview .trend-card { padding: 14px 12px 10px; margin-bottom: 4px; }
+    .view-overview .trend-card .chart-wrap { height: 440px; }
+    .report-extra { margin-top: 12px; padding: 0 16px; }
+    .report-extra summary { min-height: 48px; display: flex; align-items: center; cursor: pointer; font-weight: 600; font-size: 14px; }
+    .report-extra[open] { padding-bottom: 12px; }
+
+    @media (max-width: 768px) {
+      /* the content area ends where the bottom navigation begins, so nothing can sit underneath it */
+      #main { position: fixed; top: 0; left: 0; right: 0; bottom: calc(60px + env(safe-area-inset-bottom)); height: auto; padding-bottom: 0; }
+      #bottom-nav { height: calc(60px + env(safe-area-inset-bottom)); }
+      .page-content { padding-bottom: 16px; }
+      .view-overview .page-content { padding: 10px 12px 14px; }
+      .ov-head { margin-bottom: 8px; }
+      .view-overview .perf-grid { gap: 8px; margin-bottom: 8px; }
+      .view-overview .perf-card { grid-template-areas: "label value" "label badge"; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; min-height: 60px; padding: 10px 14px; row-gap: 2px; }
+      .view-overview .perf-label { align-self: center; font-size: 15px; }
+      .view-overview .perf-badge-wrap:empty { display: none; }
+      .support-row { gap: 8px; margin-bottom: 8px; }
+      .support-item { min-height: 48px; padding: 4px 12px; }
+      .view-overview .trend-card .chart-wrap { height: clamp(340px, 56vh, 500px); }
+    }
+    .more-ver { font-size: 13px; color: var(--text-3); padding: 12px 10px 4px; }
+    @media (max-width: 768px) { .support-row > .support-item:nth-child(3):last-child { grid-column: 1 / -1; } }
+
   </style>
 </head>
 <body>
@@ -1437,6 +1479,7 @@
   <button role="menuitem" onclick="navigate('balance')">Balance</button>
   <button role="menuitem" onclick="navigate('sync')">Sync &amp; backup</button>
   <button role="menuitem" onclick="navigate('settings')">Settings</button>
+  <div class="more-ver" id="more-ver" data-testid="app-version"></div>
 </div>
 <nav id="bottom-nav" aria-label="Main">
   <button class="bottom-nav-item" data-view="overview" onclick="navigate('overview')">
@@ -1456,7 +1499,7 @@
 // VERSION & PWA
 // ═══════════════════════════════════════════════════
 
-const APP_VERSION = '1.5.014';
+const APP_VERSION = '1.5.016';
 let swRegistration = null;
 let deferredInstallPrompt = null;
 let lastSyncTime = null;
@@ -2555,6 +2598,7 @@ function computeMilestones(today = londonToday()) {
     .sort((x, y) => (x.o.date < y.o.date ? -1 : x.o.date > y.o.date ? 1 : x.o.id - y.o.id));
   [1, 10, 25, 50, 100].forEach(n => {
     if (paid.length >= n) out.push({ id: `orders-${n}`, kind: 'orders', title: n === 1 ? 'First paid order' : `${n} paid orders`, achievedOn: paid[n - 1].o.date,
+      chip: n === 1 ? { label: 'First order', value: fmtDate(paid[0].o.date) } : { label: 'Milestone', value: `${n} orders` },
       short: n === 1 ? `First paid order · ${fmtDate(paid[0].o.date)}` : `${n} paid orders · ${fmtDate(paid[n - 1].o.date)}`,
       detail: n === 1 ? `${paid[0].o.orderNum || 'First order'} · ${fmtDateLong(paid[0].o.date)}` : `Reached on ${fmtDateLong(paid[n - 1].o.date)}`, status: 'met' });
   });
@@ -2570,7 +2614,7 @@ function computeMilestones(today = londonToday()) {
   [1000, 2500, 5000].forEach(th => {
     let run = 0, hit = null;
     for (const e of events) { run += e.v; if (run >= th - 0.005 && !hit) hit = e.d; }
-    if (hit) out.push({ id: `sales-${th}`, kind: 'sales', title: `${fmt(th, 0)} in sales after refunds`, achievedOn: hit, short: `${fmt(th, 0)} total sales · ${fmtDate(hit)}`,
+    if (hit) out.push({ id: `sales-${th}`, kind: 'sales', title: `${fmt(th, 0)} in sales after refunds`, achievedOn: hit, short: `${fmt(th, 0)} total sales · ${fmtDate(hit)}`, chip: { label: 'Total sales', value: `${fmt(th, 0)}+` },
       detail: total >= th - 0.005 ? `First reached ${fmtDateLong(hit)}` : `Reached ${fmtDateLong(hit)}, now ${fmt(total)} after later refunds`,
       status: total >= th - 0.005 ? 'met' : 'no-longer' });
   });
@@ -2588,12 +2632,14 @@ function computeMilestones(today = londonToday()) {
     let prof = null;
     for (const m of months) { if (m.incomplete) break; if (m.profit > 0.005) { prof = m; break; } }
     if (prof) out.push({ id: `first-profit-${prof.y}-${prof.m}`, kind: 'profit', title: 'First profitable month',
+      chip: { label: 'First profit', value: MONTHS_SHORT[prof.m - 1] },
       short: `First profitable month · ${MONTHS_SHORT[prof.m - 1]} · ${fmt(prof.profit)} profit`, achievedOn: addDays(monthEnd(prof.y, prof.m), 1), detail: `${MONTHS_LONG[prof.m - 1]} ${prof.y}: operating profit ${fmt(prof.profit)}`, status: 'met' });
     if (months.length >= 3) {
       const best = Math.max(...months.map(m => m.sales));
       const tied = months.filter(m => Math.abs(m.sales - best) < 0.005);
       const latest = tied[tied.length - 1];
       if (best > 0) out.push({ id: `best-month-${latest.y}-${String(latest.m).padStart(2, '0')}`, kind: 'best', title: tied.length > 1 ? 'Joint best sales month' : 'Best sales month so far',
+        chip: { label: tied.length > 1 ? 'Joint best month' : 'Best month', value: fmt(best) },
         short: `${tied.length > 1 ? 'Joint best' : 'Best'} sales month · ${MONTHS_SHORT[latest.m - 1]} · ${fmt(best)}`,
         achievedOn: addDays(monthEnd(latest.y, latest.m), 1),
         detail: `${MONTHS_LONG[latest.m - 1]} ${latest.y}: ${fmt(best)} sales after refunds${tied.length > 1 ? ` (level with ${tied.slice(0, -1).map(m => `${MONTHS_SHORT[m.m - 1]} ${m.y}`).join(', ')})` : ''}. Sales only — not a profit record.`,
@@ -2627,7 +2673,7 @@ function milestoneTitleFromId(id) {
   if (id.startsWith('first-profit-')) return 'First profitable month (no longer applies after corrections)';
   return id;
 }
-async function acknowledgeMilestone(id, achievedOn) {
+async function acknowledgeMilestone(id, achievedOn, opts = {}) {
   // re-read and merge so another device's acknowledgements are never lost
   const { data, error: readErr } = await sb.from('settings').select('*').eq('key', 'milestones').maybeSingle();
   if (readErr) { toast('Could not save — the win will show again next time.'); return; }
@@ -2740,6 +2786,7 @@ function renderView(view) {
   else fn(content, actions);
   const notices = globalNoticesHTML();
   if (notices) content.insertAdjacentHTML('afterbegin', notices);
+  if (typeof updatePending !== 'undefined' && updatePending) maybeApplyPendingUpdate();
 }
 
 // ── Shared period selector (Overview and Reports use the same period) ──
@@ -2763,7 +2810,7 @@ function fmtRangeShort(from, to) {
   if (A.y !== B.y) return `${fmtDateLong(from)} – ${fmtDateLong(to)}`;
   return `${A.d} ${MONTHS_SHORT[A.m - 1]} – ${B.d} ${MONTHS_SHORT[B.m - 1]} ${B.y}`;
 }
-function periodBarHTML(cmp) {
+function periodBarHTML(cmp, { minimal = false } = {}) {
   const k = reportPeriod.kind === 'monthOf' ? (cmp.cur.kind === 'mtd' ? 'month' : 'custom-month') : reportPeriod.kind;
   const btn = (kind, short, long) => `<button type="button" aria-pressed="${k === kind}" aria-label="${long}" onclick="setPeriod('${kind}')"><span class="sm">${short}</span><span class="lg">${long}</span></button>`;
   const custom = reportPeriod.kind === 'custom' ? `<div class="custom-range"><label for="pf">From</label>
@@ -2773,6 +2820,9 @@ function periodBarHTML(cmp) {
   const today = londonToday();
   const to = cmp.cur.to > today ? today : cmp.cur.to;
   const label = reportPeriod.kind === 'monthOf' && k === 'custom-month' ? `${MONTHS_LONG[reportPeriod.m - 1]} ${reportPeriod.y} · ` : '';
+  const segHTML = `<div class="seg" role="group" aria-label="Reporting period">${btn('month', 'Month', 'This month')}${btn('lastMonth', 'Last month', 'Last month')}${btn('ytd', 'YTD', 'YTD')}${btn('custom', 'Custom', 'Custom')}</div>`;
+  // Home page: presets need no dates; Custom shows only the chosen dates (its date fields).
+  if (minimal) return `<div class="period-wrap minimal">${segHTML}${custom}${reportPeriod.kind === 'monthOf' ? `<div class="period-dates2"><span class="period-sel">${MONTHS_LONG[reportPeriod.m - 1]} ${reportPeriod.y}</span></div>` : ''}</div>`;
   return `<div class="period-wrap">
     <div class="seg" role="group" aria-label="Reporting period">${btn('month', 'Month', 'This month')}${btn('lastMonth', 'Last month', 'Last month')}${btn('ytd', 'YTD', 'YTD')}${btn('custom', 'Custom', 'Custom')}</div>
     ${custom}
@@ -2872,7 +2922,6 @@ function openFormModal(title, bodyHTML, footerHTML) {
 // Explanations live in detail sheets opened by tapping.
 // ═══════════════════════════════════════════════════
 let trendChart = null;
-let trendSelected = null;          // index of the month tapped on the chart
 const isPhone = () => window.matchMedia('(max-width: 768px)').matches;
 
 // One component for sales, profit and cash: same size, number style and emphasis.
@@ -2882,31 +2931,29 @@ function perfCard({ label, value, sub, subTone = '', badge, muted, onclick, test
     <span class="perf-label">${label}</span>
     <span class="perf-value ${muted ? 'muted-value' : ''}" ${valueTestid ? `data-testid="${valueTestid}"` : ''}>${value}</span>
     <span class="perf-cmp ${subTone}" ${subTestid ? `data-testid="${subTestid}"` : ''}>${sub || ''}</span>
-    <span class="perf-badge-wrap">${badge ? `<span class="badge ${badge.cls}" data-testid="${testid}-badge">${badge.text}</span>` : ''}</span>
+    <span class="perf-badge-wrap">${badge ? `<span class="badge ${badge.cls}" data-testid="${testid}-badge" ${badge.aria ? `aria-label="${badge.aria}"` : ''}>${badge.text}</span>` : ''}</span>
   </button>`;
 }
-function salesCardHTML(a, cmp) {
-  return perfCard({ label: 'Sales', value: fmt(a.salesAfterRefunds), testid: 'card-sales', onclick: "openFigureSheet('sales')",
-    sub: cmp.sales.na ? '' : cmp.sales.text, subTone: cmp.sales.tone });
+function salesCardHTML(a) {
+  return perfCard({ label: 'Sales', value: fmt(a.salesAfterRefunds), testid: 'card-sales', onclick: "openFigureSheet('sales')" });
 }
-function profitCardHTML(a, cmp) {
+function profitCardHTML(a) {
   const st = a.confidence.status;
   const incomplete = st === 'incomplete';
   return perfCard({ label: 'Operating profit', value: incomplete ? `${fmt(a.operatingProfit)}*` : fmt(a.operatingProfit), muted: incomplete,
     testid: 'card-profit', onclick: "openFigureSheet('profit')",
-    sub: incomplete ? `*${a.missingCost.length} order${a.missingCost.length > 1 ? 's' : ''} missing product costs` : cmp.profit.na ? '' : cmp.profit.text,
-    subTone: incomplete ? 'err' : cmp.profit.tone,
     badge: incomplete ? { cls: 'err', text: 'Incomplete' } : st === 'estimated' ? { cls: 'warn', text: 'Estimated' } : null });
 }
-// Cash is an as-at figure: it never follows the reporting period.
+// Cash at bank as shown on the home page: the bank-confirmed balance when one is recorded for today, otherwise the estimate.
+function cashHeadline(today) { const conf = confirmedBalance(today); return conf && conf.asAt === today ? conf.amount : cashAt(today).cash; }
+// Cash is an as-at figure: it never follows the reporting period. The badge carries its date.
 function cashCardHTML(today) {
   const C = cashAt(today);
   const conf = confirmedBalance(today);
   const confirmedToday = conf && conf.asAt === today;
-  const t = parseYMD(today);
-  return perfCard({ label: 'Cash at bank', value: fmt(confirmedToday ? conf.amount : C.cash), testid: 'card-cash', valueTestid: 'cash-figure',
-    sub: `As at ${t.d} ${MONTHS_SHORT[t.m - 1]}`, subTestid: 'cash-asat', onclick: 'openCashBreakdown()',
-    badge: confirmedToday ? null : { cls: 'warn', text: 'Estimated' } });
+  const t = parseYMD(today), d = `${t.d} ${MONTHS_SHORT[t.m - 1]}`;
+  return perfCard({ label: 'Cash at bank', value: fmt(confirmedToday ? conf.amount : C.cash), testid: 'card-cash', valueTestid: 'cash-figure', onclick: 'openCashBreakdown()',
+    badge: confirmedToday ? { cls: 'plain', text: d, aria: `As at ${d}` } : { cls: 'warn', text: `Estimated · ${d}`, aria: `Estimated, as at ${d}` } });
 }
 
 // ── Detail sheets ──
@@ -2970,6 +3017,7 @@ function cashBreakdownHTML(today) {
       ${row('Loan repayments and drawings', C.loanRepay + C.drawings, '−')}
       <tr class="total"><td>Estimated cash at bank</td><td class="num">${fmt(C.cash)}</td></tr>
     </table>
+    <p class="cash-note"><strong>Cash inc. pending payouts: ${fmt(cashHeadline(today) + C.pending)}</strong> (cash at bank ${fmt(cashHeadline(today))} + pending ${fmt(C.pending)}).</p>
     <p class="cash-note">Not included: pending payouts of ${fmt(C.pending)}${C.refundsOwed > 0.005 ? ` and refunds owed to customers of ${fmt(C.refundsOwed)}` : ''}.
       Loans and your own money put in raise cash but are not sales or profit. Only a balance from your bank statement confirms this figure.</p>
   </div>`;
@@ -3000,7 +3048,19 @@ function openAddSheet() {
     `<button class="btn btn-ghost" onclick="closeModal()">Close</button>`);
 }
 
-// Slim supporting row beneath the three figures.
+// Small supporting totals, plus a visual win when there is one.
+const TROPHY = '<svg class="trophy" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>';
+function winChip() {
+  const mv = milestoneView();
+  const pick = mv.fresh[0] || mv.all.find(m => m.status === 'met' && m.achievedOn && daysBetween(m.achievedOn, londonToday()) <= 60);
+  if (!pick || !pick.chip) return null;   // only wins that read as a label + value
+  return { m: pick, fresh: mv.fresh.includes(pick) };
+}
+function winChipHTML() {
+  const w = winChip();
+  return w ? `<button class="win-chip ${w.fresh ? 'new' : ''}" data-testid="win" onclick="openAchievements()" aria-label="${esc(w.m.chip.label)} ${esc(w.m.chip.value)}${w.fresh ? ', new' : ''} — achievements">
+      ${TROPHY}<span>${esc(w.m.chip.label)}</span> <strong>${esc(w.m.chip.value)}</strong></button>` : '';
+}
 function supportRowHTML(a, today) {
   const C = cashAt(today);
   const item = (testid, label, value, valueTestid, onclick) => `<button class="support-item" data-testid="${testid}" onclick="${onclick}">
@@ -3009,117 +3069,105 @@ function supportRowHTML(a, today) {
   return `<div class="support-row">
     ${item('card-orders', 'Paid orders', String(a.paidOrders), '', "reportsTab='orders';reportsOrderFilter='paid';navigate('reports')")}
     ${item('card-payouts', 'Pending payouts', fmt(C.pending), 'cash-pending', 'openPayoutSheet()')}
-    ${C.refundsOwed > 0.005 ? item('card-owed', 'Refunds owed', fmt(C.refundsOwed), '', 'openPayoutSheet()') : ''}
+    ${item('card-cash-total', 'Cash inc. pending', fmt(cashHeadline(today) + C.pending), 'cash-inc-pending', 'openCashBreakdown()')}
   </div>`;
 }
 
-// One compact celebration line; history opens in a sheet.
-function winLineHTML() {
+function achievementsListHTML() {
   const mv = milestoneView();
-  if (!mv.all.length) return '';
-  const short = m => esc(m.short || m.title);
-  const fresh = mv.fresh[0];
-  if (fresh) return `<div class="win-line new" role="status" data-testid="win">
-      <button class="win-text" onclick="openAchievements()" aria-label="New: ${short(fresh)} — open achievements">★ ${short(fresh)}</button>
-      <button class="btn btn-secondary btn-sm" onclick="acknowledgeMilestone('${fresh.id}','${fresh.achievedOn}')">Got it</button></div>`;
-  const recent = mv.all.find(m => m.status === 'met' && daysBetween(m.achievedOn, londonToday()) <= 60);
-  const text = recent ? `★ ${short(recent)}` : `${mv.all.length} achievement${mv.all.length > 1 ? 's' : ''}`;
-  return `<div class="win-line ${recent ? '' : 'quiet'}" data-testid="win">
-      <button class="win-text" onclick="openAchievements()" aria-label="${text.replace('★ ', '')} — open achievements">${text}<span class="chev" aria-hidden="true">›</span></button></div>`;
+  return mv.all.length ? `<ul class="ach-list">${mv.all.map(m => `<li><strong>${esc(m.title)}</strong> · ${fmtDateLong(m.achievedOn)}${m.detail ? `<br><span>${esc(m.detail)}</span>` : ''}${m.status === 'no-longer' ? '<br><span>No longer met after later refunds</span>' : ''}</li>`).join('')}</ul>` : '<p class="sheet-note">None yet.</p>';
 }
-function openAchievements() {
+function insightsListHTML(cmp) {
+  const list = computeInsights(cmp);
+  const go = i => i.link[0] === 'reports' ? `reportsTab='${i.link[1]}';navigate('reports')` : `expenseFilter='${i.link[1]}';navigate('expenses')`;
+  return list.map(i => `<div class="review-item"><div><p style="margin:0">${i.text}</p></div><button class="btn btn-ghost btn-sm" onclick="${go(i)}">Open</button></div>`).join('') || '<p class="sheet-note">No insights for this period.</p>';
+}
+async function openAchievements() {
   const mv = milestoneView();
+  const fresh = mv.fresh.slice();
   openFormModal('Achievements', `<ul class="ach-list">${mv.all.map(m => `<li><strong>${esc(m.title)}</strong> · ${fmtDateLong(m.achievedOn)}${m.detail ? `<br><span>${esc(m.detail)}</span>` : ''}${m.status === 'no-longer' ? '<br><span>No longer met after later refunds</span>' : ''}</li>`).join('')}</ul>
     <p class="sheet-note">Recognised automatically from your records — sales wins are about sales only, not profit.</p>`,
     `<button class="btn btn-primary" onclick="closeModal()">Close</button>`);
+  // seeing the win counts as acknowledging it (synced across devices)
+  for (const m of fresh) await acknowledgeMilestone(m.id, m.achievedOn, { quiet: true });
 }
-function openInsights() {
-  const list = computeInsights(compareReports(reportPeriod, londonToday()));
-  const go = i => i.link[0] === 'reports' ? `reportsTab='${i.link[1]}';navigate('reports')` : `expenseFilter='${i.link[1]}';navigate('expenses')`;
-  openFormModal('Insights', list.map(i => `<div class="review-item"><div><p style="margin:0">${i.text}</p></div><button class="btn btn-ghost btn-sm" onclick="${go(i)}">Open</button></div>`).join('') || '<p>No insights for this period.</p>',
-    `<button class="btn btn-primary" onclick="closeModal()">Close</button>`);
+function reviewIconHTML(a) {
+  const n = overviewIssues(a).length;
+  if (!n) return '';
+  const lvl = a.confidence.status === 'incomplete' ? 'err' : 'warn';
+  return `<button class="btn review-icon ${lvl}" data-testid="review-row" onclick="openReviewSheet()" aria-label="${n} item${n > 1 ? 's' : ''} to review">
+    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg><span>${n}</span></button>`;
 }
 
 function renderOverview(el) {
   const today = londonToday();
   const cmp = compareReports(reportPeriod, today);
   const a = cmp.a;
-  const asAt = computeAsAt(today);
-  const insight = computeInsights(cmp).find(i => !i.generic && i.short);
   el.innerHTML = `
     <div class="ov-head">
       <h2 class="ov-title">${esc(state.settings.businessName)}</h2>
       <div class="ov-actions">
+        ${reviewIconHTML(a)}
         <button class="btn btn-primary ov-add-phone" onclick="openAddSheet()" aria-haspopup="dialog">+ Add</button>
         <button class="btn btn-primary ov-add-desk" onclick="openAddOrder()">+ Add order</button>
         <button class="btn btn-secondary ov-add-desk" onclick="openAddTx()">+ Add expense</button>
       </div>
     </div>
-    ${periodBarHTML(cmp)}
-    ${reviewRowHTML(a)}
+    ${periodBarHTML(cmp, { minimal: true })}
     <div class="perf-grid">
-      ${salesCardHTML(a, cmp)}
-      ${profitCardHTML(a, cmp)}
+      ${salesCardHTML(a)}
+      ${profitCardHTML(a)}
       ${cashCardHTML(today)}
     </div>
     ${supportRowHTML(a, today)}
-    ${winLineHTML()}
-    <section class="card trend-card no-swipe"><h3>Sales &amp; profit</h3>
-      <div class="chart-wrap"><canvas id="trend-chart" role="img" aria-label="Monthly sales and operating profit — figures in the table below"></canvas></div>
-      <div id="trend-detail" class="trend-detail" aria-live="polite"></div>
-      <details class="trend-table"><summary>Monthly figures</summary><div id="trend-months"></div></details>
-    </section>
-    ${insight ? `<div class="insight-line" data-testid="insight"><span>${insight.short}</span><button class="linkbtn" onclick="openInsights()">Details</button></div>` : ''}
-    <button class="support-item stock-line" data-testid="stock-line" onclick="openStockSheet()"><span class="support-label">Stock value</span> <strong>${fmt(asAt.inventory)}</strong> <span class="support-label">· As at today</span></button>`;
-  trendSelected = null;
+    <section class="card trend-card no-swipe" aria-label="Sales and profit by month">
+      <div class="trend-head"><h3>Sales &amp; profit</h3>${winChipHTML()}</div>
+      <div class="chart-wrap"><canvas id="trend-chart" role="img" aria-label="Monthly sales and operating profit"></canvas></div>
+    </section>`;
   drawTrend(today);
 }
 
-function openMonthReport(y, m) { reportPeriod = { kind: 'monthOf', y, m }; reportsTab = 'pl'; navigate('reports'); }
-
-function trendLabel(s, i, series) {
-  const yr = (i === 0 || s.m === 1) && series.some(x => x.y !== s.y) ? ` ${String(s.y).slice(-2)}` : '';
-  return `${MONTHS_SHORT[s.m - 1]}${yr}${s.complete ? '' : '*'}`;
-}
-function selectTrendMonth(i) {
-  const series = window.__trend || []; const s = series[i]; if (!s) return;
-  trendSelected = i;
-  const el = document.getElementById('trend-detail'); if (!el) return;
-  el.innerHTML = `<span><strong>${MONTHS_LONG[s.m - 1]} ${s.y}${s.complete ? '' : ' so far'}</strong> · Sales ${fmt(s.sales)} · Profit ${s.incomplete ? 'incomplete' : fmt(s.profit)}</span>
-    <button class="btn btn-secondary btn-sm" onclick="openMonthReport(${s.y},${s.m})">Open report</button>`;
-}
 function drawTrend(today) {
-  const series = monthlySeries(today, isPhone() ? 6 : 12);
+  const phone = isPhone();
+  const series = monthlySeries(today, phone ? 6 : 12);
   window.__trend = series;
-  const anyIncomplete = series.some(s => s.incomplete);
-  const detail = document.getElementById('trend-detail');
-  if (detail) detail.innerHTML = `<span class="sheet-note" style="margin:0">Tap a month for its figures.${series.some(s => !s.complete) ? ' * so far.' : ''}${anyIncomplete ? ' Profit is left out where product costs are missing.' : ''}</span>`;
-  const months = document.getElementById('trend-months');
-  if (months) months.innerHTML = `<table class="cash-break"><tr><th>Month</th><th class="num">Sales</th><th class="num">Profit</th><th></th></tr>${series.slice().reverse().map(s =>
-    `<tr><td>${MONTHS_SHORT[s.m - 1]} ${s.y}${s.complete ? '' : '*'}</td><td class="num">${fmt(s.sales)}</td><td class="num">${s.incomplete ? 'incomplete' : fmt(s.profit)}</td>
-      <td class="num"><button class="linkbtn" onclick="openMonthReport(${s.y},${s.m})" aria-label="Open ${MONTHS_LONG[s.m - 1]} ${s.y} report">Open</button></td></tr>`).join('')}</table>`;
   if (typeof Chart === 'undefined') return;
   if (trendChart) trendChart.destroy();
   const ctx = document.getElementById('trend-chart');
   if (!ctx) return;
   const money = v => Math.abs(v) >= 1000 ? `£${(v / 1000).toFixed(v % 1000 === 0 ? 0 : 1)}k` : `£${v}`;
+  // the current, incomplete month: two-line label and a lighter bar — no explanation needed
+  const labels = series.map((s, i) => {
+    const yr = (i === 0 || s.m === 1) && series.some(x => x.y !== s.y) ? ` ${String(s.y).slice(-2)}` : '';
+    return s.complete ? `${MONTHS_SHORT[s.m - 1]}${yr}` : [`${MONTHS_SHORT[s.m - 1]}${yr}`, 'so far'];
+  });
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   trendChart = new Chart(ctx.getContext('2d'), {
     data: {
-      labels: series.map((s, i) => trendLabel(s, i, series)),
+      labels,
       datasets: [
-        { type: 'bar', label: 'Sales', data: series.map(s => s.sales), backgroundColor: '#C4A88A', borderRadius: 5, order: 2 },
-        { type: 'line', label: 'Operating profit', data: series.map(s => (s.incomplete ? null : s.profit)), borderColor: '#3E7055', backgroundColor: '#3E7055', borderWidth: 2.5, pointRadius: 4, spanGaps: false, tension: .25, order: 1 },
+        { type: 'bar', label: 'Sales', data: series.map(s => s.sales), order: 2, borderRadius: 6, maxBarThickness: 46,
+          backgroundColor: series.map(s => (s.complete ? '#C4A88A' : 'rgba(196,168,138,.45)')),
+          borderColor: series.map(s => (s.complete ? '#C4A88A' : '#A88C6E')), borderWidth: series.map(s => (s.complete ? 0 : 1.5)), borderDash: [4, 3] },
+        { type: 'line', label: 'Profit', data: series.map(s => (s.incomplete ? null : s.profit)), order: 1, borderColor: '#2F6248', backgroundColor: '#2F6248',
+          borderWidth: 3, pointRadius: 4.5, pointHoverRadius: 6, spanGaps: false, tension: .25,
+          segment: { borderDash: c => (series[c.p1DataIndex] && !series[c.p1DataIndex].complete ? [6, 4] : undefined) } },
       ],
     },
     options: {
       maintainAspectRatio: false, responsive: true,
-      animation: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? false : { duration: 500 },
+      animation: reduce ? false : { duration: 400 },
       interaction: { mode: 'index', intersect: false },
-      onClick: (e, els) => { if (els && els.length) selectTrendMonth(els[0].index); },
-      plugins: { legend: { display: true, labels: { font: { family: 'Sono, monospace', size: 13 }, boxWidth: 14 } },
-        tooltip: { enabled: !isPhone(), callbacks: { label: c => `${c.dataset.label}: ${c.raw == null ? 'incomplete costs' : fmt(c.raw)}` } } },
-      scales: { x: { grid: { display: false }, ticks: { font: { family: 'Sono, monospace', size: 13 }, maxRotation: 0, autoSkip: false } },
-                y: { grid: { color: '#F2EEE8' }, ticks: { font: { family: 'Sono, monospace', size: 12 }, maxTicksLimit: 5, callback: money } } },
+      events: ['click', 'touchstart', 'mousemove', 'mouseout'],
+      plugins: {
+        legend: { display: true, position: 'top', align: 'start', labels: { sort: (a, b) => a.datasetIndex - b.datasetIndex, font: { family: 'Sono, monospace', size: 14 }, boxWidth: 14, boxHeight: 14, padding: 14 } },
+        tooltip: { titleFont: { family: 'Sono, monospace', size: 14 }, bodyFont: { family: 'Sono, monospace', size: 14 }, padding: 10,
+          callbacks: { title: items => { const s = series[items[0].dataIndex]; return `${MONTHS_SHORT[s.m - 1]} ${s.y}${s.complete ? '' : ' (so far)'}`; },
+                       label: c => `${c.dataset.label}: ${c.raw == null ? 'costs incomplete' : fmt(c.raw)}` } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { family: 'Sono, monospace', size: 14 }, color: '#4A4540', maxRotation: 0, autoSkip: false } },
+        y: { grid: { color: '#EEE8DF' }, border: { display: false }, ticks: { font: { family: 'Sono, monospace', size: 13 }, color: '#6B655E', maxTicksLimit: 6, callback: money } },
+      },
     },
   });
 }
@@ -3770,7 +3818,9 @@ function renderReports(el) {
     ${periodBarHTML(cmp)}
     ${reviewBarHTML(p, 'rv-rep')}
     <div class="tabs" role="tablist">${tab('pl', 'Profit &amp; loss')}${tab('orders', 'Orders')}${tab('refunds', 'Refunds')}${tab('cash', 'Cash movement')}</div>
-    <div id="report-body"></div>`;
+    <div id="report-body"></div>
+    <details class="card report-extra" data-testid="report-insights"><summary>Insights</summary>${insightsListHTML(cmp)}</details>
+    <details class="card report-extra" data-testid="report-achievements"><summary>Achievements</summary>${achievementsListHTML()}</details>`;
   const body = document.getElementById('report-body');
   if (reportsTab === 'orders') body.innerHTML = reportOrdersHTML(p);
   else if (reportsTab === 'refunds') body.innerHTML = reportRefundsHTML(p);
@@ -4935,6 +4985,7 @@ function hideModal() {
   const f = modalReturnFocus; modalReturnFocus = null;
   if (f && f.isConnected && typeof f.focus === 'function') { try { f.focus({ preventScroll: true }); } catch (e) {} }
   if (!_busy && pendingRemoteChange) setTimeout(handleRemoteChange, 0);   // apply remote changes held while the form was open
+  if (typeof maybeApplyPendingUpdate === 'function') maybeApplyPendingUpdate();
 }
 function closeModal() {
   hideModal();
@@ -4966,8 +5017,80 @@ document.addEventListener('focusin', e => {
   setTimeout(() => { try { t.scrollIntoView({ block: 'center', behavior: 'instant' }); } catch (err) {} }, 250);
 });
 
+// ═══════════════════════════════════════════════════
+// KEEPING THE INSTALLED APP CURRENT
+// ═══════════════════════════════════════════════════
+// An installed Android app is usually resumed, not reloaded, so it can keep showing an old
+// version. On every resume (and every 10 minutes while open) we ask the server which version is
+// live. A newer version is loaded straight away if nothing is being edited; otherwise it waits
+// until the open form is saved or closed and Settings has no unsaved changes, so no entries are lost.
+let updatePending = null;
+
+function cmpVersion(a, b) {
+  const pa = String(a).split('.').map(n => parseInt(n, 10) || 0), pb = String(b).split('.').map(n => parseInt(n, 10) || 0);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) { const d = (pa[i] || 0) - (pb[i] || 0); if (d) return d; }
+  return 0;
+}
+function safeToReload() {
+  return !_busy && !document.getElementById('modal-overlay').classList.contains('open') && !(typeof isDirty === 'function' && isDirty());
+}
+async function liveVersion() {
+  const r = await fetch('./sw.js?check=' + Date.now(), { cache: 'no-store' });
+  if (!r.ok) return null;
+  return ((await r.text()).match(/APP_VERSION = '([^']+)'/) || [])[1] || null;
+}
+async function checkForUpdate() {
+  try {
+    if (swRegistration) swRegistration.update().catch(() => {});
+    const v = await liveVersion();
+    if (v && cmpVersion(v, APP_VERSION) > 0) announceUpdate(v);
+  } catch (e) { /* offline — try again later */ }
+}
+function announceUpdate(v) {
+  updatePending = v;
+  let tried = null; try { tried = sessionStorage.getItem('nova-update-tried'); } catch (e) {}
+  const banner = document.getElementById('update-banner');
+  const span = banner.querySelector('span');
+  if (tried === v) {   // we already reloaded for this version and still got the old page (cached somewhere)
+    span.textContent = `Version ${v} is available but didn't load. Close the app fully and reopen it.`;
+    banner.classList.add('show'); return;
+  }
+  if (safeToReload()) { reloadForUpdate(); return; }
+  span.textContent = `Version ${v} is ready — it will load once you've saved or closed what you're editing.`;
+  banner.classList.add('show');
+}
+function reloadForUpdate() {
+  if (!safeToReload()) { toast('Save or close the open form first — your entries are kept.'); return; }
+  try {
+    sessionStorage.setItem('nova-update-tried', updatePending || '');
+    sessionStorage.setItem('nova-restore', JSON.stringify({ view: currentView, period: reportPeriod }));
+  } catch (e) {}
+  if (swRegistration?.waiting) swRegistration.waiting.postMessage('skipWaiting');
+  location.reload();
+}
+// The banner's "Update now" button (replaces the earlier immediate reload).
+function applyUpdate() { reloadForUpdate(); }
+// After a form closes or Settings saves, apply a waiting update.
+function maybeApplyPendingUpdate() { if (updatePending && safeToReload()) setTimeout(() => { if (safeToReload()) reloadForUpdate(); }, 400); }
+
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkForUpdate(); });
+setInterval(checkForUpdate, 10 * 60 * 1000);
+if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => {
+  if (e.data?.type === 'SW_ACTIVATED' && e.data.version && cmpVersion(e.data.version, APP_VERSION) > 0) announceUpdate(e.data.version);
+});
+// view and period to reopen after an update reload (used once by boot)
+function takeRestoreState() {
+  try {
+    const r = JSON.parse(sessionStorage.getItem('nova-restore') || 'null');
+    sessionStorage.removeItem('nova-restore');
+    if (cmpVersion(APP_VERSION, sessionStorage.getItem('nova-update-tried') || '0') >= 0) sessionStorage.removeItem('nova-update-tried');
+    return r;
+  } catch (e) { return null; }
+}
+
 document.getElementById('sidebar-date').textContent =
   new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: LONDON_TZ });
+document.getElementById('more-ver').textContent = 'Nova Finance OS · version ' + APP_VERSION;
 document.addEventListener('click', e => { if (!e.target.closest('#more-sheet, #more-btn')) closeMore(); });
 
 // Boot
@@ -5005,7 +5128,12 @@ document.addEventListener('click', e => { if (!e.target.closest('#more-sheet, #m
   splash.classList.add('hidden');
   setTimeout(() => splash.remove(), 500);
   if (_isBankAuth) { navigate('settings'); await gcCompleteAuth(_bankTokens); }
-  else navigate('overview');
+  else {
+    const restore = takeRestoreState();   // reopen the same view and period after an update
+    if (restore && restore.period) reportPeriod = restore.period;
+    navigate(restore && restore.view ? restore.view : 'overview');
+  }
+  setTimeout(checkForUpdate, 3000);
 })();
 
 </script>
