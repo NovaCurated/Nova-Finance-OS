@@ -1392,6 +1392,10 @@
     }
     .more-ver { font-size: 13px; color: var(--text-3); padding: 12px 10px 4px; }
     @media (max-width: 768px) { .support-row > .support-item:nth-child(3):last-child { grid-column: 1 / -1; } }
+    .modal-error.hint { background: var(--warn-bg); color: #7A4F0E; border-color: #E8C98F; }
+    .field-invalid { border-color: var(--neg) !important; box-shadow: 0 0 0 2px rgba(192,80,60,.15); }
+    .reason-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .reason-chips .chip { min-height: 40px; }
 
   </style>
 </head>
@@ -1499,7 +1503,7 @@
 // VERSION & PWA
 // ═══════════════════════════════════════════════════
 
-const APP_VERSION = '1.5.016';
+const APP_VERSION = '1.5.017';
 let swRegistration = null;
 let deferredInstallPrompt = null;
 let lastSyncTime = null;
@@ -2894,18 +2898,30 @@ async function runSave(btn, fn) {
   if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
   showModalError('');
   try { await fn(); }
-  catch (e) { console.warn('Save failed:', e && e.message); const m = (e && e.message) || 'Save failed';
-    if (document.getElementById('modal-overlay').classList.contains('open')) showModalError(m); else toast('Not saved — ' + m);
-    if (btn) btn.textContent = 'Retry'; }
+  catch (e) {
+    const m = (e && e.message) || 'Save failed';
+    // something missing from the form is not a failure — say what's needed and keep the button as it was
+    const input = (e && e.inputField) || /^(enter|choose|fill in|select) /i.test(m);
+    if (!input) console.warn('Save failed:', m);
+    if (document.getElementById('modal-overlay').classList.contains('open')) showModalError(m, { input, field: e && e.inputField });
+    else toast((input ? '' : 'Not saved — ') + m);
+    if (btn && !input) btn.textContent = 'Retry';
+  }
   finally { _busy = false; if (btn && btn.isConnected) { btn.disabled = false; if (btn.textContent === 'Saving…') btn.textContent = label; }
     if (pendingRemoteChange && !document.getElementById('modal-overlay').classList.contains('open')) handleRemoteChange(); }
 }
-function showModalError(msg) {
+function showModalError(msg, { input = false, field = null } = {}) {
   const el = document.getElementById('modal-error');
   if (!el) return;
-  el.textContent = msg ? `Not saved — ${msg}. Your entries are still here; press Retry.` : '';
+  document.querySelectorAll('#modal-body .field-invalid').forEach(f => { f.classList.remove('field-invalid'); f.removeAttribute('aria-invalid'); });
+  el.classList.toggle('hint', !!(msg && input));
+  el.textContent = !msg ? '' : input ? msg.charAt(0).toUpperCase() + msg.slice(1) + '.' : `Not saved — ${msg}. Your entries are still here; press Retry.`;
   el.classList.toggle('show', !!msg);
+  const f = field && document.getElementById(field);
+  if (f) { f.classList.add('field-invalid'); f.setAttribute('aria-invalid', 'true'); f.focus(); f.scrollIntoView({ block: 'center' }); }
 }
+// a missing or invalid entry in a form (shown as guidance, focuses the field)
+function needInput(message, fieldId) { const e = new Error(message); e.inputField = fieldId; return e; }
 function failIf(res) { if (res && res.error) { setSyncStatus('error', 'Save failed'); throw new Error(res.error.message || 'database error'); } setSyncStatus('synced', 'Saved'); return res; }
 function openFormModal(title, bodyHTML, footerHTML) {
   document.getElementById('modal-title').textContent = title;
@@ -3521,6 +3537,9 @@ function openCorrectCosts(id) {
   const fees = o.costSnapshot?.fees ? { rate: num(o.costSnapshot.fees.shopify_rate), fixed: num(o.costSnapshot.fees.shopify_fixed) } : feesOn(o.date);
   openFormModal(`Correct costs — ${o.orderNum || 'order'}`, `
     <p class="form-hint" style="margin-bottom:10px">Currently: ${esc(snapshotLabel(o))}. The change and your reason are kept with the order.</p>
+    <div class="form-group" style="margin-bottom:14px"><label for="cc-reason">Reason for the change (required)</label>
+      <input type="text" id="cc-reason" placeholder="e.g. supplier invoice showed £12.40 landed" oninput="showModalError('')">
+      <div class="reason-chips">${['Supplier invoice', 'Actual postage cost', 'Typo in earlier cost', 'Fee statement'].map(r => `<button type="button" class="chip" onclick="document.getElementById('cc-reason').value='${r}';showModalError('')">${r}</button>`).join('')}</div></div>
     <div class="form-grid">
       ${[...new Set(c.lines.map(l => l.sku))].map(sku => { const l = c.lines.find(x => x.sku === sku); return `<div class="form-group"><label>${esc(sku)} unit cost (£)</label>
         <input type="number" class="cc-unit" data-sku="${esc(sku)}" step="0.01" min="0" value="${l.unit === null ? '' : l.unit}"></div>`; }).join('')}
@@ -3528,7 +3547,6 @@ function openCorrectCosts(id) {
       <div class="form-group"><label for="cc-rate">Shopify fee rate</label><input type="number" id="cc-rate" step="0.001" min="0" value="${fees.rate}"></div>
       <div class="form-group"><label for="cc-fixed">Shopify fixed fee (£)</label><input type="number" id="cc-fixed" step="0.01" min="0" value="${fees.fixed}"></div>
       <div class="form-group"><label for="cc-basis">These costs are</label><select id="cc-basis"><option value="confirmed">Confirmed (checked against invoices)</option><option value="estimated">Still estimated</option></select></div>
-      <div class="form-group full"><label for="cc-reason">Reason (required)</label><input type="text" id="cc-reason" placeholder="e.g. supplier invoice showed £12.40 landed"></div>
     </div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="runSave(this, () => saveCostCorrection(${id}))">Save correction</button>`);
 }
@@ -3539,7 +3557,7 @@ async function saveCostCorrection(id) {
   if (writesBlocked()) throw new Error('data not loaded');
   const o = state.orders.find(x => x.id === id); if (!o) throw new Error('order not found');
   const reason = document.getElementById('cc-reason').value.trim();
-  if (!reason) throw new Error('enter a reason for the correction');
+  if (!reason) throw needInput('enter a reason for the change — it is kept with the order', 'cc-reason');
   const fresh = await freshOrderRow(id);
   if (!sameJSON(fresh.costSnapshot, o.costSnapshot)) { o.costSnapshot = fresh.costSnapshot; throw new Error('the locked costs were changed on another device — reopen Correct costs to see them'); }
   const before = o.costSnapshot ? clone(o.costSnapshot) : buildSnapshot(o, 'estimated');
@@ -4293,8 +4311,8 @@ async function confirmApplyCostChange() {
   if (writesBlocked()) throw new Error('data not loaded');
   const job = _costJob; if (!job) throw new Error('nothing to apply');
   job.changes.forEach((_, i) => ccRead(i));
-  job.changes.forEach(ch => { const p = ccProblem(ch); if (p) throw new Error(`${componentTitle(ch)}: ${p}`); });
-  job.changes.forEach(ch => { if (ch.mode === 'existing' && !ch.reason) throw new Error(`${componentTitle(ch)}: enter a reason for changing existing orders`); });
+  job.changes.forEach((ch, i) => { const p = ccProblem(ch); if (p) throw needInput(`${p} (${componentTitle(ch)})`, `cc-eff-${i}`); });
+  job.changes.forEach((ch, i) => { if (ch.mode === 'existing' && !ch.reason) throw needInput(`enter a reason for changing existing orders (${componentTitle(ch)})`, `cc-reason-${i}`); });
   job.base = clone(state.settings);
   job.plans = job.changes.filter(ch => ch.mode === 'existing').map(ch => ({ ch, names: componentNames(ch, job.base), ids: existingHits(ch, job.base).map(t => t.o.id) }));
   // 1. Settings (the dated rate history). If this fails nothing has changed.
