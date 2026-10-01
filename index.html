@@ -1505,7 +1505,7 @@
 // VERSION & PWA
 // ═══════════════════════════════════════════════════
 
-const APP_VERSION = '1.5.018';
+const APP_VERSION = '1.5.019';
 let swRegistration = null;
 let deferredInstallPrompt = null;
 let lastSyncTime = null;
@@ -2067,8 +2067,8 @@ async function handleRemoteChange() {
 //  Contribution        = sales after refunds − cost of scarves sold (net of resaleable returns)
 //                        − postage (estimate, or matched actual) − platform fees (net of fee refunds)
 //                        − return postage
-//  Operating profit    = contribution − packaging − gifts/samples stock − postage not linked to orders − opex
-//  Profit before tax   = operating profit + other income
+//  Net profit    = contribution − packaging − gifts/samples stock − postage not linked to orders − opex
+//  Profit before tax   = net profit + other income
 //  Cash is a separate, as-at calculation (see cashAt).
 
 const OPEX_CATS = ['Marketing & Advertising','Software & Subscriptions','Bank Fees','Rent','Utilities','Professional Fees','Insurance','Travel','Office Supplies','Other Expenses'];
@@ -2639,7 +2639,7 @@ function computeMilestones(today = londonToday()) {
     for (const m of months) { if (m.incomplete) break; if (m.profit > 0.005) { prof = m; break; } }
     if (prof) out.push({ id: `first-profit-${prof.y}-${prof.m}`, kind: 'profit', title: 'First profitable month',
       chip: { label: 'First profit', value: MONTHS_SHORT[prof.m - 1] },
-      short: `First profitable month · ${MONTHS_SHORT[prof.m - 1]} · ${fmt(prof.profit)} profit`, achievedOn: addDays(monthEnd(prof.y, prof.m), 1), detail: `${MONTHS_LONG[prof.m - 1]} ${prof.y}: operating profit ${fmt(prof.profit)}`, status: 'met' });
+      short: `First profitable month · ${MONTHS_SHORT[prof.m - 1]} · ${fmt(prof.profit)} profit`, achievedOn: addDays(monthEnd(prof.y, prof.m), 1), detail: `${MONTHS_LONG[prof.m - 1]} ${prof.y}: net profit ${fmt(prof.profit)}`, status: 'met' });
     if (months.length >= 3) {
       const best = Math.max(...months.map(m => m.sales));
       const tied = months.filter(m => Math.abs(m.sales - best) < 0.005);
@@ -2700,7 +2700,7 @@ function computeInsights(cmp) {
   const est = a.confidence.status !== 'ready' ? ' (estimated)' : '';
   // cash fell while profit was positive, explained by stock purchases
   if (a.cashMovement < -0.005 && a.operatingProfit > 0.005 && a.stockPurchases > a.operatingProfit && a.confidence.status !== 'incomplete') {
-    out.push({ text: `Cash fell by about ${fmt(-a.cashMovement)} while operating profit was ${fmt(a.operatingProfit)}: ${fmt(a.stockPurchases)} went on stock, which is held as stock rather than charged to profit.`,
+    out.push({ text: `Cash fell by about ${fmt(-a.cashMovement)} while net profit was ${fmt(a.operatingProfit)}: ${fmt(a.stockPurchases)} went on stock, which is held as stock rather than charged to profit.`,
       short: `Cash fell ${fmt(-a.cashMovement)} despite ${fmt(a.operatingProfit)} profit — ${fmt(a.stockPurchases)} went on stock.`, link: ['reports', 'cash'] });
   }
   // sales change driven by order count vs average order value
@@ -2957,9 +2957,9 @@ function salesCardHTML(a) {
 }
 function profitCardHTML(a) {
   const incomplete = a.confidence.status === 'incomplete';
-  // operating profit as a % of sales after refunds; Incomplete stays because profit is overstated when costs are missing
+  // net profit as a % of sales after refunds; Incomplete stays because profit is overstated when costs are missing
   const margin = Math.abs(a.salesAfterRefunds) > 0.005 ? `${fmtPct(a.opMarginPct)}${incomplete ? '*' : ''} of sales` : '';
-  return perfCard({ label: 'Operating profit', value: incomplete ? `${fmt(a.operatingProfit)}*` : fmt(a.operatingProfit), muted: incomplete,
+  return perfCard({ label: 'Net profit', value: incomplete ? `${fmt(a.operatingProfit)}*` : fmt(a.operatingProfit), muted: incomplete,
     testid: 'card-profit', onclick: "openFigureSheet('profit')", sub: margin, subTestid: 'profit-margin',
     badge: incomplete ? { cls: 'err', text: 'Incomplete' } : null });
 }
@@ -2996,14 +2996,14 @@ function openFigureSheet(kind) {
       `<button class="btn btn-ghost" onclick="closeModal()">Close</button><button class="btn btn-primary" onclick="reportsTab='orders';reportsOrderFilter='all';navigate('reports')">Open in Reports</button>`);
   } else {
     const st = a.confidence;
-    openFormModal('Operating profit', `${period}
+    openFormModal('Net profit', `${period}
       <p class="sheet-note"><span class="badge ${st.status === 'incomplete' ? 'err' : st.status === 'estimated' ? 'warn' : 'ok'}">${esc(st.label)}</span></p>
       <table class="cash-break" data-testid="profit-detail">
         ${row('Sales after refunds', fmt(a.salesAfterRefunds))}
         ${row('Contribution (after scarves, postage and fees)', fmt(a.contribution))}
         ${row('Packaging, gifts and unlinked postage', '−' + fmt(a.otherDirect))}
         ${row('Operating expenses', '−' + fmt(a.totalOpEx))}
-        ${row('Operating profit', fmt(a.operatingProfit), 'total')}
+        ${row('Net profit', fmt(a.operatingProfit), 'total')}
       </table>
       <p class="sheet-note">${esc(cmp.profit.text)}.${st.status === 'incomplete' ? ` ${a.missingCost.length} order${a.missingCost.length > 1 ? 's have' : ' has'} no product cost, counted as £0 — profit is overstated until fixed.` : ''}</p>
       ${st.issues.length ? `<button class="btn btn-secondary" style="width:100%" onclick="openReviewSheet()">Review ${st.issues.length} item${st.issues.length > 1 ? 's' : ''}</button>` : ''}`,
@@ -3141,7 +3141,7 @@ function renderOverview(el) {
     ${supportRowHTML(a, today)}
     <section class="card trend-card no-swipe" aria-label="Sales and profit by month">
       <div class="trend-head"><h3>Sales &amp; profit</h3>${winChipHTML()}</div>
-      <div class="chart-wrap"><canvas id="trend-chart" role="img" aria-label="Monthly sales and operating profit"></canvas></div>
+      <div class="chart-wrap"><canvas id="trend-chart" role="img" aria-label="Monthly sales and net profit"></canvas></div>
     </section>`;
   drawTrend(today);
 }
@@ -3700,7 +3700,7 @@ function categoryTreatmentHint(cat) {
     case 'Stock Purchases': return 'Adds to book stock (landed cost, incl. inbound shipping). Charged to profit as scarves are sold.';
     case 'Packaging': return 'Expensed when bought.';
     case 'Shipping & Postage': return 'Starts "to review". Match it to the order(s) it paid for so their estimates are replaced, or mark it as not for an order.';
-    case 'Other Income': return 'Added below operating profit.';
+    case 'Other Income': return 'Added below net profit.';
     case 'Loan Received': case 'Loan Repayment': return 'Financing — affects cash and the balance sheet, never sales or profit.';
     case 'Owner Investment': case 'Owner Drawings': return 'Your own money — affects cash and equity, never sales or profit.';
     default: return CAT_CFG[cat] ? 'Operating expense.' : '';
@@ -3882,7 +3882,7 @@ function reportPLHTML(p) {
     ${plHead('Operating expenses')}
     ${OPEX_CATS.map(c => p.opex[c] ? plRow(esc(c), -p.opex[c], '', true) : '').join('') || `<div class="pl-row"><span style="padding-left:28px;color:var(--text-3)">None in this period</span></div>`}
     ${plRow('Total operating expenses', -p.totalOpEx, 'subtotal')}
-    <div class="pl-row net-profit"><span>Operating profit${flag}</span><span class="pl-value">${colorFmt(p.operatingProfit)}</span></div>
+    <div class="pl-row net-profit"><span>Net profit${flag}</span><span class="pl-value">${colorFmt(p.operatingProfit)}</span></div>
     <div class="pl-row"><span style="color:var(--text-2)">Status</span><span style="color:var(--text-2)">${esc(p.confidence.label)}</span></div>
     ${p.otherIncome ? plRow('Other income', p.otherIncome, '', true) + plRow('Profit before tax', p.profitBeforeTax, 'total') : ''}
     <div class="pl-note">Stock purchases go into book stock and are charged to profit as scarves are sold. Loans and owner money never count as sales or profit. No tax is calculated.</div>
@@ -4291,7 +4291,7 @@ function ccSet(i) {
   const imp = costChangeImpact(ch);
   const s = n => (n === 1 ? '' : 's');
   const range = `${fmtDateLong(imp.from)}–${fmtDateLong(imp.to)}`;
-  const money = `contribution ${fmt(imp.before.c)} → ${fmt(imp.after.c)} (<strong>${deltaMoney(imp.dC)}</strong>), operating profit ${fmt(imp.before.op)} → ${fmt(imp.after.op)} (<strong>${deltaMoney(imp.dOp)}</strong>) for ${range}`;
+  const money = `contribution ${fmt(imp.before.c)} → ${fmt(imp.after.c)} (<strong>${deltaMoney(imp.dC)}</strong>), net profit ${fmt(imp.before.op)} → ${fmt(imp.after.op)} (<strong>${deltaMoney(imp.dOp)}</strong>) for ${range}`;
   const parts = [];
   if (B) {
     parts.push(imp.hits.length

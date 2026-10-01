@@ -1,6 +1,6 @@
 // Keep APP_VERSION identical to APP_VERSION in index.html — bump both on every release.
 // Changing this file's bytes is what makes browsers install the new service worker.
-const APP_VERSION = '1.5.018';
+const APP_VERSION = '1.5.019';
 const CACHE_NAME = `nova-finance-${APP_VERSION}`;
 const CORE_ASSETS = ['./index.html', './manifest.json'];
 
