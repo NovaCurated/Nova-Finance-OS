@@ -1188,24 +1188,14 @@
     .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; vertical-align: middle; background: var(--text-3); }
     .dot.err { background: var(--neg); } .dot.warn { background: var(--warn); } .dot.ok { background: var(--pos); }
 
-    .cash-panel { background: var(--nav-bg); color: var(--nav-text); border-radius: 16px; padding: 22px 24px; margin-bottom: 16px; }
-    .cash-label { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: #CFC8BC; }
-    .cash-figure { font-size: 40px; font-weight: 700; line-height: 1.1; margin: 6px 0 4px; font-variant-numeric: tabular-nums; }
-    .cash-asat { font-size: 13.5px; color: #CFC8BC; }
-    .cash-row { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.12); font-size: 14px; }
-    .cash-row div span { display: block; font-size: 12.5px; color: #CFC8BC; margin-bottom: 2px; }
-    .cash-row strong { font-size: 17px; font-variant-numeric: tabular-nums; }
-    .cash-panel details { margin-top: 14px; font-size: 14px; }
-    .cash-panel summary { cursor: pointer; color: var(--accent-mid); }
     .cash-break { width: 100%; margin-top: 10px; border-collapse: collapse; font-size: 14px; }
-    .cash-break td { padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,.08); color: #E8E3DA; }
+    .cash-break td { padding: 7px 0; border-bottom: 1px solid var(--border-light); color: var(--text); vertical-align: top; }
     .cash-break td.num { text-align: right; font-variant-numeric: tabular-nums; }
-    .cash-break tr.total td { font-weight: 700; color: #fff; border-bottom: 0; }
-    .cash-note { font-size: 13px; color: #CFC8BC; margin-top: 10px; line-height: 1.55; }
-    .cash-panel .btn-link { background: none; border: 0; color: var(--accent-mid); font-family: 'Sono', monospace; font-size: 13.5px; cursor: pointer; padding: 0; text-decoration: underline; }
+    .cash-break tr.total td { font-weight: 700; border-bottom: 0; border-top: 1px solid var(--border); }
+    .cash-note { font-size: 13px; color: var(--text-2); margin-top: 10px; line-height: 1.55; }
 
-    .perf-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
-    .perf-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 20px; cursor: pointer; text-align: left; font-family: 'Sono', monospace; color: var(--text); width: 100%; transition: box-shadow .15s; }
+    .perf-grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 1fr; gap: 12px; margin-bottom: 16px; }
+    .perf-card { display: flex; flex-direction: column; align-items: flex-start; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 20px; cursor: pointer; text-align: left; font-family: 'Sono', monospace; color: var(--text); width: 100%; transition: box-shadow .15s; }
     .perf-card:hover { box-shadow: var(--shadow-md); }
     .perf-label { font-size: 13px; color: var(--text-2); }
     .perf-value { font-size: 28px; font-weight: 700; margin: 6px 0; font-variant-numeric: tabular-nums; }
@@ -1214,6 +1204,24 @@
     .perf-cmp.pos { color: var(--pos); } .perf-cmp.neg { color: var(--neg); }
     .perf-status { display: inline-block; margin-top: 8px; font-size: 12.5px; color: var(--warn); }
     .perf-status.err { color: var(--neg); }
+    .perf-status.ok { color: var(--text-2); }
+    .support-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+    .support-item { flex: 1 1 200px; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; background: var(--surface-alt); border: 1px solid var(--border-light); border-radius: var(--radius); padding: 10px 14px; cursor: pointer; text-align: left; font-family: 'Sono', monospace; color: var(--text); }
+    .support-item:hover { border-color: var(--border); }
+    .support-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .support-label { font-size: 12.5px; color: var(--text-2); }
+    .support-item strong { font-size: 17px; font-variant-numeric: tabular-nums; }
+    .support-sub { font-size: 12.5px; color: var(--text-3); }
+    .support-sub.pos { color: var(--pos); } .support-sub.neg { color: var(--neg); }
+    .cc-sec { border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
+    .cc-sec h4 { font-size: 14.5px; margin: 0 0 10px; }
+    .cc-opt { display: block; border: 1px solid var(--border-light); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 8px; font-size: 13.5px; text-transform: none; letter-spacing: 0; cursor: pointer; }
+    .cc-opt input[type=radio] { margin-right: 6px; }
+    .cc-opt .cc-fields { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-top: 8px; }
+    .cc-opt > label, .cc-sec .cc-fields label { font-family: 'Sono', monospace; }
+    .cc-opt > label { text-transform: none; letter-spacing: 0; font-size: 14px; color: var(--text); display: block; }
+    .cc-opt .cc-fields label { font-size: 12.5px; text-transform: none; letter-spacing: 0; display: flex; flex-direction: column; gap: 3px; }
+    .cc-opt .cc-fields input[type=date], .cc-opt .cc-fields input[type=number] { width: auto; padding: 5px 8px; }
 
     .win { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--accent-light); border: 1px solid var(--accent-mid); border-radius: var(--radius-lg); padding: 12px 16px; margin-bottom: 16px; font-size: 14px; flex-wrap: wrap; }
     .win.new { animation: winIn .5s ease-out both; }
@@ -1266,7 +1274,6 @@
     @media (max-width: 768px) {
       .perf-grid { grid-template-columns: 1fr; }
       .ov-bottom { grid-template-columns: 1fr; }
-      .cash-figure { font-size: 34px; }
       .order-row { grid-template-columns: 1fr auto; }
       .order-row .col-date, .order-row .col-num { display: none; }
       .ov-head { align-items: flex-start; }
@@ -1377,7 +1384,7 @@
 // VERSION & PWA
 // ═══════════════════════════════════════════════════
 
-const APP_VERSION = '1.5.012';
+const APP_VERSION = '1.5.013';
 let swRegistration = null;
 let deferredInstallPrompt = null;
 let lastSyncTime = null;
@@ -2743,7 +2750,8 @@ function openFormModal(title, bodyHTML, footerHTML) {
   document.getElementById('modal-footer').innerHTML = footerHTML;
   showModalError('');
   openModal();
-  setTimeout(() => document.querySelector('#modal-body input, #modal-body select')?.focus(), 30);
+  // focus the first field, unless the user has already moved into the form
+  setTimeout(() => { if (!document.getElementById('modal').contains(document.activeElement)) document.querySelector('#modal-body input, #modal-body select')?.focus(); }, 30);
 }
 
 // ═══════════════════════════════════════════════════
@@ -2751,54 +2759,78 @@ function openFormModal(title, bodyHTML, footerHTML) {
 // ═══════════════════════════════════════════════════
 let trendChart = null;
 
-function cashPanelHTML(today) {
+// Cash is an as-at figure: it never follows the reporting period.
+function cashCardHTML(today) {
   const C = cashAt(today);
   const conf = confirmedBalance(today);
   const confirmedToday = conf && conf.asAt === today;
-  const label = confirmedToday ? 'Cash at bank' : 'Estimated cash at bank';
-  const figure = confirmedToday ? conf.amount : C.cash;
-  const status = confirmedToday ? `Confirmed from ${esc(conf.source)}` : 'Estimate from your records — not confirmed with the bank';
-  const lastConf = conf && !confirmedToday
-    ? `<div class="cash-note">Last confirmed: <strong>${fmt(conf.amount)}</strong> on ${fmtDateLong(conf.asAt)} (${esc(conf.source)}). Your records estimated ${fmt(conf.estimateThen)} for that date — ${Math.abs(conf.difference) < 0.01 ? 'they matched' : `a difference of ${fmt(conf.difference)}`}.</div>`
-    : confirmedToday ? `<div class="cash-note">Your records estimate ${fmt(C.cash)} for today${Math.abs(figure - C.cash) >= 0.01 ? ` — ${fmt(figure - C.cash)} different from the bank` : ', matching the bank'}.</div>` : '';
-  const row = (l, v, sign = '') => `<tr><td>${l}</td><td class="num">${sign}${fmt(Math.abs(v))}</td></tr>`;
-  return `<section class="cash-panel" aria-labelledby="cash-h">
-    <div class="cash-label" id="cash-h">${label}</div>
-    <div class="cash-figure" data-testid="cash-figure">${fmt(figure)}</div>
-    <div class="cash-asat">As at ${fmtDateLong(today)} · ${status}</div>
-    ${lastConf}
-    <div class="cash-row">
-      <div><span>Expected platform payouts</span><strong data-testid="cash-pending">${fmt(C.pending)}</strong>
-        <span style="margin-top:2px">Not included above${C.pending ? ` · Shopify ${fmt(C.shopifyPending)}${C.foldPending ? ` · Fold ${fmt(C.foldPending)}` : ''}` : ''}</span></div>
-      ${C.refundsRecorded - C.refundsPaid > 0.005 ? `<div><span>Refunds owed to customers</span><strong>${fmt(C.refundsRecorded - C.refundsPaid)}</strong></div>` : ''}
-    </div>
-    <details>
-      <summary>How this figure is worked out</summary>
-      <table class="cash-break">
-        <tr><td>Starting cash</td><td class="num">${C.startingCashRecorded ? fmt(C.startingCash) : 'Not recorded'}</td></tr>
-        ${row('Owner investment and loans received', C.ownerIn + C.loansIn, '+')}
-        ${C.otherIncome ? row('Other income', C.otherIncome, '+') : ''}
-        ${row(`Sales receipts — estimated (payouts assumed to arrive ${C.shopifyLag} days after a Shopify order, ${C.foldLag} after Fold)`, C.salesReceipts, '+')}
-        ${C.feeRefunds ? row('Platform fees refunded', C.feeRefunds, '+') : ''}
-        ${row(`Money spent, including stock purchases of ${fmt(C.stockPurchases)}`, C.spent, '−')}
-        ${C.postageAssumed ? row('Postage assumed paid (orders without a matched payment)', C.postageAssumed, '−') : ''}
-        ${C.returnPostage ? row('Return postage', C.returnPostage, '−') : ''}
-        ${C.refundsPaid ? row('Refunds paid to customers', C.refundsPaid, '−') : ''}
-        ${row('Loan repayments and drawings', C.loanRepay + C.drawings, '−')}
-        <tr class="total"><td>Estimated cash at bank</td><td class="num">${fmt(C.cash)}</td></tr>
-      </table>
-      <p class="cash-note">This is worked out from your recorded transactions and orders. Loans and your own money put in raise cash but are not sales or profit.
-        Payouts still within the payout delay are shown separately and never added to cash. It is not confirmed until you record a balance from your bank statement — and a balancing balance sheet does not confirm it either.</p>
-      <button class="btn-link" onclick="openBankBalanceForm()">Record a bank balance from a statement</button>
-    </details>
-  </section>`;
+  return perfCard({
+    label: confirmedToday ? 'Cash at bank' : 'Estimated cash at bank',
+    value: fmt(confirmedToday ? conf.amount : C.cash), testid: 'card-cash', valueTestid: 'cash-figure',
+    cmp: { text: `As at ${fmtDateLong(today)} · not affected by the period`, tone: '', testid: 'cash-asat' },
+    status: confirmedToday ? { cls: 'ok', text: `Confirmed from ${esc(conf.source)}` } : { text: 'Estimated — not confirmed with the bank' },
+    onclick: 'openCashBreakdown()',
+  });
 }
 
-function perfCard({ label, value, cmp, status, muted, onclick, testid }) {
+function cashBreakdownHTML(today) {
+  const C = cashAt(today);
+  const conf = confirmedBalance(today);
+  const confirmedToday = conf && conf.asAt === today;
+  const lastConf = conf && !confirmedToday
+    ? `<p class="cash-note">Last confirmed: <strong>${fmt(conf.amount)}</strong> on ${fmtDateLong(conf.asAt)} (${esc(conf.source)}). Your records estimated ${fmt(conf.estimateThen)} for that date — ${Math.abs(conf.difference) < 0.01 ? 'they matched' : `a difference of ${fmt(conf.difference)}`}.</p>`
+    : confirmedToday ? `<p class="cash-note">Bank balance ${fmt(conf.amount)} confirmed from ${esc(conf.source)}. Your records estimate ${fmt(C.cash)} for today${Math.abs(conf.amount - C.cash) >= 0.01 ? ` — ${fmt(conf.amount - C.cash)} different from the bank` : ', matching the bank'}.</p>`
+    : '<p class="cash-note">No bank balance recorded yet, so this is an estimate from your records.</p>';
+  const row = (l, v, sign = '') => `<tr><td>${l}</td><td class="num">${sign}${fmt(Math.abs(v))}</td></tr>`;
+  return `<div data-testid="cash-breakdown">
+    <p class="cash-note" style="margin-top:0">As at ${fmtDateLong(today)}.</p>
+    ${lastConf}
+    <table class="cash-break">
+      <tr><td>Starting cash</td><td class="num">${C.startingCashRecorded ? fmt(C.startingCash) : 'Not recorded'}</td></tr>
+      ${row('Owner investment and loans received', C.ownerIn + C.loansIn, '+')}
+      ${C.otherIncome ? row('Other income', C.otherIncome, '+') : ''}
+      ${row(`Sales receipts — estimated (payouts assumed to arrive ${C.shopifyLag} days after a Shopify order, ${C.foldLag} after Fold)`, C.salesReceipts, '+')}
+      ${C.feeRefunds ? row('Platform fees refunded', C.feeRefunds, '+') : ''}
+      ${row(`Money spent, including stock purchases of ${fmt(C.stockPurchases)}`, C.spent, '−')}
+      ${C.postageAssumed ? row('Postage assumed paid (orders without a matched payment)', C.postageAssumed, '−') : ''}
+      ${C.returnPostage ? row('Return postage', C.returnPostage, '−') : ''}
+      ${C.refundsPaid ? row('Refunds paid to customers', C.refundsPaid, '−') : ''}
+      ${row('Loan repayments and drawings', C.loanRepay + C.drawings, '−')}
+      <tr class="total"><td>Estimated cash at bank</td><td class="num">${fmt(C.cash)}</td></tr>
+    </table>
+    <p class="cash-note">Not included: expected platform payouts of ${fmt(C.pending)}${C.refundsOwed > 0.005 ? ` and refunds owed to customers of ${fmt(C.refundsOwed)}` : ''}.
+      Loans and your own money put in raise cash but are not sales or profit. The figure is confirmed only by a balance from your bank statement — a balancing balance sheet does not confirm it.</p>
+  </div>`;
+}
+function openCashBreakdown() {
+  const today = londonToday();
+  openFormModal(`How cash is worked out`, cashBreakdownHTML(today),
+    `<button class="btn btn-ghost" onclick="closeModal()">Close</button><button class="btn btn-primary" onclick="openBankBalanceForm()">Record a bank balance</button>`);
+}
+
+// Compact supporting figures beneath the three primary cards.
+function supportRowHTML(a, cmp, today) {
+  const C = cashAt(today);
+  const ex = [a.fullRefundOrders ? `${a.fullRefundOrders} fully refunded` : '', a.giftCount ? `${a.giftCount} gift/sample` : ''].filter(Boolean).join(', ');
+  const item = (testid, label, value, valueTestid, sub, onclick, tone = '') => `<button class="support-item" data-testid="${testid}" onclick="${onclick}">
+      <span class="support-label">${label}</span>
+      <strong ${valueTestid ? `data-testid="${valueTestid}"` : ''}>${value}</strong>
+      <span class="support-sub ${tone}">${sub}</span></button>`;
+  return `<div class="support-row">
+    ${item('card-orders', 'Paid orders', String(a.paidOrders), '', `${cmp.orders.text}${ex ? ` · excludes ${ex}` : ''}`,
+      "reportsTab='orders';reportsOrderFilter='paid';navigate('reports')", cmp.orders.tone)}
+    ${item('card-payouts', 'Expected payouts', fmt(C.pending), 'cash-pending',
+      `Not in cash at bank${C.pending ? ` · Shopify ${fmt(C.shopifyPending)}${C.foldPending ? ` · Fold ${fmt(C.foldPending)}` : ''}` : ''} · as at ${fmtDate(today)}`, 'openCashBreakdown()')}
+    ${C.refundsOwed > 0.005 ? item('card-owed', 'Refunds owed', fmt(C.refundsOwed), '', 'Recorded but not yet paid', "reportsTab='refunds';navigate('reports')") : ''}
+  </div>`;
+}
+
+// One card component for sales, profit and cash: same size, type, background and emphasis.
+function perfCard({ label, value, cmp, status, muted, onclick, testid, valueTestid }) {
   return `<button class="perf-card" onclick="${onclick}" data-testid="${testid}">
     <div class="perf-label">${label}</div>
-    <div class="perf-value ${muted ? 'muted-value' : ''}">${value}</div>
-    <div class="perf-cmp ${cmp.tone}">${cmp.text}</div>
+    <div class="perf-value ${muted ? 'muted-value' : ''}" ${valueTestid ? `data-testid="${valueTestid}"` : ''}>${value}</div>
+    <div class="perf-cmp ${cmp.tone}" ${cmp.testid ? `data-testid="${cmp.testid}"` : ''}>${cmp.text}</div>
     ${status ? `<div class="perf-status ${status.cls || ''}">${status.text}</div>` : ''}
   </button>`;
 }
@@ -2835,7 +2867,6 @@ function renderOverview(el) {
       </div>
     </div>
     ${periodBarHTML(cmp)}
-    ${cashPanelHTML(today)}
     ${reviewBarHTML(a)}
     <div class="perf-grid">
       ${perfCard({ label: 'Sales after refunds', value: fmt(a.salesAfterRefunds), cmp: cmp.sales, testid: 'card-sales',
@@ -2846,10 +2877,9 @@ function renderOverview(el) {
         onclick: "reportsTab='pl';navigate('reports')",
         status: incomplete ? { cls: 'err', text: `*Incomplete — ${a.missingCost.length} order${a.missingCost.length > 1 ? 's' : ''} missing product costs` }
               : a.confidence.status === 'estimated' ? { text: a.confidence.label } : null })}
-      ${perfCard({ label: 'Paid orders', value: String(a.paidOrders), cmp: cmp.orders, testid: 'card-orders',
-        onclick: "reportsTab='orders';reportsOrderFilter='paid';navigate('reports')",
-        status: (a.giftCount || a.fullRefundOrders) ? { text: `Excludes ${[a.fullRefundOrders ? `${a.fullRefundOrders} fully refunded` : '', a.giftCount ? `${a.giftCount} gift/sample` : ''].filter(Boolean).join(', ')}` } : null })}
+      ${cashCardHTML(today)}
     </div>
+    ${supportRowHTML(a, cmp, today)}
     ${winBannerHTML()}
     ${insights.length ? `<section class="insights"><h3>Insights</h3><ul>${insights.map(i =>
       `<li><span>${i.text}</span><button class="linkbtn" onclick="${i.link[0] === 'reports' ? `reportsTab='${i.link[1]}';navigate('reports')` : `expenseFilter='${i.link[1]}';navigate('expenses')`}">Details</button></li>`).join('')}</ul></section>` : ''}
@@ -3092,7 +3122,7 @@ function orderFormHTML(o = null) {
       <div class="form-group" id="o-fold-rate-row" style="display:${o?.channel === 'fold' ? '' : 'none'}"><label for="o-fold-rate">Fold commission</label><select id="o-fold-rate" onchange="refreshOrderPreview()">
         ${[0.15, 0.2, 0.25, 0.3].map(r => `<option value="${r}" ${(o?.foldCommissionRate ?? 0.15) === r ? 'selected' : ''}>${Math.round(r * 100)}%</option>`).join('')}</select></div>
     </div>
-    ${o?.costSnapshot ? `<p class="form-hint" style="margin-top:10px">Locked costs stay as they are when you change the customer, order #, date, revenue or quantities. A new product or shipping method uses the Settings rate for the order date. To change locked costs, use Correct costs.</p>` : ''}
+    ${o?.costSnapshot ? `<p class="form-hint" style="margin-top:10px">Locked costs stay as they are when you change the customer, order #, date, revenue or quantities. A new product or shipping method uses the rate for the order date. To change locked costs, use Correct costs, or change the cost in Settings and choose “Apply to existing orders too”.</p>` : ''}
     <div id="order-preview"></div>`;
 }
 function refreshOrderPreview() {
@@ -3280,44 +3310,57 @@ async function saveCostCorrection(id) {
   closeModal(); toast('Cost correction saved.'); renderView(currentView);
 }
 
-// ── Reviewable lock-costs migration for older and synced orders ──
+// ── Review & lock: older and synced orders get costs from the rates on their own order dates ──
+// Each is marked "estimated" unless you tick it as confirmed (checked against invoices). Nothing is
+// claimed as confirmed automatically, and already-locked orders are never overwritten.
+function lockCandidates() { return state.orders.filter(o => !o.costSnapshot && orderType(o) !== 'cancelled' && isValidYMD(o.date)).sort((a, b) => (a.date < b.date ? -1 : 1)); }
 function openLockCosts() {
   if (schema.costSnapshot !== true) { toast('Run migration 002 first.'); return; }
-  const targets = state.orders.filter(o => !o.costSnapshot && orderType(o) !== 'cancelled').sort((a, b) => (a.date < b.date ? -1 : 1));
-  if (!targets.length) { toast('All orders already have locked costs.'); return; }
-  const rows = targets.slice(0, 200).map(o => { const s = buildSnapshot(o, 'estimated');
-    return `<tr><td>${fmtDate(o.date)}</td><td>${esc(o.orderNum)}</td><td>${esc(snapshotSummary(s))}</td></tr>`; }).join('');
-  openFormModal('Lock costs on existing orders', `
-    <p style="font-size:13.5px;color:var(--text-2);margin-bottom:10px">${targets.length} order${targets.length > 1 ? 's' : ''} will be locked with the Settings rates <strong>in force on each order's date</strong>, marked <strong>estimated</strong> (not confirmed). Already-locked orders are never overwritten. A backup is downloaded first.</p>
-    <div style="max-height:46vh;overflow:auto;border:1px solid var(--border-light);border-radius:var(--radius)"><table class="mini-table"><thead><tr><th>Date</th><th>Order</th><th>Costs to lock</th></tr></thead><tbody>${rows}</tbody></table></div>
-    ${targets.some(o => calcOrder(o).costMissing) ? `<p class="form-hint neg-text" style="margin-top:8px">Orders with a missing SKU cost are locked without that cost and stay flagged — fix them with Correct costs.</p>` : ''}`,
+  const hits = lockCandidates();
+  if (!hits.length) { toast('All orders already have locked costs.'); return; }
+  const rows = hits.map(o => { const s = buildSnapshot(o, 'estimated'); const missing = calcOrder(o).costMissing;
+    return `<tr><td>${fmtDate(o.date)}</td><td>${esc(o.orderNum)}</td><td>${esc(snapshotSummary(s))}</td>
+      <td style="text-align:center"><input type="checkbox" class="lk-conf" data-id="${o.id}" aria-label="Costs confirmed for ${esc(o.orderNum)}" ${missing ? 'disabled title="A product cost is missing"' : ''}></td></tr>`; }).join('');
+  openFormModal('Review & lock costs on existing orders', `
+    <p style="font-size:13.5px;color:var(--text-2);margin-bottom:10px">${hits.length} order${hits.length > 1 ? 's' : ''} will be locked with the costs <strong>in force on each order's date</strong>. Each is marked <strong>estimated</strong> unless you tick <em>Confirmed</em> because you've checked its costs. Already-locked orders are never overwritten. A backup is downloaded first.</p>
+    <label class="checkbox-row" style="text-transform:none;letter-spacing:0;margin-bottom:8px"><input type="checkbox" id="lk-all" onchange="document.querySelectorAll('.lk-conf:not(:disabled)').forEach(c => c.checked = this.checked)"> Tick all as confirmed</label>
+    <div style="max-height:46vh;overflow:auto;border:1px solid var(--border-light);border-radius:var(--radius)"><table class="mini-table"><thead><tr><th>Date</th><th>Order</th><th>Costs to lock</th><th>Confirmed</th></tr></thead><tbody>${rows}</tbody></table></div>
+    ${hits.some(o => calcOrder(o).costMissing) ? `<p class="form-hint neg-text" style="margin-top:8px">Orders with a missing product cost are locked without it and stay flagged — fix them with Correct costs.</p>` : ''}`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="lock-go" onclick="runSave(this, runLockBackup)">Download backup</button>`);
 }
 async function runLockBackup() {
   const ok = await exportBackup();
   if (!ok) throw new Error('the backup failed, so nothing was locked');
-  const n = state.orders.filter(o => !o.costSnapshot && orderType(o) !== 'cancelled').length;
+  const n = lockCandidates().length;
   document.getElementById('modal-body').insertAdjacentHTML('beforeend', `<div class="notice warn" style="margin-top:10px">Backup <strong>${esc(lastBackup.file)}</strong> sent to your browser — check it's in your Downloads before continuing.</div>`);
   document.getElementById('modal-footer').innerHTML = `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
     <button class="btn btn-primary" id="lock-confirm" onclick="runSave(this, lockEstimatedCosts)">Backup saved — lock ${n} order${n !== 1 ? 's' : ''}</button>`;
 }
 async function lockEstimatedCosts() {
   if (writesBlocked()) throw new Error('data not loaded');
-  const targets = state.orders.filter(o => !o.costSnapshot && orderType(o) !== 'cancelled');
-  let done = 0, failed = 0; const noChange = [];
+  const confirmed = new Set(Array.from(document.querySelectorAll('.lk-conf:checked')).map(c => parseInt(c.dataset.id, 10)));
+  const hits = lockCandidates();
+  let done = 0, conf = 0; const failed = [], noChange = [];
   suppressRealtime++;
   try {
-    for (const o of targets) {
-      const snap = buildSnapshot(o, 'estimated');
+    for (const o of hits) {
+      const snap = buildSnapshot(o, confirmed.has(o.id) && !calcOrder(o).costMissing ? 'confirmed' : 'estimated');
       const { data, error } = await sb.from('orders').update({ cost_snapshot: snap }).eq('id', o.id).is('cost_snapshot', null).select('id');
-      if (error) failed++; else if (!data || !data.length) noChange.push(o.id); else { o.costSnapshot = snap; done++; }
+      if (error) failed.push(o.orderNum || `#${o.id}`); else if (!data || !data.length) noChange.push(o.id);
+      else { o.costSnapshot = snap; done++; if (snap.basis === 'confirmed') conf++; }
     }
   } finally { suppressRealtime--; }
   let skipped = 0;
-  try { await loadFromSupabase(); noChange.forEach(id => { if (state.orders.find(x => x.id === id)?.costSnapshot) skipped++; else failed++; }); }
-  catch (e) { failed += noChange.length; }
-  closeModal(); renderView(currentView);
-  toast(`Locked ${done} order${done !== 1 ? 's' : ''} as estimated${skipped ? ` · ${skipped} already locked` : ''}${failed ? ` · ${failed} NOT saved` : ''}.`);
+  try { await loadFromSupabase(); noChange.forEach(id => { if (state.orders.find(x => x.id === id)?.costSnapshot) skipped++; else failed.push(`#${id}`); }); }
+  catch (e) { noChange.forEach(id => failed.push(`#${id}`)); }
+  const summary = `Locked ${done} order${done !== 1 ? 's' : ''} (${conf} confirmed, ${done - conf} estimated)${skipped ? ` · ${skipped} already locked elsewhere` : ''}`;
+  if (failed.length) {
+    document.getElementById('modal-title').textContent = 'Locking only partly saved';
+    document.getElementById('modal-body').innerHTML = `<div class="notice err" data-testid="lock-partial">${summary}. <strong>${failed.length} NOT saved:</strong> ${failed.map(esc).join(', ')}. They still use the rates for their dates — run Review &amp; lock again to retry them.</div>`;
+    document.getElementById('modal-footer').innerHTML = `<button class="btn btn-primary" onclick="closeModal()">Close</button>`;
+    renderView(currentView); return;
+  }
+  closeModal(); renderView(currentView); toast(summary + '.');
 }
 
 // ═══════════════════════════════════════════════════
@@ -3734,7 +3777,7 @@ function renderSettings(el, actions) {
       <div class="form-group"><label for="s-cs">Last stock count value (£, landed cost)</label><input type="number" id="s-cs" step="0.01" min="0" value="${s.closingStock}" oninput="setDraft('closingStock', parseFloat(this.value)||0)"></div>
       <div class="form-group"><label for="s-csdate">Stock count date</label><input type="date" id="s-csdate" value="${isValidYMD(s.stockCountDate) ? s.stockCountDate : ''}" oninput="setDraft('stockCountDate', isValidYMD(this.value) ? this.value : null)"></div>
       <div class="form-group"><label for="s-os">Opening stock (£)</label><input type="number" id="s-os" step="0.01" min="0" value="${s.openingStock}" oninput="setDraft('openingStock', parseFloat(this.value)||0)"><p class="form-hint">Stock held before the first recorded purchase.</p></div></div>`)}
-    ${sec('Costs for new orders', `<p class="form-hint" style="margin:0 0 12px">New orders lock these costs when saved. Locked orders never change when you edit these — use "Correct historical costs" below for deliberate corrections.</p>
+    ${sec('Costs for new orders', `<p class="form-hint" style="margin:0 0 12px">Each order locks these costs when it's saved. When you change one and press Save, you choose: <strong>forward only</strong> (from an effective date), or <strong>apply to existing orders too</strong> (for an order-date range you choose, with a preview and a reason).</p>
       <table class="mini-table" id="sku-table"><thead><tr><th>Product type</th><th>Landed cost/unit (£)</th><th>Notes</th><th></th></tr></thead><tbody>${skuRows}</tbody></table>
       <button class="btn btn-ghost btn-sm" style="margin:8px 0 16px" onclick="draft().skuCosts.push({uid:newUid(),sku:'',cost:0,notes:''});renderView('settings')">+ Add product type</button>
       <table class="mini-table" id="ship-table"><thead><tr><th>Shipping method</th><th>Cost (£)</th><th>Notes</th><th></th></tr></thead><tbody>${shipRows}</tbody></table>
@@ -3746,7 +3789,8 @@ function renderSettings(el, actions) {
     ${sec('Order costs', `<p style="font-size:13.5px;color:var(--text-2);margin-bottom:10px">${state.orders.length - unlocked} of ${state.orders.length} orders have locked costs.</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${unlocked ? `<button class="btn btn-secondary" ${schema.costSnapshot ? '' : 'disabled'} onclick="openLockCosts()">Review &amp; lock ${unlocked} order${unlocked > 1 ? 's' : ''}</button>` : ''}
-        <button class="btn btn-secondary" ${schema.costSnapshot ? '' : 'disabled'} onclick="openBulkCorrection()">Correct historical costs…</button></div>
+        <button class="btn btn-secondary" id="cost-picker-btn" ${schema.costSnapshot ? '' : 'disabled'} onclick="openCostPicker()">Correct a cost on past orders…</button></div>
+      <p class="form-hint" style="margin-top:8px">Use this when past orders carry a wrong cost but the cost for new orders is right — it opens the same Apply cost change dialog.</p>
       ${schema.costSnapshot ? '' : '<p class="form-hint">Needs migration 002.</p>'}`)}
     ${sec('Data protection', `<p style="font-size:13.5px;color:var(--text-2);margin-bottom:10px">Download a dated JSON backup of all orders, expenses and settings (bank tokens excluded).</p>
       <button class="btn btn-primary" onclick="exportBackup()">Download backup</button>`)}
@@ -3777,7 +3821,16 @@ function removeDraftRow(list, i, usedBy) {
 }
 function discardSettings() { settingsDraft = null; settingsDraftBase = null; settingsDraftError = null; toast('Changes discarded.'); renderView('settings'); }
 
-// ── Cost changes: recorded in the dated histories ──
+// ═══════════════════════════════════════════════════
+// APPLY COST CHANGE — one workflow for dated rates and corrections to saved orders
+// ═══════════════════════════════════════════════════
+//  A. Forward only (default): the new cost goes into the dated rate history from an effective date.
+//     Saved (locked) orders keep their costs.
+//  B. Apply to existing orders too: the chosen cost component is updated on matching orders in an
+//     order-date range — nothing else on those orders changes — and a correction (previous cost, new
+//     cost, dates, reason) is recorded on each. The new default applies from its own effective date.
+//  Stock-purchase payments and bank transactions are never touched.
+
 function costChanges(base, next) {
   const out = [];
   const today = londonToday();
@@ -3795,10 +3848,13 @@ function costChanges(base, next) {
     out.push({ kind: 'fee', label: 'Shopify fee', was: bFee, now: { rate: num(next.shopifyFeeRate), fixed: num(next.shopifyFixedFee) } });
   return out;
 }
+// Writes each change into its dated history from ch.eff (or fromDate). Entries on/after that date are replaced.
 function applyCostChanges(next, base, changes, fromDate) {
   const today = londonToday();
-  const put = (hist, entry) => sortedHistory([...hist.filter(h => h.from < fromDate), { from: fromDate, ...entry }]);
   changes.forEach(ch => {
+    const from = ch.eff || fromDate;
+    const meta = { set_on: today, ...(ch.reason ? { reason: ch.reason } : {}), ...(ch.mode === 'existing' ? { applied_to_orders: { from: ch.from, to: ch.to } } : {}) };
+    const put = (hist, entry) => sortedHistory([...hist.filter(h => h.from < from), { from, ...entry, ...meta }]);
     if (ch.kind === 'sku' || ch.kind === 'ship') {
       const key = ch.kind === 'sku' ? 'skuCosts' : 'shippingMethods';
       const e = next[key].find(x => x.uid === ch.uid), b = base[key].find(x => x.uid === ch.uid);
@@ -3815,20 +3871,300 @@ function applyCostChanges(next, base, changes, fromDate) {
   return next;
 }
 function withSettings(s, fn) { const keep = state.settings; state.settings = s; try { return fn(); } finally { state.settings = keep; } }
-function costChangeImpact(changes, fromDate) {
-  const today = londonToday();
-  const before = new Map(state.orders.map(o => [o.id, calcOrder(o).contribution]));
-  const opBefore = computeReport(allTimeRange(today), today).operatingProfit;
-  const trial = applyCostChanges(clone(draft()), state.settings, changes, fromDate);
-  return withSettings(trial, () => {
-    let affected = 0;
-    state.orders.forEach(o => { if (Math.abs(calcOrder(o).contribution - (before.get(o.id) ?? 0)) > 0.004) affected++; });
-    return { affected, delta: computeReport(allTimeRange(today), today).operatingProfit - opBefore,
-             lockedInRange: state.orders.filter(o => o.costSnapshot && o.date >= fromDate).length };
-  });
+function withTrial(orders, settings, fn) {
+  const ko = state.orders, ks = state.settings; state.orders = orders; state.settings = settings;
+  try { return fn(); } finally { state.orders = ko; state.settings = ks; }
 }
 
-let _pendingCostChanges = null;
+// ── Cost components on orders ──
+function componentNames(ch, s = state.settings) {
+  if (ch.kind !== 'sku' && ch.kind !== 'ship') return [];
+  const key = ch.kind === 'sku' ? 'skuCosts' : 'shippingMethods', f = ch.kind === 'sku' ? 'sku' : 'method';
+  const e = (s[key] || []).find(x => x.uid === ch.uid);
+  return [...new Set([e?.[f], ch.label, ...(e?.aliases || [])].filter(Boolean))];
+}
+function orderUsesComponent(o, ch, names, base) {
+  if (orderType(o) === 'cancelled' || !isValidYMD(o.date)) return false;
+  if (ch.kind === 'sku') return orderLines(o).some(l => names.includes(l.sku));
+  if (ch.kind === 'ship') return names.includes(o.shippingMethod);
+  if (ch.kind === 'defship') return !o.shippingMethod || !findShipEntry(o.shippingMethod, base);
+  return orderChannel(o) === 'shopify';
+}
+function componentOf(snap, ch, names) {
+  if (ch.kind === 'sku') { const l = (snap.lines || []).find(x => names.includes(x.sku)); return l ? validCost(l.unit_cost) : null; }
+  if (ch.kind === 'fee') return { rate: num(snap.fees?.shopify_rate), fixed: num(snap.fees?.shopify_fixed) };
+  return num(snap.shipping?.estimate ?? snap.shipping?.cost);
+}
+function sameComponent(a, b, ch) {
+  if (ch.kind === 'fee') return !!a && Math.abs(a.rate - b.rate) < 1e-9 && Math.abs(a.fixed - b.fixed) < 0.0005;
+  return a !== null && a !== undefined && Math.abs(a - b) < 0.0005;
+}
+function withComponent(snap, ch, names, o) {
+  const s = clone(snap);
+  if (ch.kind === 'sku') s.lines = s.lines.map(l => names.includes(l.sku) ? { ...l, unit_cost: r2(ch.now) } : l);
+  else if (ch.kind === 'fee') s.fees = { shopify_rate: ch.now.rate, shopify_fixed: r2(ch.now.fixed) };
+  else s.shipping = { ...(s.shipping || {}), method: o.shippingMethod || null, estimate: r2(ch.now) };
+  return s;
+}
+function fmtComp(v, ch) {
+  if (ch.kind === 'fee') return v ? `${fmtPct(v.rate)} + ${fmt(v.fixed)}` : '—';
+  return v === null || v === undefined ? 'no cost' : fmt(v);
+}
+function componentTitle(ch) {
+  return ch.kind === 'sku' ? `${ch.label} landed cost per unit` : ch.kind === 'ship' ? `${ch.label} postage estimate` : ch.kind === 'defship' ? 'Default postage estimate' : 'Shopify fee';
+}
+function firstOrderDate() { return state.orders.map(o => o.date).filter(isValidYMD).sort()[0] || null; }
+
+// Matching saved orders in the chosen range whose cost would actually change (option B).
+function existingHits(ch, base = state.settings) {
+  const names = componentNames(ch, base);
+  return state.orders.filter(o => orderUsesComponent(o, ch, names, base) && o.date >= ch.from && o.date <= ch.to).map(o => {
+    const snap = o.costSnapshot ? o.costSnapshot : buildSnapshot(o, 'estimated', base);
+    const before = componentOf(snap, ch, names);
+    return { o, snap, before, locked: !!o.costSnapshot };
+  }).filter(t => !sameComponent(t.before, ch.now, ch));
+}
+function updatesDefault(ch) { return !(ch.mode === 'existing' && ch.keepDefault); }
+
+// Preview using the real report engine on a trial copy of orders and settings.
+function costChangeImpact(ch) {
+  const today = londonToday(), base = state.settings;
+  const names = componentNames(ch, base);
+  const trialS = updatesDefault(ch) ? applyCostChanges(clone(base), base, [ch]) : base;
+  let trialO = state.orders, hits = [];
+  if (ch.mode === 'existing') {
+    hits = existingHits(ch, base);
+    const m = new Map(hits.map(t => [t.o.id, t]));
+    trialO = state.orders.map(o => m.has(o.id) ? { ...o, costSnapshot: withComponent(m.get(o.id).snap, ch, names, o) } : o);
+  }
+  const from = ch.mode === 'existing' ? ch.from : ch.eff;
+  const to = ch.mode === 'existing' ? (ch.to > today ? today : ch.to) : today;
+  const hasPeriod = from <= to;
+  const rep = () => { const R = computeReport({ kind: 'custom', from, to, label: '' }, today); return { c: R.contribution, op: R.operatingProfit }; };
+  const allOp = () => computeReport(allTimeRange(today), today).operatingProfit;
+  const before = hasPeriod ? rep() : { c: 0, op: 0 }, after = hasPeriod ? withTrial(trialO, trialS, rep) : before;
+  const allDelta = withTrial(trialO, trialS, allOp) - allOp();
+  const targetIds = new Set(hits.map(t => t.o.id));
+  const was = new Map(state.orders.map(o => [o.id, calcOrder(o).contribution]));
+  const repriced = withTrial(trialO, trialS, () => trialO.filter(o => !o.costSnapshot && !targetIds.has(o.id) && Math.abs(calcOrder(o).contribution - was.get(o.id)) > 0.004));
+  const lockedKept = state.orders.filter(o => o.costSnapshot && !targetIds.has(o.id) && orderUsesComponent(o, ch, names, base) && o.date >= ch.eff).length;
+  return { from, to, hasPeriod, before, after, dC: after.c - before.c, dOp: after.op - before.op, allDelta,
+           hits, newlyLocked: hits.filter(t => !t.locked).length, repriced: repriced.length, lockedKept,
+           refundsTouched: hits.filter(t => refundsOf(t.o).length).length };
+}
+
+// ── Dialog ──
+let _costJob = null;   // { changes, direct, base, failed }
+function openApplyCostChange(changes, { direct = false } = {}) {
+  const today = londonToday(), first = firstOrderDate() || today;
+  changes.forEach(ch => Object.assign(ch, { mode: ch.mode || 'forward', eff: today, from: first, to: today, keepDefault: !!ch.keepDefault, reason: '' }));
+  _costJob = { changes, direct };
+  openFormModal(changes.length > 1 ? `Apply cost changes (${changes.length})` : 'Apply cost change',
+    `${changes.length > 1 ? '<p class="form-hint" style="margin-bottom:10px">Choose separately for each cost.</p>' : ''}${changes.map(costSectionHTML).join('')}`,
+    `<button class="btn btn-ghost" onclick="closeModal()">${direct ? 'Cancel' : 'Back to editing'}</button><button class="btn btn-primary" id="cc-save" onclick="runSave(this, confirmApplyCostChange)">Apply</button>`);
+  changes.forEach((_, i) => ccSet(i));
+}
+function costSectionHTML(ch, i) {
+  const migr = schema.costSnapshot === true;
+  const same = ch.kind === 'fee' ? sameComponent(ch.was, ch.now, ch) : Math.abs(ch.was - ch.now) < 0.0005;
+  return `<section class="cc-sec" id="cc-sec-${i}" data-testid="cc-sec-${i}">
+    <h4>${esc(componentTitle(ch))}: ${fmtComp(ch.was, ch)} → ${fmtComp(ch.now, ch)}</h4>
+    <div class="cc-opt"><label><input type="radio" name="cc-mode-${i}" value="forward" ${ch.mode === 'forward' ? 'checked' : ''} ${same ? 'disabled' : ''} onchange="ccSet(${i})"> <strong>A. Forward only</strong> — default</label>
+      <div class="form-hint">Orders dated from the effective date, and new orders, use the new cost. Saved orders keep their locked costs.</div></div>
+    <div class="cc-opt"><label><input type="radio" name="cc-mode-${i}" value="existing" ${ch.mode === 'existing' ? 'checked' : ''} ${migr ? '' : 'disabled'} onchange="ccSet(${i})"> <strong>B. Apply to existing orders too</strong></label>
+      <div class="form-hint">Updates only this cost on saved orders dated in the range below, and records the previous cost, new cost, dates and your reason on each order.${migr ? '' : ' Needs migration 002.'}</div>
+      <div class="cc-fields" id="cc-b-${i}" style="display:none">
+        <label>Orders dated from<input type="date" id="cc-from-${i}" value="${ch.from}" onchange="ccSet(${i})"></label>
+        <label>to<input type="date" id="cc-to-${i}" value="${ch.to}" onchange="ccSet(${i})"></label>
+        ${_costJob?.direct ? `<label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="cc-keep-${i}" ${ch.keepDefault ? 'checked' : ''} onchange="ccSet(${i})"> Leave the cost for new orders unchanged</label>` : ''}
+      </div></div>
+    <div class="cc-fields" id="cc-eff-row-${i}" style="margin:6px 0 10px">
+      <label><span id="cc-eff-l-${i}">Effective date</span><input type="date" id="cc-eff-${i}" value="${ch.eff}" onchange="ccSet(${i})"></label></div>
+    <div class="form-group" style="margin-bottom:10px"><label for="cc-reason-${i}">Reason <span id="cc-req-${i}">(optional)</span></label>
+      <input type="text" id="cc-reason-${i}" placeholder="e.g. supplier invoice 1043 showed £12.40 landed" oninput="_costJob.changes[${i}].reason=this.value.trim()"></div>
+    <div id="cc-impact-${i}" class="notice" data-testid="cc-impact-${i}" aria-live="polite"></div>
+  </section>`;
+}
+function ccRead(i) {
+  const ch = _costJob.changes[i];
+  ch.mode = document.querySelector(`input[name=cc-mode-${i}]:checked`)?.value || 'forward';
+  ch.eff = document.getElementById(`cc-eff-${i}`).value;
+  ch.from = document.getElementById(`cc-from-${i}`).value;
+  ch.to = document.getElementById(`cc-to-${i}`).value;
+  ch.keepDefault = !!document.getElementById(`cc-keep-${i}`)?.checked;
+  ch.reason = document.getElementById(`cc-reason-${i}`).value.trim();
+  return ch;
+}
+function ccProblem(ch) {
+  if (updatesDefault(ch) && !isValidYMD(ch.eff)) return 'choose a valid effective date';
+  if (ch.mode === 'existing') {
+    if (schema.costSnapshot !== true) return 'applying to existing orders needs migration 002';
+    if (!isValidYMD(ch.from) || !isValidYMD(ch.to)) return 'choose the order-date range';
+    if (ch.from > ch.to) return 'the range starts after it ends';
+  }
+  if (!updatesDefault(ch) && ch.mode !== 'existing') return 'nothing to apply';
+  return null;
+}
+function ccSet(i) {
+  const ch = ccRead(i);
+  const B = ch.mode === 'existing';
+  document.getElementById(`cc-b-${i}`).style.display = B ? 'flex' : 'none';
+  document.getElementById(`cc-eff-row-${i}`).style.display = updatesDefault(ch) ? 'flex' : 'none';
+  document.getElementById(`cc-eff-l-${i}`).textContent = B ? 'New cost applies to new orders dated from' : 'Effective date — orders dated from';
+  document.getElementById(`cc-req-${i}`).textContent = B ? '(required)' : '(optional)';
+  const el = document.getElementById(`cc-impact-${i}`);
+  const problem = ccProblem(ch);
+  if (problem) { el.className = 'notice warn'; el.textContent = problem[0].toUpperCase() + problem.slice(1) + '.'; return; }
+  const imp = costChangeImpact(ch);
+  const s = n => (n === 1 ? '' : 's');
+  const range = `${fmtDateLong(imp.from)}–${fmtDateLong(imp.to)}`;
+  const money = `contribution ${fmt(imp.before.c)} → ${fmt(imp.after.c)} (<strong>${deltaMoney(imp.dC)}</strong>), operating profit ${fmt(imp.before.op)} → ${fmt(imp.after.op)} (<strong>${deltaMoney(imp.dOp)}</strong>) for ${range}`;
+  const parts = [];
+  if (B) {
+    parts.push(imp.hits.length
+      ? `<strong data-testid="cc-count-${i}">${imp.hits.length} order${s(imp.hits.length)}</strong> will change: ${money}.`
+      : `<strong data-testid="cc-count-${i}">0 orders</strong> in this range need changing.`);
+    if (imp.newlyLocked) parts.push(`${imp.newlyLocked} of them ${imp.newlyLocked === 1 ? "isn't" : "aren't"} locked yet and will be locked now — their other costs at the rates on their order dates, marked estimated.`);
+    if (imp.refundsTouched) parts.push(`${imp.refundsTouched} ha${imp.refundsTouched === 1 ? 's' : 've'} refunds; returned stock is revalued at the new cost, refund records are unchanged.`);
+    if (ch.kind === 'ship' || ch.kind === 'defship') parts.push('Orders with matched actual postage keep the actual amount.');
+  } else if (ch.eff > londonToday()) {
+    parts.push(`No existing orders change. Orders dated from ${fmtDateLong(ch.eff)} will use ${fmtComp(ch.now, ch)}.`);
+  } else {
+    parts.push(imp.repriced ? `${imp.repriced} order${s(imp.repriced)} without locked costs dated from ${fmtDateLong(ch.eff)} will use the new cost: ${money}. Lock orders first (Review &amp; lock) if you want them to keep their current cost.`
+      : `No saved order changes. Orders dated from ${fmtDateLong(ch.eff)} will use ${fmtComp(ch.now, ch)}.`);
+  }
+  if (updatesDefault(ch) && imp.lockedKept && !B) parts.push(`${imp.lockedKept} locked order${s(imp.lockedKept)} dated from ${fmtDateLong(ch.eff)} keep${imp.lockedKept === 1 ? 's its' : ' their'} costs.`);
+  if (B && updatesDefault(ch)) parts.push(`New orders dated from ${fmtDateLong(ch.eff)} use ${fmtComp(ch.now, ch)}${imp.repriced ? `, and ${imp.repriced} other order${s(imp.repriced)} without locked costs from that date change too` : ''}.`);
+  if (Math.abs(imp.allDelta - imp.dOp) > 0.005) parts.push(`Profit in other periods changes by ${deltaMoney(imp.allDelta - imp.dOp)} (e.g. returns recognised later).`);
+  parts.push('Stock purchases and bank transactions are not changed.');
+  el.className = 'notice' + (imp.hits.length || imp.repriced ? ' warn' : '');
+  el.innerHTML = parts.join(' ');
+}
+function deltaMoney(v) { return (v > 0.004 ? '+' : v < -0.004 ? '−' : '') + fmt(Math.abs(v)); }
+
+async function confirmApplyCostChange() {
+  if (writesBlocked()) throw new Error('data not loaded');
+  const job = _costJob; if (!job) throw new Error('nothing to apply');
+  job.changes.forEach((_, i) => ccRead(i));
+  job.changes.forEach(ch => { const p = ccProblem(ch); if (p) throw new Error(`${componentTitle(ch)}: ${p}`); });
+  job.changes.forEach(ch => { if (ch.mode === 'existing' && !ch.reason) throw new Error(`${componentTitle(ch)}: enter a reason for changing existing orders`); });
+  job.base = clone(state.settings);
+  job.plans = job.changes.filter(ch => ch.mode === 'existing').map(ch => ({ ch, names: componentNames(ch, job.base), ids: existingHits(ch, job.base).map(t => t.o.id) }));
+  // 1. Settings (the dated rate history). If this fails nothing has changed.
+  const def = job.changes.filter(updatesDefault);
+  if (def.length) {
+    const next = applyCostChanges(clone(job.direct ? state.settings : draft()), state.settings, def);
+    await persistSettings(next, { checkDraftBase: !job.direct });
+  }
+  job.settingsSaved = def.length > 0;
+  // 2. Saved orders (option B), one at a time; failures are listed and can be retried.
+  await applyCostToOrders(job);
+  finishCostJob(job);
+}
+async function applyCostToOrders(job, onlyFailed = false) {
+  const today = londonToday();
+  const prevFailed = new Set((job.failed || []).map(f => `${f.plan}:${f.id}`));
+  job.failed = []; job.done = job.done || 0; job.unchanged = job.unchanged || 0;
+  suppressRealtime++;
+  try {
+    for (let pi = 0; pi < job.plans.length; pi++) {
+      const { ch, names, ids } = job.plans[pi];
+      for (const id of ids) {
+        if (onlyFailed && !prevFailed.has(`${pi}:${id}`)) continue;
+        const local = state.orders.find(x => x.id === id);
+        try {
+          const fresh = await freshOrderRow(id);
+          if (orderType(fresh) === 'cancelled' || !(fresh.date >= ch.from && fresh.date <= ch.to)) { job.unchanged++; continue; }
+          const snap0 = fresh.costSnapshot ? clone(fresh.costSnapshot) : buildSnapshot(fresh, 'estimated', job.base);
+          const before = componentOf(snap0, ch, names);
+          if (sameComponent(before, ch.now, ch)) { if (local) local.costSnapshot = fresh.costSnapshot; job.unchanged++; continue; }
+          const after = withComponent(snap0, ch, names, fresh);
+          after.corrections = [...(snap0.corrections || []), {
+            on: today, type: 'cost_change', reason: ch.reason, component: componentTitle(ch), field: ch.kind,
+            before, after: ch.now, orders_from: ch.from, orders_to: ch.to, default_from: updatesDefault(ch) ? ch.eff : null,
+            locked_now: !fresh.costSnapshot, summary: `${componentTitle(ch)}: ${fmtComp(before, ch)} → ${fmtComp(ch.now, ch)} (orders ${fmtDate(ch.from)}–${fmtDate(ch.to)})` }];
+          const res = await updateRecord('orders', id, { cost_snapshot: after });
+          if (res.error) throw new Error(res.error.message || 'database error');
+          if (local) local.costSnapshot = after;
+          job.done++;
+        } catch (e) { job.failed.push({ plan: pi, id, orderNum: local?.orderNum || `#${id}`, msg: e.message || 'not saved' }); }
+      }
+    }
+  } finally { suppressRealtime--; }
+  setSyncStatus(job.failed.length ? 'error' : 'synced', job.failed.length ? 'Some orders not saved' : 'Saved');
+}
+function finishCostJob(job) {
+  const total = job.plans.reduce((a, p) => a + p.ids.length, 0);
+  if (!job.failed.length) {
+    closeModal(); _costJob = null;
+    const bits = [job.settingsSaved ? 'Cost change saved' : 'Saved', total ? `${job.done} order${job.done !== 1 ? 's' : ''} updated` : ''].filter(Boolean);
+    toast(bits.join(' · ') + '.');
+    document.getElementById('page-subtitle').textContent = pageSubtitle();
+    renderView(currentView);
+    return;
+  }
+  // Partially completed: say exactly what was and wasn't saved, and offer a retry for the failures only.
+  document.getElementById('modal-title').textContent = 'Cost change only partly saved';
+  document.getElementById('modal-body').innerHTML = `<div class="notice err" data-testid="cc-partial">
+      ${job.settingsSaved ? 'The new cost for new orders <strong>was saved</strong>. ' : ''}<strong>${job.done} of ${total}</strong> order${total !== 1 ? 's were' : ' was'} updated${job.unchanged ? ` (${job.unchanged} already had this cost)` : ''};
+      <strong>${job.failed.length} NOT saved</strong>. Reports currently use the old cost for ${job.failed.length === 1 ? 'that order' : 'those orders'}.</div>
+    <ul style="margin:10px 0 0 18px;font-size:13.5px">${job.failed.map(f => `<li>${esc(f.orderNum)} — ${esc(f.msg)}</li>`).join('')}</ul>`;
+  document.getElementById('modal-footer').innerHTML = `<button class="btn btn-ghost" onclick="closeModal();renderView(currentView)">Close</button>
+    <button class="btn btn-primary" id="cc-retry" onclick="runSave(this, retryCostOrders)">Retry ${job.failed.length} order${job.failed.length !== 1 ? 's' : ''}</button>`;
+  renderView(currentView);
+}
+async function retryCostOrders() {
+  if (!_costJob) throw new Error('nothing to retry');
+  await applyCostToOrders(_costJob, true);
+  finishCostJob(_costJob);
+}
+
+// Entry point for correcting past orders without editing the Settings table.
+function openCostPicker() {
+  if (isDirty()) { toast('Save or discard your other Settings changes first.'); return; }
+  settingsDraft = null; settingsDraftBase = null; settingsDraftError = null;   // an untouched draft must not outlive this save
+  const s = state.settings, today = londonToday();
+  const opts = [
+    ...s.skuCosts.filter(x => !x.archived && x.sku).map(x => ({ v: `sku:${x.uid}`, t: `${x.sku} — landed cost per unit (now ${fmt(num(validCost(rateOn(historyOf(x), today)?.cost)))})` })),
+    ...s.shippingMethods.filter(x => !x.archived && x.method).map(x => ({ v: `ship:${x.uid}`, t: `${x.method} — postage estimate (now ${fmt(num(rateOn(historyOf(x), today)?.cost))})` })),
+    { v: 'defship:', t: `Default postage estimate (now ${fmt(shippingCostOn('', today))})` },
+    { v: 'fee:', t: `Shopify fee (now ${fmtPct(feesOn(today).rate)} + ${fmt(feesOn(today).fixed)})` },
+  ];
+  openFormModal('Correct a cost on past orders', `
+    <div class="form-grid">
+      <div class="form-group full"><label for="cp-comp">Cost</label><select id="cp-comp" onchange="cpToggle()">${opts.map(o => `<option value="${o.v}">${esc(o.t)}</option>`).join('')}</select></div>
+      <div class="form-group" id="cp-cost-row"><label for="cp-cost">Correct cost (£)</label><input type="number" id="cp-cost" step="0.01" min="0"></div>
+      <div class="form-group" id="cp-rate-row" style="display:none"><label for="cp-rate">Fee rate</label><input type="number" id="cp-rate" step="0.001" min="0" max="1"><p class="form-hint">0.02 = 2%</p></div>
+      <div class="form-group" id="cp-fixed-row" style="display:none"><label for="cp-fixed">Fixed fee (£)</label><input type="number" id="cp-fixed" step="0.01" min="0"></div>
+    </div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="cp-next" onclick="cpNext()">Next</button>`);
+}
+function cpToggle() {
+  const fee = document.getElementById('cp-comp').value.startsWith('fee');
+  document.getElementById('cp-cost-row').style.display = fee ? 'none' : '';
+  document.getElementById('cp-rate-row').style.display = fee ? '' : 'none';
+  document.getElementById('cp-fixed-row').style.display = fee ? '' : 'none';
+}
+function cpError(m) { const el = document.getElementById('modal-error'); el.textContent = m; el.classList.add('show'); }
+function cpNext() {
+  const s = state.settings, today = londonToday();
+  const [kind, uid] = document.getElementById('cp-comp').value.split(':');
+  let ch;
+  if (kind === 'fee') {
+    const rate = parseFloat(document.getElementById('cp-rate').value), fixed = parseFloat(document.getElementById('cp-fixed').value);
+    if (!(rate >= 0 && rate <= 1) || !(fixed >= 0)) { cpError('Enter the fee rate (0–1) and the fixed fee.'); return; }
+    ch = { kind, label: 'Shopify fee', was: feesOn(today), now: { rate, fixed: r2(fixed) } };
+  } else {
+    const now = validCost(document.getElementById('cp-cost').value);
+    if (now === null) { cpError('Enter the correct cost.'); return; }
+    if (kind === 'defship') ch = { kind, label: 'Default shipping', was: shippingCostOn('', today), now: r2(now) };
+    else { const e = (kind === 'sku' ? s.skuCosts : s.shippingMethods).find(x => x.uid === uid);
+      ch = { kind, uid, label: kind === 'sku' ? e.sku : e.method, was: num(rateOn(historyOf(e), today)?.cost), now: r2(now) }; }
+  }
+  ch.mode = 'existing'; ch.keepDefault = true;
+  openApplyCostChange([ch], { direct: true });
+}
+
 async function saveSettings(btn) {
   if (writesBlocked()) return;
   const d = draft();
@@ -3838,123 +4174,30 @@ async function saveSettings(btn) {
     if (b && b[key] && b[key] !== e[key]) e.aliases = [...new Set([...(e.aliases || []), b[key]])].filter(a => a !== e[key]);
   }));
   const changes = costChanges(state.settings, d);
-  if (changes.length) { openCostChangePrompt(changes); return; }
-  await commitSettings(null, null, btn);
+  if (changes.length) { openApplyCostChange(changes); return; }
+  await commitSettings(btn);
 }
-function openCostChangePrompt(changes) {
-  _pendingCostChanges = changes;
-  const today = londonToday();
-  const f = ch => ch.kind === 'fee' ? `${fmtPct(ch.was.rate)} + ${fmt(ch.was.fixed)} → ${fmtPct(ch.now.rate)} + ${fmt(ch.now.fixed)}` : `${fmt(ch.was)} → ${fmt(ch.now)}`;
-  openFormModal('Apply cost changes', `
-    <p style="font-size:13.5px;margin-bottom:10px">${changes.map(ch => `<strong>${esc(ch.label)}</strong>: ${f(ch)}`).join('<br>')}</p>
-    <p style="font-size:13.5px;color:var(--text-2);margin-bottom:10px">Orders with locked costs are not changed. From when should the new rate apply to orders without locked costs and to new orders?</p>
-    <label class="checkbox-row" style="text-transform:none;letter-spacing:0;margin-bottom:8px"><input type="radio" name="cc-when" value="today" checked onchange="refreshCostImpact()"> From today (${fmtDateLong(today)})</label>
-    <label class="checkbox-row" style="text-transform:none;letter-spacing:0;margin-bottom:8px"><input type="radio" name="cc-when" value="date" onchange="refreshCostImpact()"> From
-      <input type="date" id="cc-date" value="${today}" style="width:auto;padding:4px 8px" onchange="document.querySelector('input[name=cc-when][value=date]').checked=true;refreshCostImpact()"></label>
-    <div id="cc-impact" class="notice"></div>`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Back to editing</button><button class="btn btn-primary" id="cc-save" onclick="runSave(this, confirmCostChanges)">Save</button>`);
-  refreshCostImpact();
-}
-function costChangeFromDate() {
-  const v = document.querySelector('input[name=cc-when]:checked')?.value || 'today';
-  if (v === 'date') { const d = document.getElementById('cc-date').value; return isValidYMD(d) ? d : null; }
-  return londonToday();
-}
-function refreshCostImpact() {
-  const el = document.getElementById('cc-impact'); if (!el || !_pendingCostChanges) return;
-  const from = costChangeFromDate();
-  document.getElementById('cc-save').disabled = !from;
-  if (!from) { el.textContent = 'Choose a valid date.'; return; }
-  const imp = costChangeImpact(_pendingCostChanges, from);
-  el.className = 'notice' + (imp.affected ? ' warn' : '');
-  el.innerHTML = (imp.affected ? `Reprices <strong>${imp.affected} order${imp.affected > 1 ? 's' : ''} without locked costs</strong>; profit to date changes by <strong>${fmt(imp.delta)}</strong>.`
-    : 'No existing orders change.') + (imp.lockedInRange ? ` ${imp.lockedInRange} locked order${imp.lockedInRange > 1 ? 's' : ''} from that date keep${imp.lockedInRange === 1 ? 's its' : ' their'} costs — use Correct historical costs if they were wrong.` : '');
-}
-async function confirmCostChanges() {
-  const from = costChangeFromDate(); if (!from) throw new Error('choose a valid date');
-  applyCostChanges(draft(), state.settings, _pendingCostChanges, from);
-  _pendingCostChanges = null;
-  await commitSettings(true, from, null, true);
-}
-async function commitSettings(changed, fromDate, btn, fromModal = false) {
+// Saves a full settings object. Throws on failure (nothing changed); bank connection/balances always come from saved state.
+async function persistSettings(next, { checkDraftBase = true } = {}) {
   const strip = x => { const y = clone(x); delete y.bankConfig; delete y.bankBalances; return JSON.stringify(y); };
-  if (settingsDraftBase && strip(settingsDraftBase) !== strip(state.settings)) {
-    settingsDraftError = 'settings were changed on another device since you started editing. Discard, then make your change again';
-    if (fromModal) throw new Error(settingsDraftError);
-    renderView('settings'); return;
-  }
-  const d = clone(draft());
-  // bank connection and bank balances are managed separately — never overwrite them from the draft
+  if (checkDraftBase && settingsDraftBase && strip(settingsDraftBase) !== strip(state.settings))
+    throw new Error('settings were changed on another device since you started editing. Discard, then make your change again — nothing was saved');
+  const d = clone(next);
   d.bankConfig = clone(state.settings.bankConfig); d.bankBalances = clone(state.settings.bankBalances);
   [...(d.skuCosts || []), ...(d.shippingMethods || [])].forEach(e => { if (Array.isArray(e.history) && e.history.length) e.costSynced = e.cost; });
   const res = await saveSettingsRow('app_settings', d);
-  if (res.error) {
-    settingsDraftError = res.error.message || 'database error';
-    setSyncStatus('error', 'Settings not saved');
-    if (fromModal) throw new Error(settingsDraftError);
-    renderView('settings'); return;
-  }
+  if (res.error) { setSyncStatus('error', 'Settings not saved'); throw new Error((res.error.message || 'database error') + ' — nothing was saved'); }
   if (d.financialYearStartMonth !== state.settings.financialYearStartMonth) reportPeriod = { ...reportPeriod };
-  state.settings = d; settingsDraft = null; settingsDraftBase = null; settingsDraftError = null;
-  if (fromModal) closeModal();
+  state.settings = d;
+  if (checkDraftBase) { settingsDraft = null; settingsDraftBase = null; settingsDraftError = null; }
   setSyncStatus('synced', 'Saved');
-  toast(changed ? `Settings saved — new rates apply from ${fmtDateLong(fromDate)}.` : 'Settings saved.');
+}
+async function commitSettings(btn) {
+  try { await persistSettings(draft()); }
+  catch (e) { settingsDraftError = e.message.replace(/ — nothing was saved$/, ''); renderView('settings'); return; }
+  toast('Settings saved.');
   document.getElementById('page-subtitle').textContent = pageSubtitle();
   renderView('settings');
-}
-
-// ── Correct historical costs (deliberate, logged per order) ──
-function openBulkCorrection() {
-  const skus = [...new Set([...state.settings.skuCosts.map(x => x.sku), ...state.orders.flatMap(o => orderLines(o).map(l => l.sku))])].filter(Boolean);
-  openFormModal('Correct historical costs', `
-    <p style="font-size:13.5px;color:var(--text-2);margin-bottom:10px">Changes the locked unit cost of one product type on orders between two dates, and records the before/after values and your reason on each order.</p>
-    <div class="form-grid">
-      <div class="form-group full"><label for="bc-sku">Product type</label><select id="bc-sku" onchange="bulkPreview()">${skus.map(s => `<option>${esc(s)}</option>`).join('')}</select></div>
-      <div class="form-group"><label for="bc-from">Orders from</label><input type="date" id="bc-from" value="${firstActivityDate() || londonToday()}" onchange="bulkPreview()"></div>
-      <div class="form-group"><label for="bc-to">to</label><input type="date" id="bc-to" value="${londonToday()}" onchange="bulkPreview()"></div>
-      <div class="form-group"><label for="bc-cost">Correct unit cost (£)</label><input type="number" id="bc-cost" step="0.01" min="0" oninput="bulkPreview()"></div>
-      <div class="form-group"><label for="bc-basis">Mark as</label><select id="bc-basis"><option value="confirmed">Confirmed</option><option value="estimated">Estimated</option></select></div>
-      <div class="form-group full"><label for="bc-reason">Reason (required)</label><input type="text" id="bc-reason"></div>
-    </div><div id="bc-preview" class="notice" style="margin-top:10px"></div>`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="runSave(this, applyBulkCorrection)">Apply correction</button>`);
-  bulkPreview();
-}
-function bulkTargets() {
-  const sku = document.getElementById('bc-sku').value, from = document.getElementById('bc-from').value, to = document.getElementById('bc-to').value;
-  return state.orders.filter(o => orderType(o) !== 'cancelled' && isValidYMD(o.date) && o.date >= from && o.date <= to && orderLines(o).some(l => l.sku === sku));
-}
-function bulkPreview() {
-  const el = document.getElementById('bc-preview'); if (!el) return;
-  const cost = parseFloat(document.getElementById('bc-cost').value);
-  const t = bulkTargets(); const sku = document.getElementById('bc-sku').value;
-  if (!Number.isFinite(cost)) { el.textContent = `${t.length} order${t.length !== 1 ? 's' : ''} contain ${sku} in this range. Enter the correct cost to see the effect.`; return; }
-  const delta = t.reduce((a, o) => { const c = calcOrder(o); const l = c.lines.find(x => x.sku === sku); return a + l.qty * ((l.unit ?? 0) - cost); }, 0);
-  el.innerHTML = `${t.length} order${t.length !== 1 ? 's' : ''} affected · profit changes by <strong>${fmt(delta)}</strong>.`;
-}
-async function applyBulkCorrection() {
-  if (writesBlocked()) throw new Error('data not loaded');
-  const sku = document.getElementById('bc-sku').value, cost = parseFloat(document.getElementById('bc-cost').value);
-  const reason = document.getElementById('bc-reason').value.trim(), basis = document.getElementById('bc-basis').value;
-  if (!Number.isFinite(cost) || cost < 0) throw new Error('enter the correct unit cost');
-  if (!reason) throw new Error('enter a reason');
-  const targets = bulkTargets(); if (!targets.length) throw new Error('no orders in that range contain this product');
-  let done = 0, failed = 0;
-  suppressRealtime++;
-  try {
-    for (const o of targets) {
-      try { const fresh = await freshOrderRow(o.id); o.costSnapshot = fresh.costSnapshot; } catch (e) { failed++; continue; }
-      const before = o.costSnapshot ? clone(o.costSnapshot) : buildSnapshot(o, 'estimated');
-      const after = clone(before);
-      after.lines = after.lines.map(l => l.sku === sku ? { ...l, unit_cost: r2(cost) } : l);
-      if (!after.lines.some(l => l.sku === sku)) after.lines.push({ sku, unit_cost: r2(cost) });
-      after.basis = basis;
-      after.corrections = [...(before.corrections || []), { on: londonToday(), reason, before: { lines: before.lines, basis: before.basis }, summary: `${sku}: ${fmt(num(before.lines.find(l => l.sku === sku)?.unit_cost))} → ${fmt(cost)}` }];
-      const res = await updateRecord('orders', o.id, { cost_snapshot: after });
-      if (res.error) failed++; else { o.costSnapshot = after; done++; }
-    }
-  } finally { suppressRealtime--; }
-  closeModal(); renderView(currentView);
-  toast(`Corrected ${done} order${done !== 1 ? 's' : ''}${failed ? ` · ${failed} NOT saved` : ''}.`);
 }
 
 // ═══════════════════════════════════════════════════
