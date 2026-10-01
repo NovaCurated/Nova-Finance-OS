@@ -1,4 +1,6 @@
-const APP_VERSION = '1.0.0';
+// Keep APP_VERSION identical to APP_VERSION in index.html — bump both on every release.
+// Changing this file's bytes is what makes browsers install the new service worker.
+const APP_VERSION = '1.5.010';
 const CACHE_NAME = `nova-finance-${APP_VERSION}`;
 const CORE_ASSETS = ['./index.html', './manifest.json'];
 
@@ -14,22 +16,27 @@ self.addEventListener('activate', e => {
     caches.keys()
       .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
+      // Notify open tabs once this worker controls them
+      .then(() => self.clients.matchAll({ type: 'window' }))
+      .then(clients => clients.forEach(c => c.postMessage({ type: 'SW_ACTIVATED', version: APP_VERSION })))
   );
-  // Notify all open tabs that a new version is active
-  self.clients.matchAll({ type: 'window' }).then(clients => {
-    clients.forEach(c => c.postMessage({ type: 'SW_ACTIVATED', version: APP_VERSION }));
-  });
 });
 
 self.addEventListener('fetch', e => {
-  // Only handle same-origin navigation requests — let Supabase calls go direct
+  // Page loads: network first (always the latest index.html), cached copy only when offline.
+  // Supabase and CDN requests are not intercepted.
   if (e.request.mode === 'navigate') {
     e.respondWith(
-      fetch(e.request).catch(() => caches.match('./index.html'))
+      fetch(e.request)
+        .then(res => {
+          if (res.ok) { const copy = res.clone(); caches.open(CACHE_NAME).then(c => c.put('./index.html', copy)); }
+          return res;
+        })
+        .catch(() => caches.match('./index.html'))
     );
     return;
   }
-  // For local assets, cache-first
+  // Other same-origin assets (manifest): cache-first within this version's cache
   if (new URL(e.request.url).origin === self.location.origin) {
     e.respondWith(
       caches.match(e.request).then(r => r || fetch(e.request).then(res => {
@@ -43,4 +50,5 @@ self.addEventListener('fetch', e => {
 
 self.addEventListener('message', e => {
   if (e.data === 'skipWaiting') self.skipWaiting();
+  if (e.data && e.data.type === 'GET_VERSION' && e.ports && e.ports[0]) e.ports[0].postMessage({ version: APP_VERSION });
 });

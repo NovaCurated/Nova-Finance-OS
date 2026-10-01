@@ -1134,6 +1134,29 @@
       .dash-grid { grid-template-columns: 1fr; }
       .kpi-grid { grid-template-columns: 1fr 1fr; }
     }
+
+    /* ── Notices / warnings (1.5.010) ─────────────── */
+    .notice-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+    .notice {
+      border: 1px solid var(--border);
+      border-left-width: 4px;
+      border-left-color: var(--accent-mid);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      font-size: 12.5px;
+      line-height: 1.5;
+      background: var(--surface);
+      color: var(--text-2);
+    }
+    .notice strong { color: var(--text); }
+    .notice.warn { border-color: #E8C98F; border-left-color: var(--warn); background: var(--warn-bg); }
+    .notice.err  { border-color: #EBB5A9; border-left-color: var(--neg);  background: var(--neg-bg); }
+    .notice .btn { margin-top: 8px; }
+    .period-dates { font-size: 12px; color: var(--text-3); margin: -12px 0 18px 2px; }
+    .pl-note { font-size: 11.5px; color: var(--text-3); padding: 8px 24px 12px; line-height: 1.5; }
+    .tag.tag-warn { color: var(--warn); border-color: #E8C98F; background: var(--warn-bg); }
+    .tag.tag-err  { color: var(--neg);  border-color: #EBB5A9; background: var(--neg-bg); }
+    .tag.tag-info { color: var(--text-3); }
   </style>
 </head>
 <body>
@@ -1293,7 +1316,7 @@
 // VERSION & PWA
 // ═══════════════════════════════════════════════════
 
-const APP_VERSION = '1.5.009';
+const APP_VERSION = '1.5.010';
 let swRegistration = null;
 let deferredInstallPrompt = null;
 let lastSyncTime = null;
@@ -1303,7 +1326,9 @@ let syncConnectionStatus = 'connecting'; // 'connected' | 'error' | 'connecting'
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
     try {
-      swRegistration = await navigator.serviceWorker.register('./sw.js');
+      // updateViaCache:'none' → the browser re-checks sw.js on every load (bypassing the
+      // HTTP cache), so a release with a bumped version in sw.js installs reliably.
+      swRegistration = await navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' });
       swRegistration.addEventListener('updatefound', () => {
         const newWorker = swRegistration.installing;
         newWorker.addEventListener('statechange', () => {
@@ -1322,6 +1347,18 @@ if ('serviceWorker' in navigator) {
       document.getElementById('update-banner').classList.remove('show');
       toast('App updated to v' + e.data.version + ' ✓');
     }
+  });
+}
+
+// Ask the active service worker which version it is (shown on the Sync page).
+function getServiceWorkerVersion() {
+  return new Promise(resolve => {
+    const ctrl = navigator.serviceWorker?.controller;
+    if (!ctrl) return resolve(null);
+    const ch = new MessageChannel();
+    const timer = setTimeout(() => resolve(null), 1500);
+    ch.port1.onmessage = e => { clearTimeout(timer); resolve(e.data?.version || null); };
+    try { ctrl.postMessage({ type: 'GET_VERSION' }, [ch.port2]); } catch { clearTimeout(timer); resolve(null); }
   });
 }
 
@@ -1389,60 +1426,32 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // DATA & STATE
 // ═══════════════════════════════════════════════════
 
-const DEFAULT_DATA = {
-  transactions: [
-    { id: 1,  date: '2026-04-07', description: "Director's loan into the business",                       category: 'Loan Received',             amount: 2800   },
-    { id: 2,  date: '2026-04-13', description: 'Shopify Website Monthly Cost',                            category: 'Software & Subscriptions',  amount: 1      },
-    { id: 3,  date: '2026-04-07', description: 'Purchase of Trial Scarf',                                 category: 'Other Expenses',            amount: 115    },
-    { id: 4,  date: '2026-04-20', description: 'Purchase of Second Trial Scarf',                          category: 'Other Expenses',            amount: 29.55  },
-    { id: 5,  date: '2026-04-20', description: 'Adobe Illustrator Monthly Cost',                          category: 'Software & Subscriptions',  amount: 21.98  },
-    { id: 6,  date: '2026-05-12', description: 'Shopify Website Monthly Cost',                            category: 'Software & Subscriptions',  amount: 1      },
-    { id: 7,  date: '2026-05-20', description: 'Adobe Illustrator Monthly Cost',                          category: 'Software & Subscriptions',  amount: 21.98  },
-    { id: 8,  date: '2026-05-21', description: 'Purchase of Trial Scarf',                                 category: 'Other Expenses',            amount: 29.85  },
-    { id: 9,  date: '2026-06-10', description: 'Shopify Website Monthly Cost',                            category: 'Software & Subscriptions',  amount: 1      },
-    { id: 10, date: '2026-06-15', description: 'Purchase of Inventory – Cotton Scarves',                  category: 'Stock Purchases',           amount: 540.65 },
-    { id: 11, date: '2026-06-16', description: 'Purchase of Inventory – Silk Scarves',                    category: 'Stock Purchases',           amount: 774.02 },
-    { id: 12, date: '2026-06-22', description: 'Adobe Illustrator Monthly Cost',                          category: 'Software & Subscriptions',  amount: 21.98  },
-    { id: 13, date: '2026-06-30', description: 'Inwards Shipping – Silk Scarves',                         category: 'Stock Purchases',           amount: 138.01 },
-    { id: 14, date: '2026-07-07', description: 'Purchase of Inventory – Silk Scarves',                    category: 'Stock Purchases',           amount: 982.31 },
-    { id: 15, date: '2026-07-10', description: 'Shopify Website Monthly Cost',                            category: 'Software & Subscriptions',  amount: 25     },
-    { id: 16, date: '2026-07-17', description: 'Shopify Annual Website Subscription',                     category: 'Software & Subscriptions',  amount: 11.99  },
-    { id: 17, date: '2026-07-16', description: 'Purchase of Packaging – Cotton Bags',                     category: 'Packaging',                 amount: 16.99  },
+// Settings used only when the database has no saved settings, or a saved settings
+// object is missing a key. Seed orders/transactions were removed in 1.5.010:
+// the app never creates, resets or reseeds live records.
+const DEFAULT_SETTINGS = {
+  businessName: 'Nova Curated',
+  periodLabel: 'FY 2026',          // legacy display text — reporting now uses real dates
+  financialYearStartMonth: 1,      // 1 = January (calendar-year financial year)
+  openingStock: 0,                 // stock held before the first recorded purchase (landed cost)
+  closingStock: 2657,              // value of the last stock count (units × landed cost)
+  stockCountDate: null,            // date of that count, 'YYYY-MM-DD'
+  postageActualFrom: null,         // from this date, Shipping & Postage transactions are the postage cost
+  skuCosts: [
+    { sku: 'Silk 90',   cost: 13, notes: '90×90cm silk scarf'   },
+    { sku: 'Silk 50',   cost: 5,  notes: '50×50cm silk scarf'   },
+    { sku: 'Cotton 50', cost: 5,  notes: '50×50cm cotton scarf' },
   ],
-  orders: [
-    { id: 1,  date: '2026-07-19', orderNum: '#1005', customer: 'Lily Ker',           skuType: 'Silk 90',   qty: 1, revenue: 78,    shippingMethod: 'Standard',   outsideShopify: false, channel: 'shopify' },
-    { id: 2,  date: '2026-07-20', orderNum: '#1006', customer: 'Cheyenna Devenish',  skuType: 'Silk 90',   qty: 1, revenue: 78,    shippingMethod: 'Standard',   outsideShopify: false, channel: 'shopify' },
-    { id: 3,  date: '2026-07-20', orderNum: '#1007', customer: 'Janine Calder',      skuType: 'Silk 90',   qty: 1, revenue: 78,    shippingMethod: 'Standard',   outsideShopify: false, channel: 'shopify' },
-    { id: 4,  date: '2026-07-20', orderNum: '#1008', customer: 'Melanie Simpson',    skuType: 'Silk 90',   qty: 1, revenue: 85.99, shippingMethod: 'Standard',   outsideShopify: false, channel: 'shopify' },
-    { id: 5,  date: '2026-07-17', orderNum: '#1001', customer: 'Kendra Tunley',      skuType: 'Silk 90',   qty: 1, revenue: 0,     shippingMethod: 'Collection', outsideShopify: true,  channel: 'direct'  },
-    { id: 6,  date: '2026-07-17', orderNum: '#1002', customer: 'Bethany Cantley',    skuType: 'Cotton 50', qty: 3, revenue: 0,     shippingMethod: 'Collection', outsideShopify: true,  channel: 'direct'  },
-    { id: 7,  date: '2026-07-21', orderNum: '#1009', customer: 'Aidan Hewison',      skuType: 'Silk 90',   qty: 1, revenue: 82,    shippingMethod: 'Standard',   outsideShopify: false, channel: 'shopify' },
-    { id: 8,  date: '2026-07-22', orderNum: '#1010', customer: 'Lorraine Tunley',    skuType: 'Silk 90',   qty: 1, revenue: 82,    shippingMethod: 'Collection', outsideShopify: false, channel: 'shopify' },
-    { id: 9,  date: '2026-07-22', orderNum: '#1011', customer: 'Joanna Hibbert',     skuType: 'Silk 90',   qty: 1, revenue: 78,    shippingMethod: 'Collection', outsideShopify: false, channel: 'shopify' },
-    { id: 10, date: '2026-07-22', orderNum: '#1012', customer: 'Bronte Fishwick',    skuType: 'Silk 90',   qty: 1, revenue: 85.99, shippingMethod: 'Standard',   outsideShopify: false, channel: 'shopify' },
+  defaultShipping: 3.80,
+  shopifyFeeRate: 0.02,
+  shopifyFixedFee: 0.25,
+  platformPayoutLagDays: 5,
+  foldPayoutLagDays: 14,
+  shippingMethods: [
+    { method: 'Standard',   cost: 3.40, notes: 'Royal Mail tracked' },
+    { method: 'Collection', cost: 0,    notes: 'Customer collection' },
   ],
-  settings: {
-    businessName: 'Nova Curated',
-    periodLabel: 'FY 2026',
-    openingStock: 0,
-    closingStock: 2657,
-    skuCosts: [
-      { sku: 'Silk 90',   cost: 13, notes: '90×90cm silk scarf'   },
-      { sku: 'Silk 50',   cost: 5,  notes: '50×50cm silk scarf'   },
-      { sku: 'Cotton 50', cost: 5,  notes: '50×50cm cotton scarf' },
-    ],
-    defaultShipping: 3.80,
-    shopifyFeeRate: 0.02,
-    shopifyFixedFee: 0.25,
-    platformPayoutLagDays: 5,
-    foldPayoutLagDays: 14,
-    shippingMethods: [
-      { method: 'Standard',   cost: 3.40, notes: 'Royal Mail tracked' },
-      { method: 'Collection', cost: 0,    notes: 'Customer collection' },
-    ],
-    bankConfig: {}
-  },
-  nextId: { tx: 18, order: 11 }
+  bankConfig: {}
 };
 
 const CATEGORIES = [
@@ -1481,9 +1490,15 @@ const CAT_CFG = {
 let state = {
   transactions: [],
   orders: [],
-  settings: JSON.parse(JSON.stringify(DEFAULT_DATA.settings)),
-  nextId: { tx: 18, order: 11 }
+  settings: JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),
+  nextId: { tx: 1, order: 1 }
 };
+
+let schemaCaps = { costSnapshot: null };  // null = not yet checked / unknown
+let loadError = null;                     // set when the database could not be read
+let dataEmpty = false;                    // database returned no orders and no transactions
+let lastBackup = null;                    // set only after a successful export in this session
+let suppressRealtime = 0;                 // >0 while doing bulk writes
 
 // ── Sync status UI ─────────────────────────────────
 function setSyncStatus(type, label) {
@@ -1506,14 +1521,20 @@ function setSyncStatus(type, label) {
 }
 
 // ── Row mappers ────────────────────────────────────
+function validSnapshot(s) {
+  return s && typeof s === 'object' && Array.isArray(s.lines) ? s : null;
+}
+
 function rowToOrder(r) {
   const channel = r.channel || (r.outside_shopify ? 'direct' : 'shopify');
-  return { id: r.id, date: r.date, orderNum: r.order_num, customer: r.customer,
-           skuType: r.sku_type, qty: parseInt(r.qty) || 1, revenue: parseFloat(r.revenue) || 0,
+  return { id: r.id, date: String(r.date || '').slice(0, 10), orderNum: r.order_num || '', customer: r.customer || '',
+           skuType: r.sku_type || '', qty: parseInt(r.qty) || 1, revenue: parseFloat(r.revenue) || 0,
            shippingMethod: r.shipping_method, outsideShopify: channel === 'direct', channel,
            foldCommissionRate: r.fold_commission_rate != null ? parseFloat(r.fold_commission_rate) : null,
            refunded: r.refunded || false,
-           lineItems: r.line_items || null };
+           lineItems: Array.isArray(r.line_items) && r.line_items.length ? r.line_items : null,
+           costSnapshot: validSnapshot(r.cost_snapshot),
+           costSnapshotInvalid: r.cost_snapshot != null && !validSnapshot(r.cost_snapshot) };
 }
 
 function orderToRow(o) {
@@ -1521,16 +1542,20 @@ function orderToRow(o) {
   // For multi-item orders, derive legacy sku_type/qty from lineItems
   const skuType = o.lineItems ? o.lineItems[0].sku : o.skuType;
   const qty     = o.lineItems ? o.lineItems.reduce((a, li) => a + li.qty, 0) : o.qty;
-  return { id: o.id, date: o.date, order_num: o.orderNum, customer: o.customer,
+  const row = { id: o.id, date: o.date, order_num: o.orderNum, customer: o.customer,
            sku_type: skuType, qty, revenue: o.revenue,
            shipping_method: o.shippingMethod, outside_shopify: channel === 'direct', channel,
            fold_commission_rate: o.foldCommissionRate ?? null,
            refunded: o.refunded || false,
            line_items: o.lineItems || null };
+  // cost_snapshot is only sent when the column exists AND this order holds a snapshot.
+  // Leaving it out means an upsert can never clear a snapshot saved elsewhere.
+  if (schemaCaps.costSnapshot === true && o.costSnapshot) row.cost_snapshot = o.costSnapshot;
+  return row;
 }
 
 function rowToTx(r) {
-  return { id: r.id, date: r.date, description: r.description,
+  return { id: r.id, date: String(r.date || '').slice(0, 10), description: r.description || '',
            category: r.category, amount: parseFloat(r.amount) || 0 };
 }
 
@@ -1539,66 +1564,106 @@ function txToRow(t) {
            category: t.category, amount: t.amount };
 }
 
-// ── DB operations ──────────────────────────────────
+// ── DB operations (each returns true on success) ───
+// Safety net: if the database could not be read, every write is refused, so defaults
+// or stale ids can never overwrite live records or settings.
+function writesBlocked() {
+  if (!loadError) return false;
+  toast('Data did not load — saving is disabled until Sync → Sync now succeeds.');
+  setSyncStatus('error', 'Read-only: data not loaded');
+  return true;
+}
+
 async function dbUpsertOrder(order) {
+  if (writesBlocked()) return false;
   setSyncStatus('syncing', 'Saving…');
   const { error } = await sb.from('orders').upsert(orderToRow(order));
-  if (error) { setSyncStatus('error', 'Save failed'); console.error(error); }
-  else setSyncStatus('synced', 'Saved');
+  if (error) { setSyncStatus('error', 'Save failed'); console.error(error); toast('Save FAILED — order not saved to the database.'); return false; }
+  setSyncStatus('synced', 'Saved');
+  return true;
 }
 
 async function dbDeleteOrder(id) {
+  if (writesBlocked()) return false;
   setSyncStatus('syncing', 'Deleting…');
   const { error } = await sb.from('orders').delete().eq('id', id);
-  if (error) setSyncStatus('error', 'Delete failed');
-  else setSyncStatus('synced', 'Deleted');
+  if (error) { setSyncStatus('error', 'Delete failed'); toast('Delete FAILED — check connection.'); return false; }
+  setSyncStatus('synced', 'Deleted');
+  return true;
 }
 
 async function dbUpsertTx(tx) {
+  if (writesBlocked()) return false;
   setSyncStatus('syncing', 'Saving…');
   const { error } = await sb.from('transactions').upsert(txToRow(tx));
-  if (error) { setSyncStatus('error', 'Save failed'); console.error(error); }
-  else setSyncStatus('synced', 'Saved');
+  if (error) { setSyncStatus('error', 'Save failed'); console.error(error); toast('Save FAILED — transaction not saved to the database.'); return false; }
+  setSyncStatus('synced', 'Saved');
+  return true;
 }
 
 async function dbDeleteTx(id) {
+  if (writesBlocked()) return false;
   setSyncStatus('syncing', 'Deleting…');
   const { error } = await sb.from('transactions').delete().eq('id', id);
-  if (error) setSyncStatus('error', 'Delete failed');
-  else setSyncStatus('synced', 'Deleted');
+  if (error) { setSyncStatus('error', 'Delete failed'); toast('Delete FAILED — check connection.'); return false; }
+  setSyncStatus('synced', 'Deleted');
+  return true;
 }
 
 async function dbSaveSettings() {
-  await sb.from('settings').upsert({ key: 'app_settings', value: state.settings });
+  if (writesBlocked()) return false;
+  const { error } = await sb.from('settings').upsert({ key: 'app_settings', value: state.settings });
+  if (error) { console.error(error); setSyncStatus('error', 'Settings save failed'); return false; }
+  return true;
 }
 
-// ── Seed default data on first run ─────────────────
-async function seedDefaultData() {
-  await Promise.all([
-    sb.from('orders').insert(DEFAULT_DATA.orders.map(orderToRow)),
-    sb.from('transactions').insert(DEFAULT_DATA.transactions.map(txToRow)),
-    sb.from('settings').upsert({ key: 'app_settings', value: DEFAULT_DATA.settings }),
-  ]);
-}
-
-// ── Load all data from Supabase ────────────────────
-async function loadFromSupabase() {
-  const [oRes, tRes, sRes] = await Promise.all([
-    sb.from('orders').select('*').order('id'),
-    sb.from('transactions').select('*').order('id'),
-    sb.from('settings').select('*').eq('key', 'app_settings').maybeSingle(),
-  ]);
-
-  // First run — seed default data
-  if (!oRes.data?.length && !tRes.data?.length) {
-    await seedDefaultData();
-    return loadFromSupabase();
+// Reads every row of a table in pages (PostgREST returns at most 1000 rows per request).
+async function fetchAllRows(table, orderCol = 'id') {
+  const PAGE = 1000;
+  let from = 0, all = [];
+  for (;;) {
+    const { data, error } = await sb.from(table).select('*').order(orderCol).range(from, from + PAGE - 1);
+    if (error) throw new Error(`${table}: ${error.message || error.code || 'read failed'}`);
+    all = all.concat(data || []);
+    if (!data || data.length < PAGE) break;
+    from += PAGE;
   }
+  return all;
+}
 
-  state.orders       = (oRes.data || []).map(rowToOrder);
-  state.transactions = (tRes.data || []).map(rowToTx);
-  if (sRes.data?.value) state.settings = sRes.data.value;
-  state.settings.bankConfig = state.settings.bankConfig || {};
+// Checks whether migration 001 (orders.cost_snapshot) has been applied.
+async function detectSchema() {
+  const { error } = await sb.from('orders').select('id,cost_snapshot').limit(1);
+  if (!error) { schemaCaps.costSnapshot = true; return; }
+  const missingCol = error.code === '42703' || /cost_snapshot/i.test(error.message || '');
+  schemaCaps.costSnapshot = missingCol ? false : null;
+  if (!missingCol) console.warn('Schema check failed:', error);
+}
+
+function mergeSettings(v) {
+  const base = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+  const s = (v && typeof v === 'object') ? { ...base, ...v } : base;
+  s.bankConfig = s.bankConfig || {};
+  s.skuCosts = Array.isArray(s.skuCosts) ? s.skuCosts : [];
+  s.shippingMethods = Array.isArray(s.shippingMethods) ? s.shippingMethods : [];
+  return s;
+}
+
+// ── Load all data from Supabase (read-only — never seeds or resets) ──
+async function loadFromSupabase() {
+  const [orders, txs, sRes] = await Promise.all([
+    fetchAllRows('orders', 'id'),
+    fetchAllRows('transactions', 'id'),
+    sb.from('settings').select('*').eq('key', 'app_settings').maybeSingle(),
+    detectSchema(),
+  ]);
+  if (sRes.error) throw new Error('settings: ' + (sRes.error.message || 'read failed'));
+
+  state.orders       = orders.map(rowToOrder);
+  state.transactions = txs.map(rowToTx);
+  state.settings     = mergeSettings(sRes.data?.value);
+  dataEmpty = !orders.length && !txs.length;
+  loadError = null;
 
   state.nextId.order = (state.orders.length       ? Math.max(...state.orders.map(o => o.id))       : 0) + 1;
   state.nextId.tx    = (state.transactions.length ? Math.max(...state.transactions.map(t => t.id)) : 0) + 1;
@@ -1606,7 +1671,7 @@ async function loadFromSupabase() {
 
 // ── Recurring expenses ─────────────────────────────
 // Edit this list to add/remove recurring expenses.
-// dayOfMonth: the expense is auto-logged on or after this day each month.
+// dayOfMonth: the expense is auto-logged on or after this day each month (Europe/London date).
 const RECURRING_EXPENSES = [
   { description: 'Shopify Website Monthly Cost',   category: 'Software & Subscriptions', amount: 25,    dayOfMonth: 10 },
   { description: 'Adobe Illustrator Monthly Cost', category: 'Software & Subscriptions', amount: 21.98, dayOfMonth: 20 },
@@ -1614,20 +1679,23 @@ const RECURRING_EXPENSES = [
 ];
 
 async function checkRecurringExpenses() {
-  const now = new Date();
-  const thisMonth = now.toISOString().slice(0, 7); // "2026-08"
+  // Never auto-write into a database that returned nothing (could be a permissions/read glitch).
+  if (dataEmpty || loadError) return;
+  const today = londonToday();
+  const thisMonth = today.slice(0, 7);              // "2026-10"
+  const dayNum = parseInt(today.slice(8, 10), 10);
   let added = 0;
   for (const rec of RECURRING_EXPENSES) {
     const alreadyLogged = state.transactions.some(t =>
       t.description === rec.description && t.date.startsWith(thisMonth)
     );
-    if (!alreadyLogged && now.getDate() >= rec.dayOfMonth) {
+    if (!alreadyLogged && dayNum >= rec.dayOfMonth) {
       const date = `${thisMonth}-${String(rec.dayOfMonth).padStart(2, '0')}`;
       const tx = { id: state.nextId.tx++, date, description: rec.description, category: rec.category, amount: rec.amount };
       state.transactions.push(tx);
       skipNextRefresh = true;
-      await dbUpsertTx(tx);
-      added++;
+      if (await dbUpsertTx(tx)) added++;
+      else state.transactions = state.transactions.filter(t => t !== tx);
     }
   }
   if (added > 0) toast(`Auto-logged ${added} recurring expense${added > 1 ? 's' : ''} ✓`);
@@ -1646,200 +1714,462 @@ function subscribeRealtime() {
 }
 
 async function handleRemoteChange() {
+  if (suppressRealtime > 0) return;
   if (skipNextRefresh) { skipNextRefresh = false; return; }
   setSyncStatus('syncing', 'Syncing…');
-  await loadFromSupabase();
-  renderView(currentView);
-  setSyncStatus('synced', 'Synced');
+  try {
+    await loadFromSupabase();
+    renderView(currentView);
+    setSyncStatus('synced', 'Synced');
+  } catch (e) {
+    console.error(e);
+    setSyncStatus('error', 'Sync failed');
+  }
 }
 
 // ═══════════════════════════════════════════════════
-// CALCULATIONS
+// DATES — Europe/London calendar dates
 // ═══════════════════════════════════════════════════
+// Record dates are plain 'YYYY-MM-DD' strings and are compared as strings.
+// "Today" is the calendar date in Europe/London — never UTC, never the device time zone.
 
-function getSkuCost(skuType) {
-  const s = state.settings;
-  const entry = s.skuCosts.find(x => x.sku === skuType);
-  return entry ? entry.cost : 0;
+const LONDON_TZ = 'Europe/London';
+const EPOCH = '1900-01-01';
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTHS_LONG  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const _londonParts = new Intl.DateTimeFormat('en-GB', { timeZone: LONDON_TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
+
+function londonToday(now = new Date()) {
+  const p = {};
+  _londonParts.formatToParts(now).forEach(x => { p[x.type] = x.value; });
+  return `${p.year}-${p.month}-${p.day}`;
+}
+function ymd(y, m, d) { return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`; }
+function daysInMonth(y, m) { return new Date(Date.UTC(y, m, 0)).getUTCDate(); }
+function isValidYMD(s) {
+  if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const [y, m, d] = s.split('-').map(Number);
+  return y >= 1900 && m >= 1 && m <= 12 && d >= 1 && d <= daysInMonth(y, m);
+}
+function parseYMD(s) { const [y, m, d] = String(s).slice(0, 10).split('-').map(Number); return { y, m, d }; }
+function addMonths(y, m, n) { const i = y * 12 + (m - 1) + n; return { y: Math.floor(i / 12), m: ((i % 12) + 12) % 12 + 1 }; }
+function monthStart(y, m) { return ymd(y, m, 1); }
+function monthEnd(y, m)   { return ymd(y, m, daysInMonth(y, m)); }
+function addDays(s, n) { const { y, m, d } = parseYMD(s); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); }
+
+// ── Financial year & reporting ranges ──────────────
+function fyStartMonth() {
+  const v = parseInt(state.settings.financialYearStartMonth, 10);
+  return v >= 1 && v <= 12 ? v : 1;
+}
+function fyLabel(startYear) {
+  return fyStartMonth() === 1 ? `FY ${startYear}` : `FY ${startYear}/${String(startYear + 1).slice(-2)}`;
+}
+function fyRange(startYear) {
+  const sm = fyStartMonth();
+  const last = addMonths(startYear, sm, 11);
+  return { kind: 'fy', fyStartYear: startYear, from: monthStart(startYear, sm), to: monthEnd(last.y, last.m), label: fyLabel(startYear) };
+}
+function fyContaining(dateStr) {
+  const { y, m } = parseYMD(dateStr);
+  return fyRange(m >= fyStartMonth() ? y : y - 1);
+}
+function ytdRange(today = londonToday()) {
+  const fy = fyContaining(today);
+  return { ...fy, kind: 'ytd', to: today, label: `${fy.label} year to date` };
+}
+function monthRange(a, b) {
+  let f = a, t = b || a;
+  if (t.y * 12 + t.m < f.y * 12 + f.m) [f, t] = [t, f];
+  const same = f.y === t.y && f.m === t.m;
+  return { kind: 'months', from: monthStart(f.y, f.m), to: monthEnd(t.y, t.m),
+           label: same ? `${MONTHS_LONG[f.m - 1]} ${f.y}` : `${MONTHS_SHORT[f.m - 1]} ${f.y} – ${MONTHS_SHORT[t.m - 1]} ${t.y}` };
+}
+function allTimeRange(today = londonToday()) { return { kind: 'all', from: EPOCH, to: today, label: 'All periods to date' }; }
+// Records without a valid date (blank, or before 1900 e.g. a mistyped year) are excluded
+// from every report and flagged, so all figures stay consistent with each other.
+function inDateRange(d, r) { return isValidYMD(d) && d >= r.from && d <= r.to; }
+function onOrBefore(d, today) { return isValidYMD(d) && d <= today; }
+function capToToday(range, today) {
+  return range.to <= today ? { ...range, capped: false } : { ...range, requestedTo: range.to, to: today, capped: true };
+}
+function monthsInRange(r) {
+  const out = [];
+  let { y, m } = parseYMD(r.from);
+  const end = parseYMD(r.to);
+  while (y * 12 + m <= end.y * 12 + end.m) {
+    out.push({ y, m, key: `${y}-${String(m).padStart(2, '0')}`, label: `${MONTHS_SHORT[m - 1]} ${String(y).slice(-2)}`,
+               range: { from: r.from > monthStart(y, m) ? r.from : monthStart(y, m), to: r.to < monthEnd(y, m) ? r.to : monthEnd(y, m) } });
+    ({ y, m } = addMonths(y, m, 1));
+  }
+  return out;
 }
 
-function getShippingCost(method) {
+// ═══════════════════════════════════════════════════
+// CALCULATIONS — one shared model for Dashboard, P&L, Monthly and Balance Sheet
+// ═══════════════════════════════════════════════════
+//  Contribution     = sales − cost of scarves sold − order postage (estimate) − platform fees
+//  Operating profit = contribution − other direct costs (packaging, postage adjustment,
+//                     other postage) − operating expenses
+//  Profit before tax = operating profit + other income
+//  Stock purchases are NOT expensed: they add to book stock, which is charged to profit
+//  as scarves are sold (units × landed unit cost locked on each order).
+//  Cash movement is reported separately and includes stock purchases.
+
+const OPEX_CATS = ['Marketing & Advertising','Software & Subscriptions','Bank Fees','Rent','Utilities','Professional Fees','Insurance','Travel','Office Supplies','Other Expenses'];
+const FOLD_DEFAULT_RATE = 0.15;
+
+function num(v) { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; }
+function r2(n) { return Math.round((n + Number.EPSILON) * 100) / 100; }
+function lagDays(v, def) { const n = parseInt(v, 10); return Number.isFinite(n) && n >= 0 ? n : def; }
+function orderChannel(o) { return o.channel || (o.outsideShopify ? 'direct' : 'shopify'); }
+
+// Current Settings defaults — used for NEW orders, and for orders not yet cost-locked.
+function currentSkuCost(sku) {
+  const e = (state.settings.skuCosts || []).find(x => x.sku === sku);
+  if (!e) return null;                       // missing / deleted SKU → unknown, never silently £0
+  const c = parseFloat(e.cost);
+  return Number.isFinite(c) && c >= 0 ? c : null;
+}
+function currentShippingCost(method) {
   const s = state.settings;
-  const def = parseFloat(s.defaultShipping) || 0;
+  const def = num(s.defaultShipping);
   if (!method) return def;
-  const entry = s.shippingMethods.find(x => x.method === method);
-  return entry !== undefined ? (parseFloat(entry.cost) || 0) : def;
+  const entry = (s.shippingMethods || []).find(x => x.method === method);
+  return entry !== undefined ? num(entry.cost) : def;
+}
+function orderLines(o) {
+  const src = Array.isArray(o.lineItems) && o.lineItems.length ? o.lineItems : [{ sku: o.skuType, qty: o.qty }];
+  return src.map(li => ({ sku: li.sku || '', qty: Math.max(0, parseInt(li.qty, 10) || 0) }));
+}
+
+// ── Postage rule ───────────────────────────────────
+// Before `postageActualFrom` (or if it isn't set): the order's shipping-method cost IS the
+// postage cost. Shipping & Postage transactions in that window are reported separately as
+// "Other postage" (and flagged), because they are not linked to orders.
+// From `postageActualFrom`: Shipping & Postage transactions are the real postage cost. Order
+// estimates stay in per-order contribution, and the P&L adds a "Postage adjustment"
+// (actual − estimated) so each shipment is counted once.
+function postageActualFrom() { const d = state.settings.postageActualFrom; return isValidYMD(d) ? d : null; }
+function orderUsesActualPostage(o) { const f = postageActualFrom(); return !!f && !!o.date && o.date >= f; }
+
+// ── Cost snapshots (locked costs per order) ────────
+// basis: 'recorded'  – captured when the order was added in the app
+//        'estimated' – backfilled from Settings defaults (NOT the verified original cost)
+//        'repriced'  – deliberately re-locked to the then-current defaults on an edit
+function buildSnapshot(o, basis) {
+  const s = state.settings;
+  return {
+    v: 1, basis, captured_on: londonToday(), captured_at: new Date().toISOString(), app_version: APP_VERSION,
+    lines: orderLines(o).map(l => { const c = currentSkuCost(l.sku); return { sku: l.sku, unit_cost: c, cost_known: c !== null }; }),
+    shipping: { method: o.shippingMethod || null, cost: currentShippingCost(o.shippingMethod) },
+    fees: { shopify_rate: num(s.shopifyFeeRate), shopify_fixed: num(s.shopifyFixedFee) },
+  };
+}
+
+// Editing rules (no "refresh costs" tick):
+//  • customer, order #, date, revenue, refund flag → locked costs unchanged
+//    (Shopify fee = locked rate × current revenue + locked fixed fee)
+//  • quantity of an existing product → that product's locked unit cost is kept
+//  • product added → that line takes today's Settings cost (dated 'added_on')
+//  • product removed → its line is dropped
+//  • shipping method changed → that method's current cost (dated 'changed_on')
+//  • channel changed → fee terms captured at recording are kept; Fold uses the order's own rate
+//  • order with no snapshot → stays unlocked (use "Lock estimated costs" or tick "refresh")
+function mergeSnapshotOnEdit(prev, next) {
+  const old = prev.costSnapshot;
+  if (!old) return null;
+  const today = londonToday();
+  const snap = JSON.parse(JSON.stringify(old));
+  let changed = false;
+  snap.lines = orderLines(next).map(l => {
+    const kept = old.lines.find(x => x.sku === l.sku);
+    if (kept) return kept;
+    changed = true;
+    const c = currentSkuCost(l.sku);
+    return { sku: l.sku, unit_cost: c, cost_known: c !== null, added_on: today };
+  });
+  if (snap.lines.length !== old.lines.length) changed = true;
+  const oldMethod = old.shipping ? (old.shipping.method ?? null) : null;
+  if ((next.shippingMethod || null) !== oldMethod) {
+    snap.shipping = { method: next.shippingMethod || null, cost: currentShippingCost(next.shippingMethod), changed_on: today };
+    changed = true;
+  }
+  if (changed) snap.edited_on = today;
+  return snap;
+}
+
+function snapshotLabel(snap) {
+  if (!snap) return 'Not locked — valued at current Settings';
+  const b = snap.basis === 'estimated' ? 'Estimated (backfilled from Settings defaults)'
+          : snap.basis === 'repriced' ? 'Re-locked to Settings defaults'
+          : 'Recorded with the order';
+  return `${b} on ${fmtDateLong(snap.captured_on)}${snap.edited_on ? ` · edited ${fmtDateLong(snap.edited_on)}` : ''}`;
 }
 
 function calcOrder(order) {
-  const s = state.settings;
-  const channel = order.channel || (order.outsideShopify ? 'direct' : 'shopify');
-  const foldRate = order.foldCommissionRate ?? 0.15;
+  const channel = orderChannel(order);
+  const foldRate = order.foldCommissionRate ?? FOLD_DEFAULT_RATE;
+  const snap = order.costSnapshot || null;
+  const basis = snap ? (snap.basis || 'recorded') : 'unlocked';
+  const usesActualPostage = orderUsesActualPostage(order);
   if (order.refunded) {
-    return { productCost: 0, shippingOut: 0, shopifyCut: 0, foldCut: 0, platformCut: 0, cm: 0, netCash: 0, channel, foldRate };
+    // Refund handling is unchanged in 1.5.010: a refunded order contributes nothing (see notes).
+    return { revenue: 0, productCost: 0, shippingOut: 0, shopifyCut: 0, foldCut: 0, platformCut: 0, cm: 0, payout: 0, netCash: 0,
+             units: 0, channel, foldRate, basis, partialLock: false, costMissing: false, missingSkus: [], usesActualPostage, refunded: true };
   }
-  const productCost = order.lineItems
-    ? order.lineItems.reduce((a, li) => a + li.qty * getSkuCost(li.sku), 0)
-    : order.qty * getSkuCost(order.skuType);
-  const shippingOut = getShippingCost(order.shippingMethod);
-  const shopifyCut = (channel === 'shopify' && order.revenue) ?
-    Math.round((order.revenue * s.shopifyFeeRate + s.shopifyFixedFee) * 100) / 100 : 0;
-  const foldCut = (channel === 'fold' && order.revenue) ?
-    Math.round(order.revenue * foldRate * 100) / 100 : 0;
-  const platformCut = shopifyCut + foldCut;
-  const cm = Math.round((order.revenue - productCost - shippingOut - platformCut) * 100) / 100;
-  const netCash = Math.round((order.revenue - shippingOut - platformCut) * 100) / 100;
-  return { productCost, shippingOut, shopifyCut, foldCut, platformCut, cm, netCash, channel, foldRate };
-}
-
-function calcDash() {
-  const s = state.settings;
-  const orders = state.orders;
-  const txs = state.transactions;
-
-  const paidOrders = orders.filter(o => o.revenue > 0);
-  const ordersCount = paidOrders.length;
-  const novaOrdersCount = paidOrders.filter(o => (o.channel || 'shopify') === 'shopify').length;
-  const foldOrdersCount = paidOrders.filter(o => o.channel === 'fold').length;
-  const refundedCount = orders.filter(o => o.refunded).length;
-  const revenue = orders.reduce((a, o) => a + effRev(o), 0);
-  const totalCM = orders.reduce((a, o) => a + calcOrder(o).cm, 0);
-  const cmPct = revenue ? totalCM / revenue : 0;
-
-  const opexCats = ['Marketing & Advertising','Software & Subscriptions','Bank Fees','Rent','Utilities','Professional Fees','Insurance','Travel','Office Supplies','Other Expenses'];
-  const fixedCosts = txs.filter(t => opexCats.includes(t.category)).reduce((a,t) => a+t.amount, 0);
-
-  const opProfit = totalCM - fixedCosts;
-  const opMarginPct = revenue ? opProfit / revenue : 0;
-
-  // Cash: use calcBS for consistent payout-lag-aware figure
-  const bs = calcBS();
-  const cash = bs.cash;
-  const platformInTransit = bs.platformInTransit;
-
-  // P&L net profit (full year)
-  const plFull = calcPL(0, 0, new Date().getFullYear());
-  const netProfit = plFull.netProfit;
-
-  const inventory = s.closingStock;
-  const totalAssets = cash + platformInTransit + inventory;
-  const directorLoan = txs.filter(t=>t.category==='Loan Received').reduce((a,t)=>a+t.amount,0) -
-    txs.filter(t=>t.category==='Loan Repayment').reduce((a,t)=>a+t.amount,0);
-  const ownerCapital = txs.filter(t=>t.category==='Owner Investment').reduce((a,t)=>a+t.amount,0) -
-    txs.filter(t=>t.category==='Owner Drawings').reduce((a,t)=>a+t.amount,0);
-  const totalLiabilities = directorLoan;
-  const totalEquity = ownerCapital + netProfit;
-
-  return { ordersCount, novaOrdersCount, foldOrdersCount, refundedCount, revenue, totalCM, cmPct, fixedCosts, opProfit, opMarginPct,
-           cash, platformInTransit, shopifyInTransit: bs.shopifyInTransit, foldInTransit: bs.foldInTransit,
-           netProfit, inventory, directorLoan, totalAssets, totalLiabilities, totalEquity };
-}
-
-function calcPL(fromMonth, toMonth, year) {
-  // fromMonth=0 means full year; toMonth used for range
-  const s = state.settings;
-  const txs = state.transactions;
-  const orders = state.orders;
-
-  const inPeriod = (dateStr) => {
-    if (!fromMonth) return true;
-    const d = new Date(dateStr + 'T00:00:00');
-    const dYear = d.getFullYear();
-    const dMo   = d.getMonth()+1;
-    if (dYear !== year) return false;
-    const effectiveTo = toMonth && toMonth >= fromMonth ? toMonth : fromMonth;
-    return dMo >= fromMonth && dMo <= effectiveTo;
-  };
-
-  const filtOrders = orders.filter(o => inPeriod(o.date));
-  const filtTxs = txs.filter(t => inPeriod(t.date));
-
-  const salesRev = filtOrders.reduce((a,o) => a+effRev(o), 0);
-  const otherIncome = filtTxs.filter(t=>t.category==='Other Income').reduce((a,t)=>a+t.amount,0);
-  const totalRev = salesRev + otherIncome;
-
-  const openingStock = s.openingStock;
-  const stockPurchases = filtTxs.filter(t=>t.category==='Stock Purchases').reduce((a,t)=>a+t.amount,0);
-  const packaging = filtTxs.filter(t=>t.category==='Packaging').reduce((a,t)=>a+t.amount,0);
-  const shippingOut = filtOrders.reduce((a,o)=>a+calcOrder(o).shippingOut,0) +
-    filtTxs.filter(t=>t.category==='Shipping & Postage').reduce((a,t)=>a+t.amount,0);
-  const shopifyFees = filtOrders.reduce((a,o)=>a+calcOrder(o).shopifyCut,0);
-  const foldFees = filtOrders.reduce((a,o)=>a+calcOrder(o).foldCut,0);
-  const closingStock = fromMonth ? 0 : s.closingStock; // only subtract closing stock on full year
-  const cogs = openingStock + stockPurchases + packaging + shippingOut + shopifyFees + foldFees - closingStock;
-  const grossProfit = totalRev - cogs;
-  const grossMarginPct = totalRev ? grossProfit / totalRev : 0;
-
-  const opexCats = ['Marketing & Advertising','Software & Subscriptions','Bank Fees','Rent','Utilities','Professional Fees','Insurance','Travel','Office Supplies','Other Expenses'];
-  const opex = {};
-  opexCats.forEach(cat => {
-    opex[cat] = filtTxs.filter(t=>t.category===cat).reduce((a,t)=>a+t.amount,0);
+  let productCost = 0, units = 0, partialLock = false;
+  const missingSkus = [];
+  orderLines(order).forEach(l => {
+    units += l.qty;
+    const sl = snap ? snap.lines.find(x => x.sku === l.sku) : null;
+    let unit;
+    if (sl && sl.cost_known && Number.isFinite(parseFloat(sl.unit_cost))) unit = parseFloat(sl.unit_cost);
+    else { unit = currentSkuCost(l.sku); if (snap) partialLock = true; }   // not locked (or locked as unknown): use Settings if it now has a cost
+    if (unit === null) missingSkus.push(l.sku || '(blank)');
+    else productCost += l.qty * unit;
   });
-  const totalOpEx = Object.values(opex).reduce((a,v)=>a+v,0);
-  const netProfit = grossProfit - totalOpEx;
-  const netMarginPct = totalRev ? netProfit / totalRev : 0;
-
-  return { salesRev, otherIncome, totalRev, openingStock, stockPurchases, packaging,
-           shippingOut, shopifyFees, foldFees, closingStock, cogs, grossProfit, grossMarginPct,
-           opex, totalOpEx, netProfit, netMarginPct };
+  const revenue = r2(num(order.revenue));
+  const shippingOut = snap && snap.shipping ? num(snap.shipping.cost) : currentShippingCost(order.shippingMethod);
+  const rate  = snap && snap.fees ? num(snap.fees.shopify_rate)  : num(state.settings.shopifyFeeRate);
+  const fixed = snap && snap.fees ? num(snap.fees.shopify_fixed) : num(state.settings.shopifyFixedFee);
+  const shopifyCut = (channel === 'shopify' && revenue) ? r2(revenue * rate + fixed) : 0;
+  const foldCut    = (channel === 'fold' && revenue) ? r2(revenue * foldRate) : 0;
+  const platformCut = r2(shopifyCut + foldCut);
+  const cm      = r2(revenue - productCost - shippingOut - platformCut);
+  const payout  = r2(revenue - platformCut);                         // what the platform pays out
+  const netCash = r2(payout - (usesActualPostage ? 0 : shippingOut)); // estimated cash effect
+  return { revenue, productCost: r2(productCost), shippingOut, shopifyCut, foldCut, platformCut, cm, payout, netCash,
+           units, channel, foldRate, basis, partialLock, costMissing: missingSkus.length > 0, missingSkus,
+           usesActualPostage, refunded: false };
 }
 
-function calcBS() {
+// Book stock at landed cost = opening stock + stock purchases − cost of scarves sold.
+function bookStock(dateStr, inclusive = true) {
+  const cmp = d => isValidYMD(d) && (inclusive ? d <= dateStr : d < dateStr);
+  const opening = num(state.settings.openingStock);
+  const purchases = state.transactions.filter(t => t.category === 'Stock Purchases' && cmp(t.date)).reduce((a, t) => a + num(t.amount), 0);
+  const sold = state.orders.filter(o => cmp(o.date)).reduce((a, o) => a + calcOrder(o).productCost, 0);
+  return { opening, purchases, sold, value: opening + purchases - sold };
+}
+
+function computeReport(rangeIn, today = londonToday()) {
+  const range = capToToday(rangeIn, today);
+  const afterToday = d => isValidYMD(d) && d > today && d <= rangeIn.to && d >= rangeIn.from;
+  const futureCount = state.orders.filter(o => afterToday(o.date)).length + state.transactions.filter(t => afterToday(t.date)).length;
+
+  const orders = state.orders.filter(o => inDateRange(o.date, range));
+  const txs = state.transactions.filter(t => inDateRange(t.date, range));
+  const sumCat = cat => txs.filter(t => t.category === cat).reduce((a, t) => a + num(t.amount), 0);
+  const rows = orders.map(o => ({ o, c: calcOrder(o) }));
+  const sum = f => rows.reduce((a, x) => a + f(x), 0);
+
+  // Revenue & contribution
+  const salesRev     = sum(x => x.c.revenue);
+  const cogsSold     = sum(x => x.c.productCost);
+  const unitsSold    = sum(x => x.c.units);
+  const postageEst   = sum(x => x.c.shippingOut);
+  const shopifyFees  = sum(x => x.c.shopifyCut);
+  const foldFees     = sum(x => x.c.foldCut);
+  const platformFees = shopifyFees + foldFees;
+  const contribution = salesRev - cogsSold - postageEst - platformFees;
+
+  // Postage
+  const pFrom = postageActualFrom();
+  const shipTxs  = txs.filter(t => t.category === 'Shipping & Postage');
+  const actualTx = shipTxs.filter(t => pFrom && t.date >= pFrom);
+  const otherTx  = shipTxs.filter(t => !(pFrom && t.date >= pFrom));
+  const postageActual      = actualTx.reduce((a, t) => a + num(t.amount), 0);
+  const postageEstOnActual = sum(x => x.c.usesActualPostage ? x.c.shippingOut : 0);
+  const actualWindow       = !!pFrom && range.to >= pFrom;
+  const postageAdjustment  = actualWindow ? postageActual - postageEstOnActual : 0;
+  const postageOther       = otherTx.reduce((a, t) => a + num(t.amount), 0);
+  const ordersOnActual     = rows.filter(x => x.c.usesActualPostage && !x.c.refunded).length;
+  // Shipments straddling the switch date: order (estimate) just before, Royal Mail charge on/after.
+  const boundaryRisk = !!pFrom && rows.some(x => !x.c.usesActualPostage && x.c.shippingOut > 0 && x.o.date >= addDays(pFrom, -5))
+                     && actualTx.some(t => t.date <= addDays(pFrom, 5));
+
+  const packaging   = sumCat('Packaging');
+  const otherDirect = packaging + postageAdjustment + postageOther;
+
+  const opex = {};
+  OPEX_CATS.forEach(cat => { opex[cat] = sumCat(cat); });
+  const totalOpEx = Object.values(opex).reduce((a, v) => a + v, 0);
+
+  const operatingProfit = contribution - otherDirect - totalOpEx;
+  const otherIncome     = sumCat('Other Income');
+  const profitBeforeTax = operatingProfit + otherIncome;
+
+  // Stock memo (book value at landed cost)
+  const stockPurchases = sumCat('Stock Purchases');
+  const stockStart = bookStock(range.from, false).value;
+  const stockEnd   = stockStart + stockPurchases - cogsSold;
+
+  // Cash movement — estimated (order receipts are not bank-confirmed; payout timing not applied)
+  const orderReceipts  = sum(x => x.c.payout);
+  const postagePaidEst = sum(x => x.c.usesActualPostage ? 0 : x.c.shippingOut);
+  const loanIn = sumCat('Loan Received'), loanOut = sumCat('Loan Repayment');
+  const ownerIn = sumCat('Owner Investment'), ownerOut = sumCat('Owner Drawings');
+  const postageTxTotal = postageActual + postageOther;
+  const cashMovement = orderReceipts - postagePaidEst + otherIncome - stockPurchases - packaging - postageTxTotal - totalOpEx
+                     + loanIn - loanOut + ownerIn - ownerOut;
+
+  // Explicitly excluded
+  const salesCatTx   = txs.filter(t => t.category === 'Sales');
+  const unknownCatTx = txs.filter(t => !CAT_CFG[t.category]);
+
+  const paid = rows.filter(x => x.o.revenue > 0);
+  return {
+    range, futureCount,
+    ordersCount: paid.length,
+    novaOrdersCount: paid.filter(x => x.c.channel === 'shopify').length,
+    foldOrdersCount: paid.filter(x => x.c.channel === 'fold').length,
+    directOrdersCount: paid.filter(x => x.c.channel === 'direct').length,
+    refundedCount: rows.filter(x => x.o.refunded).length,
+    salesRev, totalRev: salesRev, cogsSold, unitsSold, postageEst, shopifyFees, foldFees, platformFees,
+    contribution, cmPct: salesRev ? contribution / salesRev : 0,
+    pFrom, actualWindow, postageActual, postageEstOnActual, postageAdjustment, postageOther, ordersOnActual,
+    actualTxCount: actualTx.length, otherTxCount: otherTx.length, boundaryRisk,
+    packaging, otherDirect, opex, totalOpEx,
+    operatingProfit, opMarginPct: salesRev ? operatingProfit / salesRev : 0,
+    otherIncome, profitBeforeTax,
+    stockPurchases, stockStart, stockEnd,
+    orderReceipts, postagePaidEst, postageTxTotal, loanIn, loanOut, ownerIn, ownerOut, cashMovement,
+    salesCatTotal: salesCatTx.reduce((a, t) => a + num(t.amount), 0), salesCatCount: salesCatTx.length,
+    unknownCatCount: unknownCatTx.length,
+    unlockedCount:  rows.filter(x => !x.o.refunded && x.c.basis === 'unlocked').length,
+    estimatedCount: rows.filter(x => !x.o.refunded && x.c.basis === 'estimated').length,
+    partialCount:   rows.filter(x => x.c.partialLock).length,
+    missingCost:    rows.filter(x => x.c.costMissing).map(x => ({ id: x.o.id, orderNum: x.o.orderNum, skus: x.c.missingSkus })),
+  };
+}
+
+// Balance sheet / financial position as at a date (default: today). Future-dated records excluded.
+function computeAsAt(today = londonToday()) {
   const s = state.settings;
-  const txs = state.transactions;
-  const orders = state.orders;
-  const shopifyLag = s.platformPayoutLagDays ?? 7;
-  const foldLag    = s.foldPayoutLagDays ?? 14;
+  const shopifyLag = lagDays(s.platformPayoutLagDays, 7);
+  const foldLag    = lagDays(s.foldPayoutLagDays, 14);
+  const orders = state.orders.filter(o => onOrBefore(o.date, today));
+  const txs    = state.transactions.filter(t => onOrBefore(t.date, today));
+  const futureCount = state.orders.filter(o => isValidYMD(o.date) && o.date > today).length + state.transactions.filter(t => isValidYMD(t.date) && t.date > today).length;
+  const invalidDateCount = state.orders.filter(o => !isValidYMD(o.date)).length + state.transactions.filter(t => !isValidYMD(t.date)).length;
 
-  const today = new Date(); today.setHours(0,0,0,0);
-  const shopifyCutoff = new Date(today); shopifyCutoff.setDate(today.getDate() - shopifyLag);
-  const foldCutoff    = new Date(today); foldCutoff.setDate(today.getDate() - foldLag);
+  let txNet = 0;
+  txs.forEach(t => {
+    if (t.category === 'Sales') return;            // excluded: sales are counted from Orders
+    const d = CAT_CFG[t.category]?.d;
+    if (d === 'In') txNet += num(t.amount); else if (d === 'Out') txNet -= num(t.amount);
+  });
 
-  const txIn = txs.filter(t => CAT_CFG[t.category]?.d === 'In').reduce((a,t)=>a+t.amount,0);
-  const txOut = txs.filter(t => CAT_CFG[t.category]?.d === 'Out').reduce((a,t)=>a+t.amount,0);
-  const txNet = txIn - txOut;
-
-  // Split: platform-channel orders within their lag window are in transit
-  let clearedNetCash = 0, shopifyInTransit = 0, foldInTransit = 0;
+  const shopifyCutoff = addDays(today, -shopifyLag);
+  const foldCutoff    = addDays(today, -foldLag);
+  let cleared = 0, postagePaidEst = 0, shopifyInTransit = 0, foldInTransit = 0;
   orders.forEach(o => {
     const c = calcOrder(o);
-    const orderDate = new Date(o.date + 'T00:00:00');
-    const cutoff = c.channel === 'fold' ? foldCutoff : shopifyCutoff;
-    if (c.channel === 'shopify' && orderDate >= cutoff) {
-      shopifyInTransit += c.netCash;
-    } else if (c.channel === 'fold' && orderDate >= cutoff) {
-      foldInTransit += c.netCash;
-    } else {
-      clearedNetCash += c.netCash;
-    }
+    if (!c.usesActualPostage) postagePaidEst += c.shippingOut;
+    if (c.channel === 'shopify' && o.date >= shopifyCutoff)   shopifyInTransit += c.payout;
+    else if (c.channel === 'fold' && o.date >= foldCutoff)    foldInTransit += c.payout;
+    else cleared += c.payout;
   });
 
-  const cash = Math.round((txNet + clearedNetCash) * 100) / 100;
-  const shopifyInTransitRounded = Math.round(shopifyInTransit * 100) / 100;
-  const foldInTransitRounded = Math.round(foldInTransit * 100) / 100;
-  const platformInTransit = Math.round((shopifyInTransit + foldInTransit) * 100) / 100;
+  const cash = txNet + cleared - postagePaidEst;
+  const platformInTransit = shopifyInTransit + foldInTransit;
+  const stock = bookStock(today, true);
+  const inventory = stock.value;
+  const totalAssets = cash + platformInTransit + inventory;
 
-  const inventory = s.closingStock;
-  const totalAssets = Math.round((cash + platformInTransit + inventory) * 100) / 100;
-
-  const directorLoan = txs.filter(t=>t.category==='Loan Received').reduce((a,t)=>a+t.amount,0) -
-    txs.filter(t=>t.category==='Loan Repayment').reduce((a,t)=>a+t.amount,0);
+  const sumCat = cat => txs.filter(t => t.category === cat).reduce((a, t) => a + num(t.amount), 0);
+  const directorLoan = sumCat('Loan Received') - sumCat('Loan Repayment');
   const totalLiabilities = directorLoan;
-
-  const ownerCapital = txs.filter(t=>t.category==='Owner Investment').reduce((a,t)=>a+t.amount,0) -
-    txs.filter(t=>t.category==='Owner Drawings').reduce((a,t)=>a+t.amount,0);
-
-  // Net profit (full year)
-  const pl = calcPL(0, 0, new Date().getFullYear());
-  const retainedEarnings = pl.netProfit;
-  const totalEquity = ownerCapital + retainedEarnings;
+  const ownerCapital = sumCat('Owner Investment') - sumCat('Owner Drawings');
+  const stockIntroduced = num(s.openingStock);
+  const retainedEarnings = computeReport(allTimeRange(today), today).profitBeforeTax;
+  const totalEquity = ownerCapital + stockIntroduced + retainedEarnings;
   const totalLiabEquity = totalLiabilities + totalEquity;
+  const difference = totalAssets - totalLiabEquity;
 
-  const balanced = Math.abs(totalAssets - totalLiabEquity) < 0.01;
+  return { today, shopifyLag, foldLag, cash, platformInTransit, shopifyInTransit, foldInTransit,
+           inventory, stock, totalAssets, directorLoan, totalLiabilities,
+           ownerCapital, stockIntroduced, retainedEarnings, totalEquity, totalLiabEquity,
+           difference, balanced: Math.abs(difference) < 0.01, futureCount, invalidDateCount };
+}
 
-  return { cash, platformInTransit, shopifyInTransit: shopifyInTransitRounded, foldInTransit: foldInTransitRounded,
-           inventory, totalAssets, directorLoan, totalLiabilities,
-           ownerCapital, retainedEarnings, totalEquity, totalLiabEquity, balanced };
+// Compares the last stock count (Settings) with book stock. Never changes either figure.
+function stockCountCheck(today = londonToday()) {
+  const s = state.settings;
+  const value = num(s.closingStock);
+  const date = isValidYMD(s.stockCountDate) ? s.stockCountDate : null;
+  if (!(value > 0) && !date) return { hasCount: false };
+  const asOf = date && date <= today ? date : today;
+  const book = bookStock(asOf, true);
+  const maxPossible = book.opening + book.purchases;     // everything bought up to the count date, at cost
+  const variance = value - book.value;
+  return { hasCount: true, value, date, asOf, book: book.value, maxPossible, variance,
+           futureDate: !!date && date > today,
+           impossible: value > maxPossible + 0.005,
+           large: Math.abs(variance) > Math.max(25, Math.abs(book.value) * 0.10) };
+}
+
+// ── Warnings ───────────────────────────────────────
+function reportWarnings(r, { scope = 'period' } = {}) {
+  const w = [];
+  const n = (k, one, many) => `${k} ${k === 1 ? one : many}`;
+  if (r.missingCost.length) {
+    const skus = [...new Set(r.missingCost.flatMap(x => x.skus))].map(esc).join(', ');
+    w.push({ level: 'err', html: `<strong>${n(r.missingCost.length, 'order has', 'orders have')} no known product cost</strong> (SKU not in Settings: ${skus}). Its scarf cost is counted as £0, so contribution and profit are overstated. Add the SKU's landed cost in Settings, then lock costs.` });
+  }
+  if (r.stockEnd < -0.005) {
+    w.push({ level: 'err', html: `<strong>Book stock is negative (${fmt(r.stockEnd)})</strong> at the end of this period — the cost of scarves sold is more than all stock bought. Check SKU landed costs and that every stock purchase is recorded.` });
+  }
+  if (r.unlockedCount) {
+    w.push({ level: 'info', html: `${n(r.unlockedCount, 'order isn\'t', 'orders aren\'t')} cost-locked yet, so ${r.unlockedCount === 1 ? 'it is' : 'they are'} valued at <strong>today's Settings</strong> (SKU cost, postage, Shopify fee). Changing Settings will change ${r.unlockedCount === 1 ? 'its' : 'their'} profit. Lock them from Orders → <em>Lock estimated costs</em>.` });
+  }
+  if (r.estimatedCount) {
+    w.push({ level: 'info', html: `${n(r.estimatedCount, 'order uses', 'orders use')} <strong>estimated</strong> costs backfilled from Settings defaults — not verified original costs.` });
+  }
+  if (r.partialCount) {
+    w.push({ level: 'warn', html: `${n(r.partialCount, 'order has', 'orders have')} a product that isn't in the order's locked costs, so that product is valued at today's Settings.` });
+  }
+  if (r.salesCatCount) {
+    w.push({ level: 'warn', html: `${n(r.salesCatCount, 'transaction', 'transactions')} categorised <strong>Sales</strong> (${fmt(r.salesCatTotal)}) ${r.salesCatCount === 1 ? 'is' : 'are'} excluded from profit and estimated cash, because sales are counted from Orders (e.g. a Stripe payout would otherwise double-count). If one is a sale that isn't in Orders, add it as a Direct order and recategorise the transaction.` });
+  }
+  if (r.unknownCatCount) {
+    w.push({ level: 'warn', html: `${n(r.unknownCatCount, 'transaction has', 'transactions have')} an unrecognised category and ${r.unknownCatCount === 1 ? 'is' : 'are'} not counted anywhere.` });
+  }
+  if (r.actualWindow && r.ordersOnActual > 0 && r.actualTxCount === 0) {
+    w.push({ level: 'warn', html: `Actual postage applies from ${fmtDateLong(r.pFrom)}, but <strong>no Shipping &amp; Postage transactions</strong> are logged in this period, so postage on ${n(r.ordersOnActual, 'order', 'orders')} counts as £0 after the adjustment (estimates were ${fmt(r.postageEstOnActual)}). Log the Royal Mail charges, or move the date in Settings.` });
+  }
+  if (r.postageOther > 0.005) {
+    w.push({ level: 'info', html: `${fmt(r.postageOther)} of Shipping &amp; Postage transactions ${r.pFrom ? `dated before ${fmtDateLong(r.pFrom)}` : '(actual postage is not switched on)'} ${r.otherTxCount === 1 ? 'is' : 'are'} counted as <strong>Other postage</strong> on top of order estimates. If any of these are for customer orders they double-count — set <em>Use actual postage from</em> in Settings to cover them.` });
+  }
+  if (r.boundaryRisk) {
+    w.push({ level: 'warn', html: `Orders shortly before ${fmtDateLong(r.pFrom)} use estimated postage, and postage transactions just after that date count as actual. A shipment whose Royal Mail charge falls on the other side of the switch date is counted twice — check those around ${fmtDateLong(r.pFrom)}, or start actual postage on a quieter date.` });
+  }
+  if (r.futureCount) {
+    w.push({ level: 'info', html: `${n(r.futureCount, 'record is', 'records are')} dated after today (${fmtDateLong(londonToday())}) and ${r.futureCount === 1 ? 'is' : 'are'} excluded.` });
+  }
+  return w;
+}
+
+function stockWarnings(sc) {
+  const w = [];
+  if (!sc.hasCount) return w;
+  if (!sc.date) {
+    w.push({ level: 'warn', html: `The stock count value (${fmt(sc.value)}) has <strong>no count date</strong>. It is compared with today's book stock as an indication only. Add the count date in Settings.` });
+  } else if (sc.futureDate) {
+    w.push({ level: 'warn', html: `The stock count date (${fmtDateLong(sc.date)}) is in the future.` });
+  }
+  if (sc.impossible) {
+    w.push({ level: 'err', html: `<strong>Stock count value looks impossible:</strong> ${fmt(sc.value)} is more than everything bought up to ${fmtDateLong(sc.asOf)} (${fmt(sc.maxPossible)} at cost). At landed cost the count can't exceed purchases — check the figure isn't at retail value, or that stock purchases are complete.` });
+  } else if (sc.large) {
+    w.push({ level: 'warn', html: `Stock count (${fmt(sc.value)}) differs from book stock (${fmt(sc.book)}) at ${fmtDateLong(sc.asOf)} by <strong>${fmt(sc.variance)}</strong>. This variance is shown, not booked to profit. Check SKU landed costs, missing purchases or unrecorded sales/samples.` });
+  }
+  return w;
+}
+
+function noticesHTML(list) {
+  if (!list || !list.length) return '';
+  return `<div class="notice-list">${list.map(x => `<div class="notice ${x.level}">${x.html}</div>`).join('')}</div>`;
 }
 
 // ═══════════════════════════════════════════════════
@@ -1849,8 +2179,13 @@ function calcBS() {
 // Effective revenue: zero for refunded orders
 function effRev(o) { return o.refunded ? 0 : o.revenue; }
 
+function esc(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
 function fmt(n, decimals = 2) {
   if (n === null || n === undefined || isNaN(n)) return '—';
+  if (Math.abs(n) < 0.005) n = 0;
   const abs = '£' + Math.abs(n).toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   return n < 0 ? `(${abs})` : abs;
 }
@@ -1860,31 +2195,55 @@ function fmtPct(n) {
   return (n * 100).toFixed(1) + '%';
 }
 
+// Dates are formatted from their Y-M-D parts in UTC, so the device time zone can't shift them.
 function fmtDate(dateStr) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  if (!isValidYMD(dateStr)) return esc(dateStr || '');
+  const { y, m, d } = parseYMD(dateStr);
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
 }
+function fmtDateLong(dateStr) {
+  if (!isValidYMD(dateStr)) return esc(dateStr || '');
+  const { y, m, d } = parseYMD(dateStr);
+  return `${d} ${MONTHS_SHORT[m - 1]} ${y}`;
+}
+function fmtRange(r) { return `${fmtDateLong(r.from)} – ${fmtDateLong(r.to)}`; }
 
 function colorFmt(n) {
+  if (Math.abs(n) < 0.005) return `<span class="muted">${fmt(0)}</span>`;
   if (n > 0) return `<span class="pos-text">${fmt(n)}</span>`;
-  if (n < 0) return `<span class="neg-text">(${fmt(Math.abs(n))})</span>`;
-  return `<span class="muted">${fmt(0)}</span>`;
+  return `<span class="neg-text">(${fmt(Math.abs(n))})</span>`;
 }
 
 function treatmentBadge(cat) {
   const cfg = CAT_CFG[cat] || {};
   const t = cfg.t || '';
-  const d = cfg.d || '';
   const cls = t === 'Revenue' ? 'badge-revenue' : t === 'COGS' ? 'badge-cogs' :
     t === 'OpEx' ? 'badge-opex' : t === 'Financing' ? 'badge-financing' :
     t === 'Equity' ? 'badge-equity' : '';
-  return `<span class="badge ${cls}">${t || '—'}</span>`;
+  const label = cat === 'Sales' ? 'Excluded' : cat === 'Stock Purchases' ? 'Stock' : (t || '—');
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+
+// What each category does in the reports (shown in the transaction form).
+function categoryTreatmentHint(cat) {
+  switch (cat) {
+    case 'Sales': return 'Not counted in profit or cash — sales come from Orders. Record a sale as an order instead.';
+    case 'Stock Purchases': return 'Adds to book stock (landed cost, incl. inbound shipping). Charged to profit as scarves are sold. Cash: out.';
+    case 'Packaging': return 'Other direct cost — expensed when bought. Cash: out.';
+    case 'Shipping & Postage': {
+      const f = postageActualFrom();
+      return f ? `Actual postage from ${fmtDateLong(f)} (replaces order estimates via the postage adjustment). Earlier dates count as "Other postage". Cash: out.`
+               : 'Counted as "Other postage" on top of order estimates (actual postage not switched on in Settings). Cash: out.';
+    }
+    case 'Other Income': return 'Added below operating profit (profit before tax). Cash: in.';
+    case 'Loan Received': case 'Loan Repayment': return 'Financing — balance sheet and cash only, not profit.';
+    case 'Owner Investment': case 'Owner Drawings': return 'Equity — balance sheet and cash only, not profit.';
+    default: return CAT_CFG[cat] ? 'Operating expense. Cash: out.' : '';
+  }
 }
 
 function monthLabel(month, year) {
-  if (!month) return state.settings.periodLabel + ' (full year)';
-  return new Date(year, month-1, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  return `${MONTHS_LONG[month - 1]} ${year}`;
 }
 
 // ═══════════════════════════════════════════════════
@@ -1916,7 +2275,7 @@ function navigate(view, swipeDir = null) {
 
   document.getElementById('page-title').textContent = titles[view] || '';
   document.getElementById('page-subtitle').textContent =
-    `${state.settings.businessName} · ${state.settings.periodLabel}`;
+    pageSubtitle();
 
   // Scroll main back to top
   document.getElementById('main').scrollTop = 0;
@@ -1939,6 +2298,24 @@ function navigate(view, swipeDir = null) {
   }
 }
 
+function pageSubtitle() {
+  const fy = fyContaining(londonToday());
+  return `${state.settings.businessName} · ${fy.label} (${fmtRange(fy)})`;
+}
+
+function globalNoticesHTML(view) {
+  const list = [];
+  if (loadError) {
+    list.push({ level: 'err', html: `<strong>Couldn't load data from the database</strong> (${esc(loadError)}). No figures are shown and nothing has been changed. Check your connection, then use Sync → <em>Sync now</em>.` });
+  } else if (dataEmpty) {
+    list.push({ level: 'warn', html: `The database returned <strong>no orders or transactions</strong>. Nothing has been created automatically. If this is unexpected, don't add records — check Supabase or restore from a backup first.` });
+  }
+  if (!loadError && schemaCaps.costSnapshot === false && ['orders', 'settings', 'sync'].includes(view)) {
+    list.push({ level: 'warn', html: `<strong>Database update needed:</strong> run migration <code>001_order_cost_snapshot.sql</code> in Supabase so locked order costs can be saved. Until then, locked costs on new orders last only for this session, and every order is valued at current Settings.` });
+  }
+  return noticesHTML(list);
+}
+
 function renderView(view) {
   const content = document.getElementById('page-content');
   const actions = document.getElementById('page-actions');
@@ -1952,6 +2329,9 @@ function renderView(view) {
   else if (view === 'balance') renderBalance(content, actions);
   else if (view === 'sync')    renderSync(content, actions);
   else if (view === 'settings') renderSettings(content, actions);
+
+  const notices = globalNoticesHTML(view);
+  if (notices) content.insertAdjacentHTML('afterbegin', notices);
 }
 
 // ═══════════════════════════════════════════════════
@@ -1959,117 +2339,115 @@ function renderView(view) {
 // ═══════════════════════════════════════════════════
 
 let revenueChart = null;
+let cmChart = null;
 
 function renderDashboard(el, actions) {
-  const d = calcDash();
+  const today = londonToday();
+  const r = computeReport(ytdRange(today), today);
+  const b = computeAsAt(today);
+  const sc = stockCountCheck(today);
+  const warnings = [...reportWarnings(r), ...stockWarnings(sc)];
+  if (b.futureCount) warnings.push({ level: 'info', html: `${b.futureCount} record${b.futureCount!==1?'s are':' is'} dated after today (${fmtDateLong(today)}) and excluded from these figures.` });
+  if (b.invalidDateCount) warnings.push({ level: 'warn', html: `${b.invalidDateCount} record${b.invalidDateCount!==1?'s have':' has'} a missing or invalid date and ${b.invalidDateCount!==1?'are':'is'} left out of every report. Fix the date in Orders/Transactions.` });
+  if (!b.balanced) warnings.push({ level: 'err', html: `Balance sheet does not balance (difference ${fmt(b.difference)}). Check Balance for details.` });
 
   const kpiValue = (val, cls='') => `<div class="kpi-value ${cls}">${val}</div>`;
+  const otherCosts = r.otherDirect + r.totalOpEx;
+  const lagNote = `Assumes Shopify payouts arrive ${b.shopifyLag} days and Fold ${b.foldLag} days after the order — not confirmed against the bank`;
 
   el.innerHTML = `
-    <p class="section-heading">Operational</p>
+    <div class="period-bar">
+      <strong style="font-size:12px;color:var(--text-2)">Year to date</strong>
+      <span class="period-viewing">${fmtRange(r.range)}</span>
+      <span style="font-size:11.5px;color:var(--text-3)">${r.range.label} · financial year starts 1 ${MONTHS_LONG[fyStartMonth()-1]}</span>
+    </div>
+    ${noticesHTML(warnings)}
+
+    <p class="section-heading">Profit — year to date</p>
     <div class="kpi-grid mb-24">
       <div class="kpi-card">
         <div class="kpi-label">Orders (YTD)</div>
-        ${kpiValue(d.ordersCount)}
-        <div class="kpi-sub">Nova ${d.novaOrdersCount} · Fold ${d.foldOrdersCount}</div>
+        ${kpiValue(r.ordersCount)}
+        <div class="kpi-sub">Nova ${r.novaOrdersCount} · Fold ${r.foldOrdersCount}${r.directOrdersCount ? ` · Direct ${r.directOrdersCount}` : ''}</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">Returns (YTD)</div>
-        ${kpiValue(d.refundedCount, d.refundedCount > 0 ? 'neg' : '')}
+        <div class="kpi-label">Refunded (YTD)</div>
+        ${kpiValue(r.refundedCount, r.refundedCount > 0 ? 'neg' : '')}
       </div>
       <div class="kpi-card">
         <div class="kpi-label">Revenue (YTD)</div>
-        ${kpiValue(fmt(d.revenue))}
+        ${kpiValue(fmt(r.salesRev))}
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">Contribution Margin</div>
-        ${kpiValue(fmt(d.totalCM), d.totalCM >= 0 ? 'pos' : 'neg')}
-        <div class="kpi-sub">${fmtPct(d.cmPct)} of revenue</div>
+        <div class="kpi-label">Contribution (YTD)</div>
+        ${kpiValue(fmt(r.contribution), r.contribution >= 0 ? 'pos' : 'neg')}
+        <div class="kpi-sub">${fmtPct(r.cmPct)} · after scarf cost, est. postage &amp; fees</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">Fixed Costs (OpEx)</div>
-        ${kpiValue(fmt(d.fixedCosts), 'neg')}
+        <div class="kpi-label">Overheads &amp; other costs</div>
+        ${kpiValue(fmt(-otherCosts), otherCosts > 0 ? 'neg' : '')}
+        <div class="kpi-sub">Operating expenses ${fmt(r.totalOpEx)} · packaging &amp; postage adj. ${fmt(r.otherDirect)}</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">Net Profit / EBITDA</div>
-        ${kpiValue(fmt(d.opProfit), d.opProfit >= 0 ? 'pos' : 'neg')}
-        <div class="kpi-sub">${fmtPct(d.opMarginPct)} margin</div>
+        <div class="kpi-label">Operating profit (YTD)</div>
+        ${kpiValue(fmt(r.operatingProfit), r.operatingProfit >= 0 ? 'pos' : 'neg')}
+        <div class="kpi-sub">${fmtPct(r.opMarginPct)} margin${r.otherIncome ? ` · + other income ${fmt(r.otherIncome)} = ${fmt(r.profitBeforeTax)} before tax` : ' · same as the P&amp;L for these dates'}</div>
       </div>
     </div>
 
-    <p class="section-heading">Financial Health</p>
+    <p class="section-heading">Financial position — as at ${fmtDateLong(today)}</p>
     <div class="kpi-grid mb-24">
-      <div class="kpi-card">
-        <div class="kpi-label">Cash at Bank</div>
-        ${kpiValue(fmt(d.cash), d.cash >= 0 ? '' : 'neg')}
-        ${d.platformInTransit > 0 ? `<div class="kpi-sub">(${fmt(d.cash + d.platformInTransit)} incl. pending)</div>` : ''}
+      <div class="kpi-card" title="${lagNote}">
+        <div class="kpi-label">Estimated cash</div>
+        ${kpiValue(fmt(b.cash), b.cash >= 0 ? '' : 'neg')}
+        <div class="kpi-sub">${b.platformInTransit > 0 ? `${fmt(b.cash + b.platformInTransit)} incl. expected payouts · ` : ''}estimate, not bank-confirmed</div>
       </div>
-      ${d.platformInTransit > 0 ? `<div class="kpi-card">
-        <div class="kpi-label">Payouts Pending</div>
-        ${kpiValue(fmt(d.platformInTransit), '')}
-        ${d.shopifyInTransit > 0 && d.foldInTransit > 0
-          ? `<div class="kpi-sub">Shopify ${fmt(d.shopifyInTransit)} · Fold ${fmt(d.foldInTransit)}</div>`
-          : d.shopifyInTransit > 0
-          ? `<div class="kpi-sub">Shopify in transit</div>`
-          : `<div class="kpi-sub">Fold in transit</div>`}
+      ${b.platformInTransit > 0 ? `<div class="kpi-card" title="${lagNote}">
+        <div class="kpi-label">Payouts expected (est.)</div>
+        ${kpiValue(fmt(b.platformInTransit), '')}
+        <div class="kpi-sub">${b.shopifyInTransit > 0 ? `Shopify ${fmt(b.shopifyInTransit)}` : ''}${b.shopifyInTransit > 0 && b.foldInTransit > 0 ? ' · ' : ''}${b.foldInTransit > 0 ? `Fold ${fmt(b.foldInTransit)}` : ''} · within payout lag</div>
       </div>` : ''}
       <div class="kpi-card">
-        <div class="kpi-label">Net Profit</div>
-        ${kpiValue(fmt(d.netProfit), d.netProfit >= 0 ? 'pos' : 'neg')}
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">Inventory (Stock)</div>
-        ${kpiValue(fmt(d.inventory))}
+        <div class="kpi-label">Stock (book value)</div>
+        ${kpiValue(fmt(b.inventory), b.inventory < 0 ? 'neg' : '')}
+        <div class="kpi-sub">${sc.hasCount ? `Last count ${fmt(sc.value)}${sc.date ? ` on ${fmtDateLong(sc.date)}` : ' (undated)'}` : 'Purchases less cost of scarves sold'}</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label">Director Loan</div>
-        ${kpiValue(fmt(d.directorLoan))}
+        ${kpiValue(fmt(b.directorLoan))}
       </div>
       <div class="kpi-card">
         <div class="kpi-label">Total Assets</div>
-        ${kpiValue(fmt(d.totalAssets))}
+        ${kpiValue(fmt(b.totalAssets))}
       </div>
       <div class="kpi-card">
         <div class="kpi-label">Total Liabilities</div>
-        ${kpiValue(fmt(d.totalLiabilities))}
+        ${kpiValue(fmt(b.totalLiabilities))}
       </div>
       <div class="kpi-card">
         <div class="kpi-label">Total Equity</div>
-        ${kpiValue(fmt(d.totalEquity), d.totalEquity >= 0 ? 'pos' : 'neg')}
+        ${kpiValue(fmt(b.totalEquity), b.totalEquity >= 0 ? 'pos' : 'neg')}
       </div>
     </div>
 
     <div class="dash-grid">
       <div class="card">
-        <div class="card-header"><div class="card-title">Monthly Revenue</div></div>
+        <div class="card-header"><div class="card-title">Monthly Revenue · ${fmtDateLong(r.range.from)} – ${fmtDateLong(r.range.to)}</div></div>
         <div class="chart-wrap"><canvas id="rev-chart"></canvas></div>
       </div>
       <div class="card">
-        <div class="card-header"><div class="card-title">Monthly Contribution</div></div>
+        <div class="card-header"><div class="card-title">Monthly Contribution · ${fmtDateLong(r.range.from)} – ${fmtDateLong(r.range.to)}</div></div>
         <div class="chart-wrap"><canvas id="cm-chart"></canvas></div>
       </div>
     </div>
   `;
 
-  // Build monthly data
-  const months = ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
-  const monthMap = {Apr:4,May:5,Jun:6,Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12,Jan:1,Feb:2,Mar:3};
-  const revByMonth = {};
-  const cmByMonth = {};
-  months.forEach(m => { revByMonth[m] = 0; cmByMonth[m] = 0; });
-
-  state.orders.forEach(o => {
-    const d2 = new Date(o.date + 'T00:00:00');
-    const mo = d2.getMonth()+1;
-    const label = months.find(m => monthMap[m] === mo);
-    if (label) {
-      revByMonth[label] += effRev(o);
-      cmByMonth[label] += calcOrder(o).cm;
-    }
+  // One bar per calendar month in the reporting range (zero months included; years never merged).
+  const months = monthsInRange(r.range).map(mo => {
+    const mr = computeReport(mo.range, today);
+    return { label: mo.label, key: mo.key, revenue: r2(mr.salesRev), contribution: r2(mr.contribution) };
   });
-
-  const activeMonths = months.filter(m => revByMonth[m] > 0 || cmByMonth[m] > 0);
-  const displayMonths = activeMonths.length > 0 ? activeMonths : ['Apr','May','Jun','Jul'];
+  window.__dashMonths = months; // exposed for tests / debugging
 
   const chartDefaults = {
     plugins: { legend: { display: false }, tooltip: {
@@ -2084,33 +2462,23 @@ function renderDashboard(el, actions) {
     responsive: true,
   };
 
+  if (typeof Chart === 'undefined') return;
   if (revenueChart) revenueChart.destroy();
-  const ctx1 = document.getElementById('rev-chart').getContext('2d');
-  revenueChart = new Chart(ctx1, {
+  if (cmChart) cmChart.destroy();
+  revenueChart = new Chart(document.getElementById('rev-chart').getContext('2d'), {
     type: 'bar',
     data: {
-      labels: displayMonths,
-      datasets: [{
-        data: displayMonths.map(m => revByMonth[m]),
-        backgroundColor: '#C4A88A',
-        borderRadius: 5,
-        borderSkipped: false,
-      }]
+      labels: months.map(m => m.label),
+      datasets: [{ data: months.map(m => m.revenue), backgroundColor: '#C4A88A', borderRadius: 5, borderSkipped: false }]
     },
     options: chartDefaults
   });
-
-  const ctx2 = document.getElementById('cm-chart').getContext('2d');
-  new Chart(ctx2, {
+  cmChart = new Chart(document.getElementById('cm-chart').getContext('2d'), {
     type: 'bar',
     data: {
-      labels: displayMonths,
-      datasets: [{
-        data: displayMonths.map(m => cmByMonth[m]),
-        backgroundColor: displayMonths.map(m => cmByMonth[m] >= 0 ? '#6FA882' : '#C47060'),
-        borderRadius: 5,
-        borderSkipped: false,
-      }]
+      labels: months.map(m => m.label),
+      datasets: [{ data: months.map(m => m.contribution),
+        backgroundColor: months.map(m => m.contribution >= 0 ? '#6FA882' : '#C47060'), borderRadius: 5, borderSkipped: false }]
     },
     options: chartDefaults
   });
@@ -2122,6 +2490,17 @@ function renderDashboard(el, actions) {
 
 let orderSearch = '';
 let orderSort = { col: 'date', dir: -1 };
+let editingOrderId = null;
+
+function costBasisTag(o, c) {
+  if (c.refunded) return '';
+  if (c.costMissing) return `<span class="tag tag-err" title="No cost for ${esc(c.missingSkus.join(', '))} — counted as £0">cost unknown</span>`;
+  if (c.basis === 'unlocked') return `<span class="tag tag-info" title="Not cost-locked — valued at today's Settings">live defaults</span>`;
+  if (c.basis === 'estimated') return `<span class="tag tag-warn" title="${esc(snapshotLabel(o.costSnapshot))}">est. cost</span>`;
+  if (c.basis === 'repriced') return `<span class="tag tag-info" title="${esc(snapshotLabel(o.costSnapshot))}">re-locked</span>`;
+  if (c.partialLock) return `<span class="tag tag-warn" title="A product isn't in the locked costs">part-locked</span>`;
+  return '';
+}
 
 function renderOrders(el, actions) {
   actions.innerHTML = `<button class="btn btn-primary" onclick="openAddOrder()">
@@ -2133,9 +2512,9 @@ function renderOrders(el, actions) {
   if (orderSearch) {
     const q = orderSearch.toLowerCase();
     orders = orders.filter(o =>
-      o.customer.toLowerCase().includes(q) ||
-      o.orderNum.toLowerCase().includes(q) ||
-      o.skuType.toLowerCase().includes(q)
+      (o.customer || '').toLowerCase().includes(q) ||
+      (o.orderNum || '').toLowerCase().includes(q) ||
+      orderLines(o).some(l => l.sku.toLowerCase().includes(q))
     );
   }
 
@@ -2152,31 +2531,30 @@ function renderOrders(el, actions) {
   });
 
   const _s = state.settings;
-  const _shopifyLag = _s.platformPayoutLagDays ?? 7;
-  const _foldLag = _s.foldPayoutLagDays ?? 14;
-  const _today = new Date(); _today.setHours(0,0,0,0);
-  const _shopifyCutoff = new Date(_today); _shopifyCutoff.setDate(_today.getDate() - _shopifyLag);
-  const _foldCutoff = new Date(_today); _foldCutoff.setDate(_today.getDate() - _foldLag);
+  const _shopifyLag = lagDays(_s.platformPayoutLagDays, 7);
+  const _foldLag = lagDays(_s.foldPayoutLagDays, 14);
+  const _today = londonToday();
+  const _shopifyCutoff = addDays(_today, -_shopifyLag);
+  const _foldCutoff = addDays(_today, -_foldLag);
 
   const rows = orders.map(o => {
     const c = calcOrder(o);
     const ch = c.channel || 'shopify';
-    const shTag = o.shippingMethod ? `<span class="tag">${o.shippingMethod}</span>` : '';
-    const foldPct = ch === 'fold' ? Math.round((c.foldRate ?? 0.15) * 100) : null;
+    const shTag = o.shippingMethod ? `<span class="tag">${esc(o.shippingMethod)}</span>` : '';
+    const foldPct = ch === 'fold' ? Math.round((c.foldRate ?? FOLD_DEFAULT_RATE) * 100) : null;
     const chTag = ch === 'fold' ? `<span class="tag" style="color:#7c3aed">Fold ${foldPct}%</span>`
                 : ch === 'direct' ? `<span class="tag" style="color:var(--accent)">Direct</span>` : '';
-    const orderDate = new Date(o.date + 'T00:00:00');
     const cutoff = ch === 'fold' ? _foldCutoff : _shopifyCutoff;
-    const payoutCleared = (ch === 'shopify' || ch === 'fold') && orderDate < cutoff;
-    const payoutTag = payoutCleared ? `<span title="Payout received" style="color:#16a34a;font-size:12px;font-weight:700">£✓</span>` : '';
-    const skuDisplay = o.lineItems
-      ? o.lineItems.map(li => `<span class="tag">${li.sku}</span>${li.qty > 1 ? `<span style="font-size:10px;color:var(--text-3)"> ×${li.qty}</span>` : ''}`).join(' ')
-      : `<span class="tag">${o.skuType}</span>`;
-    const qtyDisplay = o.lineItems ? o.lineItems.reduce((a, li) => a + li.qty, 0) : o.qty;
+    const lag = ch === 'fold' ? _foldLag : _shopifyLag;
+    const payoutAssumed = (ch === 'shopify' || ch === 'fold') && !o.refunded && o.date < cutoff && o.date <= _today;
+    const payoutTag = payoutAssumed ? `<span title="Payout assumed received: the order is older than the ${lag}-day payout lag. Not confirmed against the bank." style="color:var(--text-3);font-size:10.5px;font-weight:600">est. paid out</span>` : '';
+    const skuDisplay = orderLines(o).map(li => `<span class="tag">${esc(li.sku)}</span>${li.qty > 1 ? `<span style="font-size:10px;color:var(--text-3)"> ×${li.qty}</span>` : ''}`).join(' ');
+    const qtyDisplay = orderLines(o).reduce((a, li) => a + li.qty, 0);
+    const basisTag = costBasisTag(o, c);
     return `<tr>
       <td>${fmtDate(o.date)}</td>
-      <td><strong>${o.orderNum}</strong></td>
-      <td>${o.customer}</td>
+      <td><strong>${esc(o.orderNum)}</strong></td>
+      <td>${esc(o.customer)}</td>
       <td>${skuDisplay}</td>
       <td class="num">${qtyDisplay}</td>
       <td class="num">${fmt(effRev(o))}</td>
@@ -2184,7 +2562,7 @@ function renderOrders(el, actions) {
       <td class="num muted">${fmt(c.shippingOut)}</td>
       <td class="num muted">${fmt(c.platformCut)}</td>
       <td class="num">${colorFmt(c.cm)}</td>
-      <td>${shTag}${chTag ? ' '+chTag : ''}${payoutTag ? ' '+payoutTag : ''}${o.refunded ? ' <span style="display:inline-block;background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:4px;font-size:10px;font-weight:700;padding:1px 5px;letter-spacing:0.03em;vertical-align:middle">REFUNDED</span>' : ''}</td>
+      <td>${shTag}${chTag ? ' '+chTag : ''}${basisTag ? ' '+basisTag : ''}${payoutTag ? ' '+payoutTag : ''}${o.refunded ? ' <span style="display:inline-block;background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:4px;font-size:10px;font-weight:700;padding:1px 5px;letter-spacing:0.03em;vertical-align:middle">REFUNDED</span>' : ''}</td>
       <td>
         <div class="row-actions">
           <button class="edit-btn" onclick="editOrder(${o.id})" title="Edit">
@@ -2209,18 +2587,27 @@ function renderOrders(el, actions) {
 
   const totalRev = orders.reduce((a,o)=>a+effRev(o),0);
   const totalCM = orders.reduce((a,o)=>a+calcOrder(o).cm,0);
+  const unlocked = state.orders.filter(o => !o.costSnapshot && !o.refunded).length;
+  const missing = state.orders.filter(o => calcOrder(o).costMissing).length;
+
+  const banner = [];
+  if (missing) banner.push({ level: 'err', html: `<strong>${missing} order${missing>1?'s have':' has'} an unknown product cost</strong> (SKU not in Settings), counted as £0. Add the SKU in Settings.` });
+  if (unlocked) banner.push({ level: 'info', html: `<strong>${unlocked} order${unlocked>1?'s are':' is'} not cost-locked</strong> and valued at today's Settings, so changing Settings changes ${unlocked>1?'their':'its'} profit. New orders added here are locked automatically; orders from the Shopify sync arrive unlocked.
+    ${schemaCaps.costSnapshot === true ? `<br><button class="btn btn-secondary btn-sm" onclick="openBackfill()">Lock estimated costs…</button>` : ''}` });
 
   el.innerHTML = `
+    ${noticesHTML(banner)}
     <div class="table-wrap">
       <div class="table-toolbar">
         <div class="table-toolbar-left">
           <input class="search-input" type="text" placeholder="Search orders…"
-            value="${orderSearch}" oninput="orderSearch=this.value;renderView('orders')">
+            value="${esc(orderSearch)}" oninput="orderSearch=this.value;renderView('orders')">
           <span class="muted" style="font-size:12px">${orders.length} order${orders.length !== 1 ? 's' : ''}</span>
         </div>
         <div style="font-size:12px;color:var(--text-2)">
           Revenue <strong>${fmt(totalRev)}</strong> &nbsp;·&nbsp;
           Contribution <strong style="color:${totalCM>=0?'var(--pos)':'var(--neg)'}">${fmt(totalCM)}</strong>
+          <span class="muted">(all dates)</span>
         </div>
       </div>
       <div style="overflow-x:auto">
@@ -2233,8 +2620,8 @@ function renderOrders(el, actions) {
               ${thSort('skuType','SKU')}
               <th>Qty</th>
               ${thSort('revenue','Revenue')}
-              <th>Prod Cost</th>
-              <th>Shipping</th>
+              <th>Scarf Cost</th>
+              <th>Postage (est.)</th>
               <th>Platform Fee</th>
               ${thSort('cm','Contribution')}
               <th>Details</th>
@@ -2254,37 +2641,54 @@ function sortOrders(col) {
   renderView('orders');
 }
 
-function orderPreviewHTML() {
-  const s = state.settings;
-  const revenue = parseFloat(document.getElementById('o-rev')?.value) || 0;
-  const method = document.getElementById('o-ship')?.value || '';
+// Reads the order modal into an order object (without id / snapshot).
+function readOrderForm() {
   const channel = document.getElementById('o-channel')?.value || 'shopify';
+  const foldRateVal = document.getElementById('o-fold-rate')?.value;
+  const lineItems = getFormLineItems();
+  return {
+    date:               document.getElementById('o-date').value,
+    orderNum:           document.getElementById('o-num').value.trim(),
+    customer:           document.getElementById('o-customer').value.trim(),
+    skuType:            lineItems[0]?.sku || '',
+    qty:                lineItems.reduce((a, li) => a + li.qty, 0),
+    revenue:            parseFloat(document.getElementById('o-rev').value) || 0,
+    shippingMethod:     document.getElementById('o-ship').value,
+    channel,
+    outsideShopify:     channel === 'direct',
+    foldCommissionRate: channel === 'fold' && foldRateVal ? parseFloat(foldRateVal) : null,
+    lineItems:          lineItems.length > 1 ? lineItems : null,
+  };
+}
 
-  // Sum product cost across all line items
-  let productCost = 0;
-  document.querySelectorAll('#line-items-list .order-line-item').forEach(el => {
-    const liSku = el.querySelector('.li-sku')?.value || '';
-    const liQty = parseInt(el.querySelector('.li-qty')?.value) || 1;
-    productCost += liQty * (parseFloat(s.skuCosts.find(x => x.sku === liSku)?.cost) || 0);
-  });
-  const shippingOut = getShippingCost(method);
-  const shopifyCut = (channel === 'shopify' && revenue) ?
-    Math.round((revenue * (parseFloat(s.shopifyFeeRate)||0) + (parseFloat(s.shopifyFixedFee)||0)) * 100) / 100 : 0;
-  const foldPreviewRate = parseFloat(document.getElementById('o-fold-rate')?.value) || 0.15;
-  const foldCut = (channel === 'fold' && revenue) ?
-    Math.round(revenue * foldPreviewRate * 100) / 100 : 0;
-  const platformCut = shopifyCut + foldCut;
-  const cm = revenue - productCost - shippingOut - platformCut;
+// The snapshot an order would be saved with, given the form contents.
+function snapshotForForm(candidate) {
+  const reprice = document.getElementById('o-reprice')?.checked;
+  const prev = editingOrderId != null ? state.orders.find(x => x.id === editingOrderId) : null;
+  if (!prev) return buildSnapshot(candidate, 'recorded');
+  if (reprice) return buildSnapshot(candidate, 'repriced');
+  return mergeSnapshotOnEdit(prev, candidate);
+}
 
-  const c = (n, pos) => `<span style="color:${pos?'var(--pos)':n<0?'var(--neg)':'var(--text-2)'};font-weight:600">${fmt(n)}</span>`;
-  const feeLabel = channel === 'fold' ? 'Fold (15%)' : channel === 'direct' ? 'Platform Fee' : 'Shopify Fee';
-  const feeDisplay = channel === 'direct' ? `<span style="color:var(--text-3)">Exempt</span>` : c(platformCut, false);
+function orderPreviewHTML() {
+  if (!document.getElementById('o-date')) return '';
+  const cand = readOrderForm();
+  cand.refunded = editingOrderId != null ? !!state.orders.find(x => x.id === editingOrderId)?.refunded : false;
+  cand.costSnapshot = snapshotForForm(cand);
+  const c = calcOrder(cand);
+
+  const col = (n, pos) => `<span style="color:${pos?'var(--pos)':n<0?'var(--neg)':'var(--text-2)'};font-weight:600">${fmt(n)}</span>`;
+  const feeLabel = c.channel === 'fold' ? `Fold (${Math.round(c.foldRate*100)}%)` : c.channel === 'direct' ? 'Platform Fee' : 'Shopify Fee';
+  const feeDisplay = c.channel === 'direct' ? `<span style="color:var(--text-3)">Exempt</span>` : col(c.platformCut, false);
+  const warn = c.costMissing ? `<div style="grid-column:1/-1;color:var(--neg);font-size:11.5px">No cost in Settings for ${esc(c.missingSkus.join(', '))} — scarf cost counted as £0.</div>` : '';
+  const basis = `<div style="grid-column:1/-1;color:var(--text-3);font-size:11px">${esc(cand.costSnapshot ? snapshotLabel(cand.costSnapshot).replace(/ on \d.*$/, '') + (editingOrderId == null ? ' (locked when saved)' : '') : 'Not locked — valued at current Settings')}</div>`;
 
   return `<div style="background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;margin-top:14px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;font-size:12px">
-    <div><div style="color:var(--text-3);margin-bottom:3px;font-size:10px;text-transform:uppercase;letter-spacing:.07em">Prod Cost</div>${c(productCost,false)}</div>
-    <div><div style="color:var(--text-3);margin-bottom:3px;font-size:10px;text-transform:uppercase;letter-spacing:.07em">Shipping</div>${c(shippingOut,false)}</div>
+    <div><div style="color:var(--text-3);margin-bottom:3px;font-size:10px;text-transform:uppercase;letter-spacing:.07em">Scarf Cost</div>${col(c.productCost,false)}</div>
+    <div><div style="color:var(--text-3);margin-bottom:3px;font-size:10px;text-transform:uppercase;letter-spacing:.07em">Postage (est.)</div>${col(c.shippingOut,false)}</div>
     <div><div style="color:var(--text-3);margin-bottom:3px;font-size:10px;text-transform:uppercase;letter-spacing:.07em">${feeLabel}</div>${feeDisplay}</div>
-    <div><div style="color:var(--text-3);margin-bottom:3px;font-size:10px;text-transform:uppercase;letter-spacing:.07em">Contribution</div>${c(cm, cm>=0)}</div>
+    <div><div style="color:var(--text-3);margin-bottom:3px;font-size:10px;text-transform:uppercase;letter-spacing:.07em">Contribution</div>${col(c.cm, c.cm>=0)}</div>
+    ${warn}${basis}
   </div>`;
 }
 
@@ -2303,8 +2707,11 @@ function refreshOrderPreview() {
 
 function lineItemRowHTML(sku, qty, showRemove) {
   const s = state.settings;
-  const skuOpts = s.skuCosts.map(sk =>
-    `<option value="${sk.sku}" ${sk.sku===sku?'selected':''}>${sk.sku}</option>`).join('');
+  const known = s.skuCosts.some(sk => sk.sku === sku);
+  // Keep a legacy / deleted SKU selectable so editing an order never silently changes its product.
+  const legacyOpt = (!known && sku) ? `<option value="${esc(sku)}" selected>${esc(sku)} (not in Settings)</option>` : '';
+  const skuOpts = legacyOpt + s.skuCosts.map(sk =>
+    `<option value="${esc(sk.sku)}" ${sk.sku===sku?'selected':''}>${esc(sk.sku)}</option>`).join('');
   return `<div class="order-line-item" style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
     <select class="li-sku" onchange="refreshOrderPreview()" style="flex:2">${skuOpts}</select>
     <input type="number" class="li-qty" value="${qty}" min="1" onchange="refreshOrderPreview()" style="flex:0 0 60px;width:60px">
@@ -2342,15 +2749,27 @@ function getFormLineItems() {
 }
 
 function orderFormHTML(o = null) {
-  const today = new Date().toISOString().split('T')[0];
+  const today = londonToday();
   const s = state.settings;
 
   // Pre-populate line items from lineItems array, or fall back to single skuType/qty
   const items = o?.lineItems || [{ sku: o?.skuType || s.skuCosts[0]?.sku || '', qty: o?.qty || 1 }];
   const lineItemsHTML = items.map((li, i) => lineItemRowHTML(li.sku, li.qty, items.length > 1)).join('');
 
-  const methodOptions = s.shippingMethods.map(m =>
-    `<option value="${m.method}" ${o?.shippingMethod===m.method?'selected':''}>${m.method} (£${m.cost})</option>`).join('');
+  const knownMethod = !o?.shippingMethod || s.shippingMethods.some(m => m.method === o.shippingMethod);
+  const methodOptions = (knownMethod ? '' : `<option value="${esc(o.shippingMethod)}" selected>${esc(o.shippingMethod)} (not in Settings)</option>`) +
+    s.shippingMethods.map(m =>
+    `<option value="${esc(m.method)}" ${o?.shippingMethod===m.method?'selected':''}>${esc(m.method)} (£${m.cost})</option>`).join('');
+
+  const costBlock = o ? `
+      <div class="form-group full" style="background:var(--bg);border:1px solid var(--border-light);border-radius:var(--radius);padding:10px 12px">
+        <label>Locked costs</label>
+        <div style="font-size:12px;color:var(--text-2)">${esc(snapshotLabel(o.costSnapshot))}</div>
+        <div class="form-hint">Editing customer, order #, date or revenue keeps the locked costs. A newly added product or a changed shipping method takes today's Settings cost; fee terms stay as recorded.</div>
+        <label class="checkbox-row" style="text-transform:none;letter-spacing:0;font-weight:400;margin-top:6px">
+          <input type="checkbox" id="o-reprice" onchange="refreshOrderPreview()"> Re-lock all costs to today's Settings
+        </label>
+      </div>` : '';
 
   return `
     <div class="form-grid">
@@ -2360,11 +2779,11 @@ function orderFormHTML(o = null) {
       </div>
       <div class="form-group">
         <label>Order #</label>
-        <input type="text" id="o-num" value="${o?.orderNum||''}" placeholder="#1013">
+        <input type="text" id="o-num" value="${esc(o?.orderNum||'')}" placeholder="#1013">
       </div>
       <div class="form-group full">
         <label>Customer Name</label>
-        <input type="text" id="o-customer" value="${o?.customer||''}" placeholder="Full name">
+        <input type="text" id="o-customer" value="${esc(o?.customer||'')}" placeholder="Full name">
       </div>
       <div class="form-group full">
         <label>Items</label>
@@ -2398,11 +2817,13 @@ function orderFormHTML(o = null) {
           <option value="0.30" ${o?.foldCommissionRate===0.30?'selected':''}>30%</option>
         </select>
       </div>
+      ${costBlock}
     </div>
     <div id="order-preview"></div>`;
 }
 
 function openAddOrder() {
+  editingOrderId = null;
   document.getElementById('modal-title').textContent = 'Add Order';
   document.getElementById('modal-body').innerHTML = orderFormHTML(null);
   document.getElementById('modal-footer').innerHTML = `
@@ -2416,6 +2837,7 @@ function openAddOrder() {
 function editOrder(id) {
   const o = state.orders.find(x => x.id === id);
   if (!o) return;
+  editingOrderId = id;
   document.getElementById('modal-title').textContent = 'Edit Order';
   document.getElementById('modal-body').innerHTML = orderFormHTML(o);
   document.getElementById('modal-footer').innerHTML = `
@@ -2426,73 +2848,51 @@ function editOrder(id) {
   setTimeout(refreshOrderPreview, 0);
 }
 
+function snapshotPersistNote() {
+  if (schemaCaps.costSnapshot !== true) toast('Saved — but locked costs are kept for this session only until the database migration is run.');
+}
+
+// Every change is shown immediately, then rolled back if the database write fails,
+// so figures never include a record that wasn't saved.
 async function updateOrder(id) {
   const idx = state.orders.findIndex(x => x.id === id);
   if (idx === -1) return;
-  const date = document.getElementById('o-date').value;
-  const customer = document.getElementById('o-customer').value.trim();
-  if (!date || !customer) { toast('Please fill in date and customer name.'); return; }
-  const channel = document.getElementById('o-channel').value || 'shopify';
-  const foldRate = document.getElementById('o-fold-rate')?.value;
-  const lineItems = getFormLineItems();
-  const hasMultiple = lineItems.length > 1;
-  const updated = {
-    ...state.orders[idx],
-    date,
-    orderNum:           document.getElementById('o-num').value.trim(),
-    customer,
-    skuType:            lineItems[0]?.sku || '',
-    qty:                lineItems.reduce((a, li) => a + li.qty, 0),
-    revenue:            parseFloat(document.getElementById('o-rev').value) || 0,
-    shippingMethod:     document.getElementById('o-ship').value,
-    channel,
-    outsideShopify:     channel === 'direct',
-    foldCommissionRate: channel === 'fold' && foldRate ? parseFloat(foldRate) : null,
-    lineItems:          hasMultiple ? lineItems : null,
-  };
+  const form = readOrderForm();
+  if (!form.date || !form.customer) { toast('Please fill in date and customer name.'); return; }
+  editingOrderId = id;
+  const prev = state.orders[idx];
+  const updated = { ...prev, ...form };
+  updated.costSnapshot = snapshotForForm(updated);
   state.orders[idx] = updated;
   skipNextRefresh = true;
   closeModal();
   renderView('orders');
-  toast('Order updated.');
-  await dbUpsertOrder(updated);
+  if (await dbUpsertOrder(updated)) { toast('Order updated.'); snapshotPersistNote(); }
+  else { const i = state.orders.indexOf(updated); if (i !== -1) state.orders[i] = prev; renderView(currentView); }
 }
 
 async function saveOrder() {
-  const date = document.getElementById('o-date').value;
-  const orderNum = document.getElementById('o-num').value.trim();
-  const customer = document.getElementById('o-customer').value.trim();
-  const revenue = parseFloat(document.getElementById('o-rev').value) || 0;
-  const shippingMethod = document.getElementById('o-ship').value;
-  const channel = document.getElementById('o-channel').value || 'shopify';
-  const outsideShopify = channel === 'direct';
-  const foldRateVal = document.getElementById('o-fold-rate')?.value;
-  const foldCommissionRate = channel === 'fold' && foldRateVal ? parseFloat(foldRateVal) : null;
-  const lineItems = getFormLineItems();
-  const hasMultiple = lineItems.length > 1;
-  const skuType = lineItems[0]?.sku || '';
-  const qty = lineItems.reduce((a, li) => a + li.qty, 0);
-
-  if (!date || !customer) { toast('Please fill in date and customer name.'); return; }
-
-  const order = { id: state.nextId.order++, date, orderNum, customer, skuType, qty, revenue,
-                  shippingMethod, channel, outsideShopify, foldCommissionRate,
-                  lineItems: hasMultiple ? lineItems : null };
+  const form = readOrderForm();
+  if (!form.date || !form.customer) { toast('Please fill in date and customer name.'); return; }
+  if (writesBlocked()) return;
+  const order = { id: state.nextId.order++, ...form };
+  order.costSnapshot = buildSnapshot(order, 'recorded');   // lock today's Settings onto the new order
   state.orders.push(order);
   skipNextRefresh = true;
   closeModal();
   renderView('orders');
-  toast('Order added.');
-  await dbUpsertOrder(order);
+  if (await dbUpsertOrder(order)) { toast('Order added.'); snapshotPersistNote(); }
+  else { state.orders = state.orders.filter(o => o !== order); renderView(currentView); }
 }
 
 async function deleteOrder(id) {
   if (!confirm('Delete this order?')) return;
+  const before = state.orders;
   state.orders = state.orders.filter(o => o.id !== id);
   skipNextRefresh = true;
   renderView('orders');
-  toast('Order deleted.');
-  await dbDeleteOrder(id);
+  if (await dbDeleteOrder(id)) toast('Order deleted.');
+  else { state.orders = before; renderView(currentView); }
 }
 
 async function toggleRefunded(id) {
@@ -2502,8 +2902,84 @@ async function toggleRefunded(id) {
   order.refunded = newVal;
   skipNextRefresh = true;
   renderView('orders');
-  toast(newVal ? 'Order marked as refunded.' : 'Refund reversed.');
-  await dbUpsertOrder(order);
+  if (await dbUpsertOrder(order)) toast(newVal ? 'Order marked as refunded.' : 'Refund reversed.');
+  else { order.refunded = !newVal; renderView(currentView); }
+}
+
+// ── Controlled backfill of ESTIMATED cost snapshots ──
+function openBackfill() {
+  const targets = state.orders.filter(o => !o.costSnapshot);
+  if (schemaCaps.costSnapshot !== true) { toast('Run the database migration first.'); return; }
+  if (!targets.length) { toast('All orders already have locked costs.'); return; }
+  editingOrderId = null;
+  document.getElementById('modal-title').textContent = 'Lock estimated costs';
+  document.getElementById('modal-body').innerHTML = `
+    <p style="font-size:13px;color:var(--text-2);line-height:1.6;margin-bottom:10px">
+      <strong>${targets.length} order${targets.length>1?'s':''}</strong> ${targets.length>1?'have':'has'} no locked costs. This saves <strong>today's Settings</strong>
+      (SKU landed costs, shipping-method costs, Shopify fee ${fmtPct(num(state.settings.shopifyFeeRate))} + ${fmt(num(state.settings.shopifyFixedFee))})
+      onto ${targets.length>1?'each of them':'it'}, marked <strong>estimated</strong> — these are not verified original costs.
+    </p>
+    <p style="font-size:13px;color:var(--text-2);line-height:1.6;margin-bottom:10px">
+      After this, changing Settings won't change ${targets.length>1?'their':'its'} profit. Existing locked costs are never overwritten.
+      A backup is downloaded first; if the backup fails, nothing is changed.
+    </p>
+    ${targets.some(o => calcOrder(o).costMissing) ? `<p style="font-size:12.5px;color:var(--neg)">Some of these orders use a SKU that isn't in Settings — they'll be locked with an unknown cost and stay flagged. Add the SKU first if you know its cost.</p>` : ''}`;
+  document.getElementById('modal-footer').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-primary" id="backfill-go" onclick="runBackfill()">Download backup &amp; lock ${targets.length}</button>`;
+  openModal();
+}
+
+async function runBackfill() {
+  const btn = document.getElementById('backfill-go');
+  if (btn) btn.disabled = true;
+  if (writesBlocked()) { closeModal(); return; }
+  const ok = await exportBackup();
+  if (!ok) { closeModal(); toast('Backup failed — no costs were locked.'); return; }
+  // Browsers (notably iPhone home-screen apps) can ignore a download without telling the page,
+  // so ask for confirmation that the file was saved before changing anything.
+  const n = state.orders.filter(o => !o.costSnapshot).length;
+  document.getElementById('modal-body').insertAdjacentHTML('beforeend', `
+    <div class="notice warn" style="margin-top:6px">Backup <strong>${esc(lastBackup.file)}</strong> was sent to your browser.
+      Check it is in your Downloads / Files before continuing.</div>`);
+  document.getElementById('modal-footer').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-primary" id="backfill-confirm" onclick="lockEstimatedCosts()">Backup saved — lock ${n} order${n!==1?'s':''}</button>`;
+}
+
+async function lockEstimatedCosts() {
+  const btn = document.getElementById('backfill-confirm');
+  if (btn) btn.disabled = true;
+  if (writesBlocked()) { closeModal(); return; }
+  const targets = state.orders.filter(o => !o.costSnapshot);
+  let done = 0, failed = 0;
+  const noChange = [];
+  suppressRealtime++;
+  setSyncStatus('syncing', 'Locking costs…');
+  try {
+    for (const o of targets) {
+      const snap = buildSnapshot(o, 'estimated');
+      snap.note = 'Backfilled from Settings defaults; not the verified original cost.';
+      // .is(null) guard: never overwrite a snapshot that already exists in the database.
+      const { data, error } = await sb.from('orders').update({ cost_snapshot: snap }).eq('id', o.id).is('cost_snapshot', null).select('id');
+      if (error) { failed++; console.error(error); }
+      else if (!data || !data.length) noChange.push(o.id);
+      else { o.costSnapshot = snap; done++; }
+    }
+  } finally {
+    suppressRealtime--;
+  }
+  let skipped = 0, blocked = 0;
+  try {
+    await loadFromSupabase();
+    // No row updated: either it was locked meanwhile (fine) or the update was silently blocked.
+    noChange.forEach(id => { const o = state.orders.find(x => x.id === id); if (o && o.costSnapshot) skipped++; else blocked++; });
+  } catch (e) { console.error(e); blocked = noChange.length; }
+  failed += blocked;
+  closeModal();
+  setSyncStatus(failed ? 'error' : 'synced', failed ? 'Some updates failed' : 'Saved');
+  renderView(currentView);
+  toast(`Locked ${done} order${done!==1?'s':''} as estimated${skipped ? ` · ${skipped} already locked` : ''}${failed ? ` · ${failed} NOT saved` : ''}.`);
 }
 
 // ═══════════════════════════════════════════════════
@@ -2618,7 +3094,7 @@ function openAddTx() {
     <div class="form-grid">
       <div class="form-group">
         <label>Date</label>
-        <input type="date" id="t-date" value="${new Date().toISOString().split('T')[0]}">
+        <input type="date" id="t-date" value="${londonToday()}">
       </div>
       <div class="form-group">
         <label>Amount (£)</label>
@@ -2637,12 +3113,11 @@ function openAddTx() {
   `;
   document.getElementById('t-cat').addEventListener('change', e => {
     const cfg = CAT_CFG[e.target.value] || {};
-    document.getElementById('t-hint').textContent =
-      cfg.t ? `Treatment: ${cfg.t} · Direction: ${cfg.d}` : '';
+    document.getElementById('t-hint').textContent = categoryTreatmentHint(e.target.value);
   });
   // trigger hint on load
   const cfg = CAT_CFG[CATEGORIES[0]] || {};
-  document.getElementById('t-hint').textContent = cfg.t ? `Treatment: ${cfg.t} · Direction: ${cfg.d}` : '';
+  document.getElementById('t-hint').textContent = categoryTreatmentHint(CATEGORIES[0]);
 
   document.getElementById('modal-footer').innerHTML = `
     <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
@@ -2681,7 +3156,7 @@ function editTx(id) {
   `;
   const updateHint = () => {
     const cfg = CAT_CFG[document.getElementById('t-cat').value] || {};
-    document.getElementById('t-hint').textContent = cfg.t ? `Treatment: ${cfg.t} · Direction: ${cfg.d}` : '';
+    document.getElementById('t-hint').textContent = categoryTreatmentHint(document.getElementById('t-cat').value);
   };
   document.getElementById('t-cat').addEventListener('change', updateHint);
   updateHint();
@@ -2703,13 +3178,14 @@ async function updateTx(id) {
   if (!date || !description || isNaN(amount) || amount <= 0) {
     toast('Please fill in all fields with a valid amount.'); return;
   }
-  const updated = { ...state.transactions[idx], date, description, amount, category };
+  const prev = state.transactions[idx];
+  const updated = { ...prev, date, description, amount, category };
   state.transactions[idx] = updated;
   skipNextRefresh = true;
   closeModal();
   renderView('transactions');
-  toast('Transaction updated.');
-  await dbUpsertTx(updated);
+  if (await dbUpsertTx(updated)) toast('Transaction updated.');
+  else { const i = state.transactions.indexOf(updated); if (i !== -1) state.transactions[i] = prev; renderView(currentView); }
 }
 
 async function saveTx() {
@@ -2722,77 +3198,77 @@ async function saveTx() {
     toast('Please fill in all fields with a valid amount.'); return;
   }
 
+  if (writesBlocked()) return;
   const tx = { id: state.nextId.tx++, date, description, category, amount };
   state.transactions.push(tx);
   skipNextRefresh = true;
   closeModal();
   renderView('transactions');
-  toast('Transaction added.');
-  await dbUpsertTx(tx);
+  if (await dbUpsertTx(tx)) toast('Transaction added.');
+  else { state.transactions = state.transactions.filter(t => t !== tx); renderView(currentView); }
 }
 
 async function copyTxToday(id) {
   const orig = state.transactions.find(t => t.id === id);
   if (!orig) return;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = londonToday();
+  if (writesBlocked()) return;
   const tx = { ...orig, id: state.nextId.tx++, date: today };
   state.transactions.push(tx);
   skipNextRefresh = true;
   renderView('transactions');
-  toast(`Copied "${orig.description}" to today ✓`);
-  await dbUpsertTx(tx);
+  if (await dbUpsertTx(tx)) toast(`Copied "${orig.description}" to today ✓`);
+  else { state.transactions = state.transactions.filter(t => t !== tx); renderView(currentView); }
 }
 
 async function deleteTx(id) {
   if (!confirm('Delete this transaction?')) return;
+  const before = state.transactions;
   state.transactions = state.transactions.filter(t => t.id !== id);
   skipNextRefresh = true;
   renderView('transactions');
-  toast('Transaction deleted.');
-  await dbDeleteTx(id);
+  if (await dbDeleteTx(id)) toast('Transaction deleted.');
+  else { state.transactions = before; renderView(currentView); }
 }
 
 // ═══════════════════════════════════════════════════
 // MONTHLY VIEW
 // ═══════════════════════════════════════════════════
 
-let mvFromMonth = new Date().getMonth()+1, mvFromYear = new Date().getFullYear();
-let mvToMonth   = new Date().getMonth()+1, mvToYear   = new Date().getFullYear();
+const _todayParts = parseYMD(londonToday());
+let mvFromMonth = _todayParts.m, mvFromYear = _todayParts.y;
+let mvToMonth   = _todayParts.m, mvToYear   = _todayParts.y;
 
 function inRange(dateStr, fromM, fromY, toM, toY) {
-  const d = new Date(dateStr + 'T00:00:00');
-  const mIdx = d.getFullYear() * 12 + (d.getMonth()+1);
-  return mIdx >= fromY * 12 + fromM && mIdx <= toY * 12 + toM;
+  return inDateRange(dateStr, monthRange({ y: fromY, m: fromM }, { y: toY, m: toM }));
 }
 
 function renderMonthly(el, actions) {
-  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const monthOpts = (selected) => MONTHS.map((m,i) =>
+  const monthOpts = (selected) => MONTHS_SHORT.map((m,i) =>
     `<option value="${i+1}" ${selected===i+1?'selected':''}>${m}</option>`).join('');
 
-  const filtered = state.orders.filter(o =>
-    inRange(o.date, mvFromMonth, mvFromYear, mvToMonth, mvToYear));
+  const range = monthRange({ y: mvFromYear, m: mvFromMonth }, { y: mvToYear, m: mvToMonth });
+  const filtered = state.orders.filter(o => inDateRange(o.date, range));
 
-  const totalRev   = filtered.reduce((a,o) => a + effRev(o), 0);
-  const totalCost  = filtered.reduce((a,o) => a + calcOrder(o).productCost, 0);
-  const totalShip  = filtered.reduce((a,o) => a + calcOrder(o).shippingOut, 0);
-  const totalShop  = filtered.reduce((a,o) => a + calcOrder(o).platformCut, 0);
-  const totalCM    = filtered.reduce((a,o) => a + calcOrder(o).cm, 0);
+  const calc = filtered.map(o => ({ o, c: calcOrder(o) }));
+  const totalRev   = calc.reduce((a,x) => a + effRev(x.o), 0);
+  const totalCost  = calc.reduce((a,x) => a + x.c.productCost, 0);
+  const totalShip  = calc.reduce((a,x) => a + x.c.shippingOut, 0);
+  const totalShop  = calc.reduce((a,x) => a + x.c.platformCut, 0);
+  const totalCM    = calc.reduce((a,x) => a + x.c.cm, 0);
   const cmPct      = totalRev ? totalCM / totalRev : 0;
 
-  const rows = [...filtered]
-    .sort((a,b) => a.date < b.date ? 1 : -1)
-    .map(o => {
-      const c = calcOrder(o);
-      const mvSkuDisplay = o.lineItems
-        ? o.lineItems.map(li => `<span class="tag">${li.sku}</span>${li.qty > 1 ? `<span style="font-size:10px;color:var(--text-3)"> ×${li.qty}</span>` : ''}`).join(' ')
-        : `<span class="tag">${o.skuType}</span>`;
-      const mvQtyDisplay = o.lineItems ? o.lineItems.reduce((a, li) => a + li.qty, 0) : o.qty;
+  const rows = [...calc]
+    .sort((a,b) => a.o.date < b.o.date ? 1 : -1)
+    .map(({ o, c }) => {
+      const mvSkuDisplay = orderLines(o).map(li => `<span class="tag">${esc(li.sku)}</span>${li.qty > 1 ? `<span style="font-size:10px;color:var(--text-3)"> ×${li.qty}</span>` : ''}`).join(' ');
+      const mvQtyDisplay = orderLines(o).reduce((a, li) => a + li.qty, 0);
+      const tag = costBasisTag(o, c);
       return `<tr>
         <td>${fmtDate(o.date)}</td>
-        <td><strong>${o.orderNum}</strong></td>
-        <td>${o.customer}</td>
-        <td>${mvSkuDisplay}</td>
+        <td><strong>${esc(o.orderNum)}</strong></td>
+        <td>${esc(o.customer)}</td>
+        <td>${mvSkuDisplay}${tag ? ' ' + tag : ''}</td>
         <td class="num">${mvQtyDisplay}</td>
         <td class="num">${fmt(effRev(o))}</td>
         <td class="num muted">${fmt(c.productCost)}</td>
@@ -2802,22 +3278,19 @@ function renderMonthly(el, actions) {
       </tr>`;
     }).join('');
 
-  const fromLabel = MONTHS[mvFromMonth-1] + ' ' + mvFromYear;
-  const toLabel   = MONTHS[mvToMonth-1]   + ' ' + mvToYear;
-  const viewing   = fromLabel === toLabel ? fromLabel : `${fromLabel} – ${toLabel}`;
-
   el.innerHTML = `
     <div class="period-bar" style="gap:6px 14px">
       <strong style="font-size:12px;color:var(--text-2)">From</strong>
       <select onchange="mvFromMonth=parseInt(this.value);renderView('monthly')">${monthOpts(mvFromMonth)}</select>
       <input type="number" value="${mvFromYear}" min="2020" max="2099" style="width:72px"
-        onchange="mvFromYear=parseInt(this.value)||2026;renderView('monthly')">
+        onchange="mvFromYear=parseInt(this.value)||${_todayParts.y};renderView('monthly')">
       <strong style="font-size:12px;color:var(--text-2);margin-left:6px">To</strong>
       <select onchange="mvToMonth=parseInt(this.value);renderView('monthly')">${monthOpts(mvToMonth)}</select>
       <input type="number" value="${mvToYear}" min="2020" max="2099" style="width:72px"
-        onchange="mvToYear=parseInt(this.value)||2026;renderView('monthly')">
-      <span class="period-viewing">Viewing: ${viewing}</span>
+        onchange="mvToYear=parseInt(this.value)||${_todayParts.y};renderView('monthly')">
+      <span class="period-viewing">Viewing: ${range.label}</span>
     </div>
+    <div class="period-dates">Order dates ${fmtRange(range)} · order-level contribution only — overheads and postage adjustments are in the P&amp;L</div>
 
     <div class="kpi-grid mb-24" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">
       <div class="kpi-card">
@@ -2829,11 +3302,11 @@ function renderMonthly(el, actions) {
         <div class="kpi-value">${fmt(totalRev)}</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">Product Cost</div>
+        <div class="kpi-label">Scarf Cost</div>
         <div class="kpi-value neg">${fmt(totalCost)}</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">Shipping Out</div>
+        <div class="kpi-label">Postage (est.)</div>
         <div class="kpi-value neg">${fmt(totalShip)}</div>
       </div>
       <div class="kpi-card">
@@ -2856,8 +3329,8 @@ function renderMonthly(el, actions) {
           <thead>
             <tr>
               <th>Date</th><th>Order</th><th>Customer</th><th>SKU</th>
-              <th>Qty</th><th>Revenue</th><th>Prod Cost</th>
-              <th>Shipping</th><th>Platform Fee</th><th>Contribution</th>
+              <th>Qty</th><th>Revenue</th><th>Scarf Cost</th>
+              <th>Postage (est.)</th><th>Platform Fee</th><th>Contribution</th>
             </tr>
           </thead>
           <tbody>
@@ -2881,20 +3354,36 @@ function renderMonthly(el, actions) {
 // P&L
 // ═══════════════════════════════════════════════════
 
-let plFromMonth = 0, plToMonth = 0, plYear = 2026;
+let plMode = 'ytd';          // 'ytd' | 'fy' | 'months'
+let plFyYear = null;         // financial-year start year when plMode === 'fy'
+let plFrom = null, plTo = null;  // { y, m } when plMode === 'months'
+
+function plRange(today = londonToday()) {
+  if (plMode === 'fy') return fyRange(plFyYear ?? fyContaining(today).fyStartYear);
+  if (plMode === 'months') {
+    const t = parseYMD(today);
+    return monthRange(plFrom || { y: t.y, m: t.m }, plTo || plFrom || { y: t.y, m: t.m });
+  }
+  return ytdRange(today);
+}
+
+function fyYearOptions(today) {
+  const cur = fyContaining(today).fyStartYear;
+  const dates = [...state.orders.map(o => o.date), ...state.transactions.map(t => t.date)].filter(isValidYMD);
+  const first = dates.length ? fyContaining(dates.reduce((a, b) => a < b ? a : b)).fyStartYear : cur;
+  const years = [];
+  for (let y = Math.min(first, cur); y <= cur; y++) years.push(y);
+  return years;
+}
 
 function renderPL(el, actions) {
-  const effectiveTo = (plFromMonth && plToMonth >= plFromMonth) ? plToMonth : plFromMonth;
-  const p = calcPL(plFromMonth, effectiveTo, plYear);
-
-  let viewing;
-  if (!plFromMonth) {
-    viewing = state.settings.periodLabel + ' (full year)';
-  } else if (plFromMonth === effectiveTo) {
-    viewing = monthLabel(plFromMonth, plYear);
-  } else {
-    viewing = monthLabel(plFromMonth, plYear) + ' – ' + monthLabel(effectiveTo, plYear);
-  }
+  const today = londonToday();
+  const range = plRange(today);
+  const p = computeReport(range, today);
+  const sc = stockCountCheck(today);
+  const warnings = [...reportWarnings(p)];
+  if (sc.hasCount && sc.date && inDateRange(sc.date, p.range)) warnings.push(...stockWarnings(sc));
+  else if (sc.hasCount && !sc.date) warnings.push(...stockWarnings(sc).filter(w => w.level !== 'warn' || /no count date/.test(w.html)));
 
   const row = (label, val, cls='', indent=false) => {
     const indentStyle = indent ? ' style="padding-left:36px"' : '';
@@ -2903,68 +3392,105 @@ function renderPL(el, actions) {
       <span class="pl-value">${colorFmt(val)}</span>
     </div>`;
   };
-
   const sectionHeader = label => `<div class="pl-row section-header"><span>${label}</span></div>`;
-  const divider = () => `<div style="height:1px;background:var(--border-light)"></div>`;
+  const muted = (label, val) => `<div class="pl-row"><span style="color:var(--text-3);font-size:12px">${label}</span><span class="pl-value" style="font-size:12px;color:var(--text-3)">${val}</span></div>`;
 
-  const opexCats = ['Marketing & Advertising','Software & Subscriptions','Bank Fees','Rent','Utilities','Professional Fees','Insurance','Travel','Office Supplies','Other Expenses'];
-  const opexRows = opexCats.map(cat =>
-    p.opex[cat] > 0 ? row(cat, -p.opex[cat], '', true) : ''
-  ).join('');
+  const opexRows = OPEX_CATS.map(cat => p.opex[cat] > 0 ? row(esc(cat), -p.opex[cat], '', true) : '').join('');
 
-  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const moOpts = (selected, includeAll) =>
-    (includeAll ? `<option value="0" ${!selected?'selected':''}>Full Year</option>` : '') +
-    MONTHS.map((m,i) => `<option value="${i+1}" ${selected===i+1?'selected':''}>${m}</option>`).join('');
+  const t = parseYMD(today);
+  const f = plFrom || { y: t.y, m: t.m };
+  const to = plTo || f;
+  const moSel = (sel, onch) => `<select onchange="${onch}">${MONTHS_SHORT.map((m,i) => `<option value="${i+1}" ${sel===i+1?'selected':''}>${m}</option>`).join('')}</select>`;
+  const yrInp = (val, onch) => `<input type="number" value="${val}" min="2020" max="2099" style="width:72px" onchange="${onch}">`;
+
+  const curFy = fyContaining(today).fyStartYear;
+  const controls = plMode === 'fy'
+    ? `<select onchange="plFyYear=parseInt(this.value);renderView('pl')">${fyYearOptions(today).map(y => `<option value="${y}" ${(plFyYear ?? curFy)===y?'selected':''}>${fyLabel(y)}</option>`).join('')}</select>`
+    : plMode === 'months'
+    ? `<strong style="font-size:12px;color:var(--text-2)">From</strong>
+       ${moSel(f.m, `plFrom={y:${f.y},m:parseInt(this.value)};renderView('pl')`)}
+       ${yrInp(f.y, `plFrom={y:parseInt(this.value)||${t.y},m:${f.m}};renderView('pl')`)}
+       <strong style="font-size:12px;color:var(--text-2);margin-left:6px">To</strong>
+       ${moSel(to.m, `plTo={y:${to.y},m:parseInt(this.value)};renderView('pl')`)}
+       ${yrInp(to.y, `plTo={y:parseInt(this.value)||${t.y},m:${to.m}};renderView('pl')`)}`
+    : '';
+
+  const datesLine = `Reporting dates: <strong style="color:var(--text-2)">${fmtRange(p.range)}</strong>` +
+    (p.range.capped ? ` · the period runs to ${fmtDateLong(p.range.requestedTo)}; records after today are excluded` : '') +
+    (p.range.from > today ? ' · this period is in the future' : '');
+
+  const pFromLabel = p.pFrom ? fmtDateLong(p.pFrom) : '';
 
   el.innerHTML = `
     <div class="period-bar" style="gap:6px 14px;flex-wrap:wrap">
-      <strong style="font-size:12px;color:var(--text-2)">From</strong>
-      <select onchange="plFromMonth=parseInt(this.value);renderView('pl')">${moOpts(plFromMonth, true)}</select>
-      ${plFromMonth ? `
-        <strong style="font-size:12px;color:var(--text-2);margin-left:6px">To</strong>
-        <select onchange="plToMonth=parseInt(this.value);renderView('pl')">${moOpts(plToMonth||plFromMonth, false)}</select>
-      ` : ''}
-      <label style="margin-left:6px">Year:</label>
-      <input type="number" value="${plYear}" min="2020" max="2099" style="width:72px"
-        onchange="plYear=parseInt(this.value)||2026;renderView('pl')">
-      <span class="period-viewing">Viewing: ${viewing}</span>
+      <strong style="font-size:12px;color:var(--text-2)">Period</strong>
+      <select onchange="plMode=this.value;renderView('pl')">
+        <option value="ytd" ${plMode==='ytd'?'selected':''}>Year to date</option>
+        <option value="fy" ${plMode==='fy'?'selected':''}>Financial year</option>
+        <option value="months" ${plMode==='months'?'selected':''}>Month(s)</option>
+      </select>
+      ${controls}
+      <span class="period-viewing">Viewing: ${esc(range.label)}</span>
     </div>
+    <div class="period-dates">${datesLine}</div>
+    ${noticesHTML(warnings)}
 
     <div class="pl-statement">
       ${sectionHeader('Revenue')}
-      ${row('Sales', p.salesRev, '', true)}
-      ${p.otherIncome ? row('Other Income', p.otherIncome, '', true) : ''}
-      ${row('Total Revenue', p.totalRev, 'total')}
+      ${row(`Sales — orders (${p.ordersCount})`, p.salesRev, '', true)}
+      ${row('Total Revenue', p.salesRev, 'total')}
 
-      ${sectionHeader('Cost of Sales')}
-      ${p.openingStock ? row('Opening stock', p.openingStock, '', true) : ''}
-      ${row('Stock purchases', p.stockPurchases, '', true)}
-      ${p.packaging ? row('Packaging', p.packaging, '', true) : ''}
-      ${row('Outwards shipping', p.shippingOut, '', true)}
-      ${p.shopifyFees ? row('Shopify transaction fees', p.shopifyFees, '', true) : ''}
-      ${p.foldFees ? row('Fold commission (15%)', p.foldFees, '', true) : ''}
-      ${!plFromMonth && p.closingStock ? row('Less: closing stock', -p.closingStock, '', true) : ''}
-      ${row('Cost of Goods Sold', p.cogs, 'subtotal')}
+      ${sectionHeader('Direct costs of orders')}
+      ${row(`Cost of scarves sold (${p.unitsSold} unit${p.unitsSold!==1?'s':''} × locked landed cost)`, -p.cogsSold, '', true)}
+      ${row('Postage — order estimates', -p.postageEst, '', true)}
+      ${p.shopifyFees ? row('Shopify transaction fees', -p.shopifyFees, '', true) : ''}
+      ${p.foldFees ? row('Fold commission', -p.foldFees, '', true) : ''}
+      ${row('Contribution', p.contribution, 'total')}
+      ${muted('Contribution margin', fmtPct(p.cmPct))}
 
-      ${row('Gross Profit', p.grossProfit, 'total')}
-      <div class="pl-row">
-        <span style="color:var(--text-3);font-size:12px">Gross margin</span>
-        <span class="pl-value" style="font-size:12px;color:var(--text-3)">${fmtPct(p.grossMarginPct)}</span>
-      </div>
+      ${sectionHeader('Other direct costs')}
+      ${row('Packaging', -p.packaging, '', true)}
+      ${p.actualWindow ? row(`Postage adjustment — actual less estimated (from ${pFromLabel})`, -p.postageAdjustment, '', true) : ''}
+      ${p.postageOther ? row('Other postage (transactions not replacing estimates)', -p.postageOther, '', true) : ''}
+      ${row('Total other direct costs', -p.otherDirect, 'subtotal')}
 
       ${sectionHeader('Operating Expenses')}
       ${opexRows || `<div class="pl-row"><span style="color:var(--text-3);padding-left:36px">No operating expenses in this period</span></div>`}
       ${row('Total Operating Expenses', -p.totalOpEx, 'subtotal')}
 
       <div class="pl-row net-profit">
-        <span>Net Profit</span>
-        <span class="pl-value">${colorFmt(p.netProfit)}</span>
+        <span>Operating Profit</span>
+        <span class="pl-value">${colorFmt(p.operatingProfit)}</span>
       </div>
-      <div class="pl-row">
-        <span style="color:var(--text-3);font-size:12px">Net margin</span>
-        <span class="pl-value" style="font-size:12px;color:var(--text-3)">${fmtPct(p.netMarginPct)}</span>
-      </div>
+      ${muted('Operating margin', fmtPct(p.opMarginPct))}
+      ${p.otherIncome ? row('Other income', p.otherIncome, '', true) + row('Profit before tax', p.profitBeforeTax, 'total') : ''}
+      <div class="pl-note">Stock purchases are not expensed here — they are added to book stock (below) and charged to profit as scarves are sold.
+        Contribution and operating profit match the dashboard for the same dates. No tax is calculated.</div>
+    </div>
+
+    <p class="section-heading" style="margin-top:24px">Stock — book value at landed cost</p>
+    <div class="pl-statement">
+      ${row(`Book stock at start (before ${fmtDateLong(p.range.from)})`, p.stockStart)}
+      ${row('Add: stock purchases (incl. inbound shipping)', p.stockPurchases, '', true)}
+      ${row('Less: cost of scarves sold', -p.cogsSold, '', true)}
+      ${row(`Book stock at ${fmtDateLong(p.range.to)}`, p.stockEnd, 'total')}
+      ${sc.hasCount ? `<div class="pl-note">Last stock count: <strong>${fmt(sc.value)}</strong> ${sc.date ? `on ${fmtDateLong(sc.date)}` : '(undated)'} · book stock at ${fmtDateLong(sc.asOf)}: ${fmt(sc.book)} · variance ${fmt(sc.variance)} — shown for checking, <strong>not booked to profit</strong>.</div>` : ''}
+    </div>
+
+    <p class="section-heading" style="margin-top:24px">Cash movement — estimated</p>
+    <div class="pl-statement">
+      ${row('Order receipts (revenue less platform fees)*', p.orderReceipts, '', true)}
+      ${p.postagePaidEst ? row('Postage paid — order estimates*', -p.postagePaidEst, '', true) : ''}
+      ${p.otherIncome ? row('Other income', p.otherIncome, '', true) : ''}
+      ${row('Stock purchases', -p.stockPurchases, '', true)}
+      ${p.packaging ? row('Packaging', -p.packaging, '', true) : ''}
+      ${p.postageTxTotal ? row('Postage — Shipping & Postage transactions', -p.postageTxTotal, '', true) : ''}
+      ${row('Operating expenses', -p.totalOpEx, '', true)}
+      ${p.loanIn || p.loanOut ? row('Director loan received less repaid', p.loanIn - p.loanOut, '', true) : ''}
+      ${p.ownerIn || p.ownerOut ? row('Owner investment less drawings', p.ownerIn - p.ownerOut, '', true) : ''}
+      ${row('Net cash movement (estimated)', p.cashMovement, 'total')}
+      <div class="pl-note">*Estimated from orders by order date: payout timing isn't applied and receipts aren't confirmed against the bank. Full bank reconciliation is not part of this version.
+        ${p.salesCatCount ? `<br>Excluded from profit and cash: ${p.salesCatCount} transaction${p.salesCatCount!==1?'s':''} categorised Sales (${fmt(p.salesCatTotal)}).` : ''}</div>
     </div>
   `;
 }
@@ -2974,8 +3500,14 @@ function renderPL(el, actions) {
 // ═══════════════════════════════════════════════════
 
 function renderBalance(el, actions) {
-  const b = calcBS();
-  const today = new Date().toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
+  const today = londonToday();
+  const b = computeAsAt(today);
+  const sc = stockCountCheck(today);
+  const warnings = [...stockWarnings(sc)];
+  if (b.invalidDateCount) warnings.push({ level: 'warn', html: `${b.invalidDateCount} record${b.invalidDateCount!==1?'s have':' has'} a missing or invalid date and ${b.invalidDateCount!==1?'are':'is'} left out of the balance sheet and all reports.` });
+  if (b.futureCount) warnings.push({ level: 'info', html: `${b.futureCount} future-dated record${b.futureCount!==1?'s are':' is'} excluded from this balance sheet.` });
+  const allR = computeReport(allTimeRange(today), today);
+  if (allR.missingCost.length) warnings.push(...reportWarnings(allR).filter(w => w.level === 'err'));
 
   const row = (label, val, cls='') => `<div class="bs-row ${cls}">
     <span>${label}</span>
@@ -2983,13 +3515,14 @@ function renderBalance(el, actions) {
   </div>`;
 
   el.innerHTML = `
-    <p style="font-size:12px;color:var(--text-3);margin-bottom:16px">As at ${today}</p>
+    <p style="font-size:12px;color:var(--text-3);margin-bottom:16px">As at ${fmtDateLong(today)} (Europe/London) · includes records dated up to today</p>
+    ${noticesHTML(warnings)}
 
     <div class="bs-section">
       <div class="bs-header">Assets</div>
-      ${row('Cash at bank (cleared)', b.cash)}
-      ${b.platformInTransit > 0 ? row(`Platform payouts in transit`, b.platformInTransit) : ''}
-      ${row('Inventory (stock at cost)', b.inventory)}
+      ${row('Estimated cash at bank*', b.cash)}
+      ${b.platformInTransit > 0 ? row('Estimated platform payouts expected*', b.platformInTransit) : ''}
+      ${row('Stock — book value at landed cost', b.inventory)}
       ${row('Total Assets', b.totalAssets, 'total')}
     </div>
 
@@ -3002,7 +3535,8 @@ function renderBalance(el, actions) {
     <div class="bs-section">
       <div class="bs-header">Equity</div>
       ${row('Owner capital (investment – drawings)', b.ownerCapital)}
-      ${row('Retained earnings (net profit)', b.retainedEarnings)}
+      ${b.stockIntroduced ? row('Opening stock introduced at start', b.stockIntroduced) : ''}
+      ${row('Retained profit (all periods to date, before tax)', b.retainedEarnings)}
       ${row('Total Equity', b.totalEquity, 'total')}
     </div>
 
@@ -3014,9 +3548,19 @@ function renderBalance(el, actions) {
       </div>
       <div class="bs-row">
         <span>Balance check</span>
-        <span class="${b.balanced ? 'balance-ok' : 'balance-check'}">${b.balanced ? 'OK – balanced' : 'CHECK ENTRIES'}</span>
+        <span class="${b.balanced ? 'balance-ok' : 'balance-check'}">${b.balanced ? 'OK – balanced' : `CHECK ENTRIES (difference ${fmt(b.difference)})`}</span>
       </div>
     </div>
+
+    <div class="bs-section">
+      <div class="bs-header">Memo — stock count</div>
+      ${sc.hasCount ? `
+        ${row(`Counted value${sc.date ? ` on ${fmtDateLong(sc.date)}` : ' (undated)'}`, sc.value)}
+        ${row(`Book stock at ${fmtDateLong(sc.asOf)}`, sc.book)}
+        ${row('Variance (not booked)', sc.variance)}` : `<div class="bs-row"><span class="muted">No stock count entered in Settings.</span></div>`}
+    </div>
+
+    <p style="font-size:11.5px;color:var(--text-3);line-height:1.6">*Estimated: Shopify payouts are assumed to arrive ${b.shopifyLag} days and Fold payouts ${b.foldLag} days after the order date, and order postage is estimated unless actual postage is switched on. Not confirmed against bank statements.</p>
   `;
 }
 
@@ -3025,10 +3569,9 @@ function renderBalance(el, actions) {
 // ═══════════════════════════════════════════════════
 
 function renderSync(el, actions) {
-  const now = new Date();
   const lastSync = lastSyncTime
-    ? lastSyncTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) +
-      ' on ' + lastSyncTime.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    ? lastSyncTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: LONDON_TZ }) +
+      ' on ' + fmtDateLong(londonToday(lastSyncTime))
     : 'Not yet synced this session';
 
   const connLabel = syncConnectionStatus === 'connected' ? 'Connected'
@@ -3076,6 +3619,10 @@ function renderSync(el, actions) {
         <span class="sync-info-value warn">Open in Chrome or Edge to install</span>
        </div>`;
 
+  const schemaLabel = schemaCaps.costSnapshot === true ? ['ok', 'Up to date (order cost snapshots enabled)']
+    : schemaCaps.costSnapshot === false ? ['warn', 'Migration 001 needed']
+    : ['warn', 'Not checked'];
+
   el.innerHTML = `
     <div class="sync-page-card">
       <h3>Connection</h3>
@@ -3095,6 +3642,10 @@ function renderSync(el, actions) {
         <span class="sync-info-label">Transactions in db</span>
         <span class="sync-info-value">${state.transactions.length}</span>
       </div>
+      <div class="sync-info-row">
+        <span class="sync-info-label">Database schema</span>
+        <span class="sync-info-value ${schemaLabel[0]}">${schemaLabel[1]}</span>
+      </div>
     </div>
 
     <div class="sync-page-card">
@@ -3109,17 +3660,26 @@ function renderSync(el, actions) {
     </div>
 
     <div class="sync-page-card">
+      <h3>Backup</h3>
+      <div class="sync-info-row" style="flex-direction:column;align-items:flex-start;gap:10px">
+        <span class="sync-info-label">Download every order, transaction and setting as a dated JSON file (bank access/refresh tokens are left out). Do this before any database migration.</span>
+        <button class="btn btn-primary" onclick="exportBackup()">Download backup</button>
+        <span class="sync-info-label" style="font-size:12px">${lastBackup ? `Last backup this session: ${esc(lastBackup.file)} (${lastBackup.counts.orders} orders, ${lastBackup.counts.transactions} transactions)` : 'No backup downloaded this session.'}</span>
+      </div>
+    </div>
+
+    <div class="sync-page-card">
       <h3>App Version</h3>
       <div class="sync-info-row">
-        <span class="sync-info-label">Version</span>
+        <span class="sync-info-label">App version</span>
         <span class="sync-info-value">${APP_VERSION}</span>
       </div>
       <div class="sync-info-row">
-        <span class="sync-info-label">Cached for offline use</span>
-        <span class="sync-info-value ${'serviceWorker' in navigator ? 'ok">✓ Yes' : 'warn">Not available'}</span>
+        <span class="sync-info-label">Service worker version</span>
+        <span class="sync-info-value" id="sw-version">${'serviceWorker' in navigator ? 'checking…' : 'Not available'}</span>
       </div>
       <div class="sync-info-row" style="flex-direction:column;align-items:flex-start;gap:10px">
-        <span class="sync-info-label">If the app looks outdated, force a full reload.</span>
+        <span class="sync-info-label">If the app looks outdated, or the two versions differ, force a full reload.</span>
         <button class="btn btn-secondary btn-sm" onclick="hardReload()">Force reload</button>
       </div>
     </div>
@@ -3129,16 +3689,18 @@ function renderSync(el, actions) {
       ${installSection}
     </div>
 
-    <div class="sync-page-card" style="background:var(--neg-bg);border-color:var(--neg)">
-      <h3 style="color:var(--neg)">Danger Zone</h3>
-      <div class="sync-info-row" style="flex-direction:column;align-items:flex-start;gap:10px">
-        <span class="sync-info-label">Reset all data back to the original spreadsheet values.</span>
-        <button class="btn btn-danger btn-sm" onclick="resetData()">Reset to defaults</button>
-      </div>
-    </div>
-
     <div style="text-align:center;padding:12px 0 4px;color:var(--text-muted);font-size:11px;letter-spacing:0.04em;opacity:0.6">built by Tyler Barnes</div>
   `;
+
+  if ('serviceWorker' in navigator) {
+    getServiceWorkerVersion().then(v => {
+      const span = document.getElementById('sw-version');
+      if (!span) return;
+      if (!v) { span.textContent = 'Not active yet'; span.className = 'sync-info-value warn'; return; }
+      span.textContent = v === APP_VERSION ? `${v} ✓` : `${v} — differs from app, reload`;
+      span.className = 'sync-info-value ' + (v === APP_VERSION ? 'ok' : 'warn');
+    });
+  }
 }
 
 async function manualSync() {
@@ -3171,40 +3733,75 @@ function renderSettings(el, actions) {
   actions.innerHTML = `<button class="btn btn-primary" onclick="saveSettings()">Save Changes</button>`;
 
   const skuRows = s.skuCosts.map((x, i) => `<tr>
-    <td><input type="text" value="${x.sku}" onchange="state.settings.skuCosts[${i}].sku=this.value"></td>
+    <td><input type="text" value="${esc(x.sku)}" onchange="state.settings.skuCosts[${i}].sku=this.value"></td>
     <td><input type="number" value="${x.cost}" step="0.01" min="0" style="width:80px" onchange="state.settings.skuCosts[${i}].cost=parseFloat(this.value)||0"></td>
-    <td><input type="text" value="${x.notes}" onchange="state.settings.skuCosts[${i}].notes=this.value"></td>
+    <td><input type="text" value="${esc(x.notes)}" onchange="state.settings.skuCosts[${i}].notes=this.value"></td>
     <td><button class="delete-btn" onclick="removeSkuRow(${i})">×</button></td>
   </tr>`).join('');
 
   const shippingRows = s.shippingMethods.map((x, i) => `<tr>
-    <td><input type="text" value="${x.method}" onchange="state.settings.shippingMethods[${i}].method=this.value"></td>
+    <td><input type="text" value="${esc(x.method)}" onchange="state.settings.shippingMethods[${i}].method=this.value"></td>
     <td><input type="number" value="${x.cost}" step="0.01" min="0" style="width:80px" onchange="state.settings.shippingMethods[${i}].cost=parseFloat(this.value)||0"></td>
-    <td><input type="text" value="${x.notes}" onchange="state.settings.shippingMethods[${i}].notes=this.value"></td>
+    <td><input type="text" value="${esc(x.notes)}" onchange="state.settings.shippingMethods[${i}].notes=this.value"></td>
     <td><button class="delete-btn" onclick="removeShipRow(${i})">×</button></td>
   </tr>`).join('');
 
+  const today = londonToday();
+  const fy = fyContaining(today);
+  const sc = stockCountCheck(today);
+  const unlocked = state.orders.filter(o => !o.costSnapshot).length;
+  const fyOpts = MONTHS_LONG.map((m, i) => `<option value="${i+1}" ${fyStartMonth()===i+1?'selected':''}>${m}</option>`).join('');
+
   el.innerHTML = `
     <div class="settings-section">
-      <div class="settings-section-header">Business</div>
+      <div class="settings-section-header">Business &amp; reporting</div>
       <div class="settings-section-body">
         <div class="settings-form-grid">
           <div class="form-group">
             <label>Business Name</label>
-            <input type="text" id="s-biz" value="${s.businessName}">
+            <input type="text" id="s-biz" value="${esc(s.businessName)}">
           </div>
           <div class="form-group">
-            <label>Period Label</label>
-            <input type="text" id="s-period" value="${s.periodLabel}">
+            <label>Financial year starts</label>
+            <select id="s-fy">${fyOpts}</select>
+            <p class="form-hint">Current financial year: ${fy.label}, ${fmtRange(fy)}. Year-to-date figures run from its start to today.</p>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-header">Stock</div>
+      <div class="settings-section-body">
+        ${noticesHTML(stockWarnings(sc))}
+        <div class="settings-form-grid">
           <div class="form-group">
-            <label>Opening Stock Value (£)</label>
-            <input type="number" id="s-os" value="${s.openingStock}" step="0.01" min="0">
-          </div>
-          <div class="form-group">
-            <label>Closing Stock Value (£)</label>
+            <label>Last stock count value (£)</label>
             <input type="number" id="s-cs" value="${s.closingStock}" step="0.01" min="0">
-            <p class="form-hint">Update whenever stock changes (e.g. after a stocktake).</p>
+            <p class="form-hint">Units counted × landed cost (incl. inbound shipping). Used only as a check against book stock — never booked to profit.</p>
+          </div>
+          <div class="form-group">
+            <label>Stock count date</label>
+            <input type="date" id="s-csdate" value="${isValidYMD(s.stockCountDate) ? s.stockCountDate : ''}">
+            <p class="form-hint">${sc.hasCount ? `Book stock at ${fmtDateLong(sc.asOf)}: ${fmt(sc.book)} · variance ${fmt(sc.variance)}` : 'Enter the date the count was done.'}</p>
+          </div>
+          <div class="form-group">
+            <label>Opening stock at start of trading (£)</label>
+            <input type="number" id="s-os" value="${s.openingStock}" step="0.01" min="0">
+            <p class="form-hint">Stock held before the first recorded purchase (normally £0). Included in book stock and shown in equity.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-header">Postage</div>
+      <div class="settings-section-body">
+        <div class="settings-form-grid">
+          <div class="form-group">
+            <label>Use actual postage from</label>
+            <input type="date" id="s-postfrom" value="${postageActualFrom() || ''}">
+            <p class="form-hint">Leave blank to keep using order estimates (shipping method cost). From this date, Shipping &amp; Postage transactions (e.g. Royal Mail charges) become the postage cost and the P&amp;L shows a postage adjustment so nothing is counted twice. Only set it once you log every postage charge from that date.</p>
           </div>
         </div>
       </div>
@@ -3213,6 +3810,7 @@ function renderSettings(el, actions) {
     <div class="settings-section">
       <div class="settings-section-header">Shopify & Shipping Defaults</div>
       <div class="settings-section-body">
+        <p class="form-hint" style="margin:0 0 12px">Defaults apply to orders added from now on. Orders with locked costs keep theirs; orders that aren't locked yet are valued at these figures.</p>
         <div class="settings-form-grid">
           <div class="form-group">
             <label>Default Outwards Shipping (£)</label>
@@ -3230,13 +3828,13 @@ function renderSettings(el, actions) {
           </div>
           <div class="form-group">
             <label>Shopify Payout Lag (days)</label>
-            <input type="number" id="s-payoutlag" value="${s.platformPayoutLagDays ?? 7}" step="1" min="0" max="30">
-            <p class="form-hint">Days before Shopify payouts clear into your bank account.</p>
+            <input type="number" id="s-payoutlag" value="${lagDays(s.platformPayoutLagDays, 7)}" step="1" min="0" max="30">
+            <p class="form-hint">Assumed days before a Shopify payout reaches the bank. Used only for estimated cash — not bank-confirmed.</p>
           </div>
           <div class="form-group">
             <label>Fold Payout Lag (days)</label>
-            <input type="number" id="s-foldlag" value="${s.foldPayoutLagDays ?? 14}" step="1" min="0" max="60">
-            <p class="form-hint">Days before Fold retailer payouts clear into your bank account.</p>
+            <input type="number" id="s-foldlag" value="${lagDays(s.foldPayoutLagDays, 14)}" step="1" min="0" max="60">
+            <p class="form-hint">Assumed days before a Fold payout reaches the bank. Used only for estimated cash.</p>
           </div>
         </div>
       </div>
@@ -3246,10 +3844,11 @@ function renderSettings(el, actions) {
       <div class="settings-section-header">SKU Cost Table</div>
       <div class="settings-section-body">
         <table class="mini-table" id="sku-table">
-          <thead><tr><th>SKU Type</th><th>Cost/unit (£)</th><th>Notes</th><th></th></tr></thead>
+          <thead><tr><th>SKU Type</th><th>Landed cost/unit (£)</th><th>Notes</th><th></th></tr></thead>
           <tbody>${skuRows}</tbody>
         </table>
         <button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="addSkuRow()">+ Add SKU</button>
+        <p class="form-hint">Renaming or removing a SKU doesn't change orders with locked costs. Unlocked orders using a missing SKU are flagged as "cost unknown".</p>
       </div>
     </div>
 
@@ -3265,6 +3864,25 @@ function renderSettings(el, actions) {
     </div>
 
     <div class="settings-section">
+      <div class="settings-section-header">Data protection</div>
+      <div class="settings-section-body">
+        <p style="font-size:13px;color:var(--text-2);margin-bottom:12px">
+          Download a dated JSON backup of all orders, transactions and settings (bank tokens excluded).
+          ${lastBackup ? `Last backup this session: <strong>${esc(lastBackup.file)}</strong>.` : ''}
+        </p>
+        <button class="btn btn-primary" onclick="exportBackup()">Download backup</button>
+        <div class="divider"></div>
+        <p style="font-size:13px;color:var(--text-2);margin-bottom:12px">
+          Order cost locks: <strong>${state.orders.length - unlocked}</strong> of ${state.orders.length} orders locked.
+          ${schemaCaps.costSnapshot === true
+            ? (unlocked ? `${unlocked} not locked — you can lock them with today's defaults, marked as estimated (a backup is taken first).` : '')
+            : 'Run database migration 001 before locking costs.'}
+        </p>
+        ${schemaCaps.costSnapshot === true && unlocked ? `<button class="btn btn-secondary" onclick="openBackfill()">Lock estimated costs…</button>` : ''}
+      </div>
+    </div>
+
+    <div class="settings-section">
       <div class="settings-section-header">Bank Connection</div>
       <div class="settings-section-body">
         ${(()=>{
@@ -3273,9 +3891,9 @@ function renderSettings(el, actions) {
             <div class="sync-info-row" style="margin-bottom:10px">
               <span style="display:flex;align-items:center;gap:8px">
                 <span style="width:8px;height:8px;border-radius:50%;background:var(--pos);display:inline-block"></span>
-                <strong>${cfg.institutionName || 'Bank'} connected</strong>
+                <strong>${esc(cfg.institutionName || 'Bank')} connected</strong>
               </span>
-              <span style="font-size:12px;color:var(--text-2)">Last synced: ${cfg.lastSync || 'never'}</span>
+              <span style="font-size:12px;color:var(--text-2)">Last synced: ${esc(cfg.lastSync || 'never')}</span>
             </div>
             <div style="display:flex;gap:10px;flex-wrap:wrap">
               <button class="btn btn-primary" onclick="gcFetchTransactions()">Review New Transactions</button>
@@ -3290,38 +3908,39 @@ function renderSettings(el, actions) {
               <div class="form-group">
                 <label>Client ID</label>
                 <input type="text" id="gc-id" placeholder="sandbox-yourapp-xxxxxxxx"
-                  value="${state.settings.bankConfig?.clientId || ''}">
+                  value="${esc(state.settings.bankConfig?.clientId || '')}">
               </div>
             </div>
             <button class="btn btn-primary" onclick="gcConnectBank()">Connect Bank</button>`;
         })()}
       </div>
     </div>
-
-    <div class="settings-section" style="border-color:var(--neg-bg)">
-      <div class="settings-section-header" style="color:var(--neg)">Danger Zone</div>
-      <div class="settings-section-body">
-        <p style="font-size:13px;color:var(--text-2);margin-bottom:14px">Reset all data back to the spreadsheet defaults. This cannot be undone.</p>
-        <button class="btn btn-danger" onclick="resetData()">Reset to defaults</button>
-      </div>
-    </div>
   `;
 }
 
 async function saveSettings() {
-  state.settings.businessName     = document.getElementById('s-biz').value;
-  state.settings.periodLabel      = document.getElementById('s-period').value;
-  state.settings.openingStock     = parseFloat(document.getElementById('s-os').value) || 0;
-  state.settings.closingStock     = parseFloat(document.getElementById('s-cs').value) || 0;
-  state.settings.defaultShipping  = parseFloat(document.getElementById('s-defship').value) || 0;
-  state.settings.shopifyFeeRate        = parseFloat(document.getElementById('s-sfrate').value) || 0;
-  state.settings.shopifyFixedFee       = parseFloat(document.getElementById('s-sffixed').value) || 0;
-  state.settings.platformPayoutLagDays = parseInt(document.getElementById('s-payoutlag').value) ?? 5;
-  state.settings.foldPayoutLagDays     = parseInt(document.getElementById('s-foldlag').value) ?? 14;
-  document.getElementById('page-subtitle').textContent =
-    `${state.settings.businessName} · ${state.settings.periodLabel}`;
-  toast('Settings saved.');
-  await dbSaveSettings();
+  const s = state.settings;
+  const numIn = id => { const v = parseFloat(document.getElementById(id).value); return Number.isFinite(v) ? v : 0; };
+  const prevFy = s.financialYearStartMonth;
+  s.businessName          = document.getElementById('s-biz').value;
+  s.financialYearStartMonth = parseInt(document.getElementById('s-fy').value, 10) || 1;
+  s.openingStock          = numIn('s-os');
+  s.closingStock          = numIn('s-cs');
+  const cd = document.getElementById('s-csdate').value;
+  s.stockCountDate        = isValidYMD(cd) ? cd : null;
+  const pf = document.getElementById('s-postfrom').value;
+  s.postageActualFrom     = isValidYMD(pf) ? pf : null;
+  s.defaultShipping       = numIn('s-defship');
+  s.shopifyFeeRate        = numIn('s-sfrate');
+  s.shopifyFixedFee       = numIn('s-sffixed');
+  s.platformPayoutLagDays = lagDays(document.getElementById('s-payoutlag').value, 5);
+  s.foldPayoutLagDays     = lagDays(document.getElementById('s-foldlag').value, 14);
+  if (s.financialYearStartMonth !== prevFy) { plFyYear = null; }
+  document.getElementById('page-subtitle').textContent = pageSubtitle();
+  const ok = await dbSaveSettings();
+  if (ok) { setSyncStatus('synced', 'Saved'); toast('Settings saved.'); }
+  else toast('Settings NOT saved — database error. Your changes are only on this screen.');
+  renderView('settings');
 }
 
 function addSkuRow() {
@@ -3344,17 +3963,63 @@ function removeShipRow(i) {
   renderView('settings');
 }
 
-async function resetData() {
-  if (!confirm('This will wipe all your data and restore the original spreadsheet data. Are you sure?')) return;
-  setSyncStatus('syncing', 'Resetting…');
-  await Promise.all([
-    sb.from('orders').delete().neq('id', 0),
-    sb.from('transactions').delete().neq('id', 0),
-  ]);
-  await seedDefaultData();
-  await loadFromSupabase();
-  navigate('dashboard');
-  toast('Data reset to defaults.');
+// ── Backup export ───────────────────────────────────
+// Reads fresh copies from the database (not the screen), strips bank secrets, verifies the
+// JSON round-trips, and only reports success once the download has been handed to the browser.
+const SECRET_KEY_RE = /token|secret|password|expires/i;
+
+function stripSecrets(v) {
+  if (Array.isArray(v)) return v.map(stripSecrets);
+  if (v && typeof v === 'object') {
+    const out = {};
+    for (const [k, val] of Object.entries(v)) { if (!SECRET_KEY_RE.test(k)) out[k] = stripSecrets(val); }
+    return out;
+  }
+  return v;
+}
+
+async function exportBackup() {
+  try {
+    setSyncStatus('syncing', 'Preparing backup…');
+    const [orders, transactions, settingsRows] = await Promise.all([
+      fetchAllRows('orders', 'id'),
+      fetchAllRows('transactions', 'id'),
+      fetchAllRows('settings', 'key'),
+    ]);
+    const settings = settingsRows.map(r => ({ ...r, value: stripSecrets(r.value) }));
+    const stamp = londonToday();
+    const payload = {
+      format: 'nova-finance-backup', format_version: 1,
+      app_version: APP_VERSION, exported_at: new Date().toISOString(), exported_on: stamp, timezone: LONDON_TZ,
+      source: SUPABASE_URL,
+      counts: { orders: orders.length, transactions: transactions.length, settings: settings.length },
+      excluded: 'Bank access/refresh tokens and token expiry fields are removed from settings.',
+      orders, transactions, settings,
+    };
+    const json = JSON.stringify(payload, null, 2);
+    const check = JSON.parse(json);
+    if (check.orders.length !== orders.length || check.transactions.length !== transactions.length) throw new Error('verification failed');
+    if (/"(accessToken|refreshToken|access_token|refresh_token)"/.test(JSON.stringify(check.settings))) throw new Error('bank token still present');
+
+    const file = `nova-finance-backup-${stamp}.json`;
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = file; a.style.display = 'none';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+
+    lastBackup = { at: new Date(), file, counts: payload.counts };
+    setSyncStatus('synced', 'Backup ready');
+    toast(`Backup downloaded: ${file} — ${orders.length} orders, ${transactions.length} transactions`);
+    if (currentView === 'sync' || currentView === 'settings') renderView(currentView);
+    return true;
+  } catch (e) {
+    console.error('Backup failed:', e);
+    setSyncStatus('error', 'Backup failed');
+    toast('Backup FAILED — nothing was downloaded. ' + (e?.message || ''));
+    return false;
+  }
 }
 
 // ═══════════════════════════════════════════════════
@@ -3393,7 +4058,7 @@ function toast(msg) {
 // ═══════════════════════════════════════════════════
 
 document.getElementById('sidebar-date').textContent =
-  new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: LONDON_TZ });
 
 // ── TrueLayer Bank Integration ────────────────────
 const TL_PROXY    = `${SUPABASE_URL}/functions/v1/truelayer-proxy`;
@@ -3462,6 +4127,7 @@ async function gcConnectBank() {
 }
 
 async function gcCompleteAuth() {
+  if (writesBlocked()) return;
   const urlParams = new URLSearchParams(window.location.search);
   const code      = urlParams.get('code');
   if (!code) { toast('No auth code received — please try connecting again.'); return; }
@@ -3499,7 +4165,7 @@ async function gcFetchTransactions() {
     setSyncStatus('syncing', 'Fetching transactions…');
     await gcEnsureToken();
     const dateFrom = cfg.lastSync
-      || new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10);
+      || addDays(londonToday(), -60);
     const data = await tlProxy('get_transactions', {
       access_token: cfg.accessToken,
       account_id:   cfg.accountId,
@@ -3579,12 +4245,13 @@ async function logBankTransactions() {
   const checks = document.querySelectorAll('.gc-chk');
   const descs  = document.querySelectorAll('.gc-desc');
   const cats   = document.querySelectorAll('.gc-cat');
-  let added = 0;
+  if (writesBlocked()) return;
+  let added = 0, failedBank = 0;
   for (let i = 0; i < _pendingBankTxs.length; i++) {
     if (!checks[i]?.checked) continue;
     const bt     = _pendingBankTxs[i];
     const amount = Math.abs(bt.amount || 0);
-    const date   = bt.timestamp?.slice(0, 10) || new Date().toISOString().slice(0, 10);
+    const date   = bt.timestamp?.slice(0, 10) || londonToday();
     const tx = {
       id: state.nextId.tx++,
       date,
@@ -3594,16 +4261,16 @@ async function logBankTransactions() {
     };
     state.transactions.push(tx);
     skipNextRefresh = true;
-    await dbUpsertTx(tx);
-    added++;
+    if (await dbUpsertTx(tx)) added++;
+    else { state.transactions = state.transactions.filter(t => t !== tx); failedBank++; }
   }
   if (added > 0) {
-    state.settings.bankConfig.lastSync = new Date().toISOString().slice(0, 10);
+    state.settings.bankConfig.lastSync = londonToday();
     await dbSaveSettings();
   }
   closeModal();
   renderView('transactions');
-  toast(`Logged ${added} transaction${added !== 1 ? 's' : ''} ✓`);
+  toast(`Logged ${added} transaction${added !== 1 ? 's' : ''}${failedBank ? ` · ${failedBank} NOT saved` : ' ✓'}`);
 }
 
 async function gcDisconnect() {
@@ -3682,10 +4349,11 @@ if (PW_STORE.getItem(PW_SESSION_KEY) === '1') {
   } catch (e) {
     console.error('Supabase load failed:', e);
     syncConnectionStatus = 'error';
-    // Fallback to defaults in memory so UI is still usable
-    state.orders       = JSON.parse(JSON.stringify(DEFAULT_DATA.orders));
-    state.transactions = JSON.parse(JSON.stringify(DEFAULT_DATA.transactions));
-    setSyncStatus('error', 'Offline — changes not saved');
+    // Show nothing rather than stale or sample figures, and write nothing.
+    loadError = e?.message || String(e);
+    state.orders = [];
+    state.transactions = [];
+    setSyncStatus('error', 'Could not load data');
   }
   // Hide splash
   const splash = document.getElementById('loading-splash');
