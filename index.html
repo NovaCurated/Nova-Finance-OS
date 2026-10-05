@@ -1398,10 +1398,6 @@
     .field-invalid { border-color: var(--neg) !important; box-shadow: 0 0 0 2px rgba(192,80,60,.15); }
     .reason-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
     .reason-chips .chip { min-height: 40px; }
-    .legacy-row { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: end; padding: 10px 0; border-bottom: 1px solid var(--border-light); font-size: 14px; }
-    .legacy-row label { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; text-transform: none; letter-spacing: 0; }
-    .legacy-row input { width: auto; min-height: 44px; }
-    @media (max-width: 768px) { .legacy-row { grid-template-columns: 1fr 1fr; } .legacy-row > div { grid-column: 1 / -1; } }
 
   </style>
 </head>
@@ -1509,7 +1505,7 @@
 // VERSION & PWA
 // ═══════════════════════════════════════════════════
 
-const APP_VERSION = '1.5.020';
+const APP_VERSION = '1.5.021';
 let swRegistration = null;
 let deferredInstallPrompt = null;
 let lastSyncTime = null;
@@ -2290,7 +2286,7 @@ function computeReport(rangeIn, today = londonToday()) {
   const inR = d => inDateRange(d, range);
   const R = {
     range, grossSales: 0, refunds: 0, refundCount: 0, partialRefundOrders: 0, fullRefundOrders: 0,
-    cogs: 0, stockBack: 0, giftsCost: 0, units: 0, postageEst: 0, postageAdj: 0, matchedOrders: 0, unmatchedOrders: 0,
+    cogs: 0, stockBack: 0, stockReturned: 0, giftsCost: 0, units: 0, postageEst: 0, postageAdj: 0, matchedOrders: 0, unmatchedOrders: 0,
     shopifyFees: 0, foldFees: 0, feeRefunds: 0, returnPostage: 0,
     paidOrders: 0, paidSales: 0, nova: 0, fold: 0, direct: 0, giftCount: 0, cancelledCount: 0,
     missingCost: [], unlocked: [], zeroValue: [], estimatedLocks: 0, legacyRefunds: [], refundsUnpaid: 0, refundsNoReturnInfo: 0,
@@ -2314,19 +2310,22 @@ function computeReport(rangeIn, today = londonToday()) {
       if (c.costMissing) R.missingCost.push({ id: o.id, orderNum: o.orderNum, skus: c.missingSkus });
       if (!c.locked) R.unlocked.push(o.id); else if (c.basis === 'estimated') R.estimatedLocks++;
     } else if (inR(o.date) && c.type === 'cancelled') R.cancelledCount++;
-    // refunds recognised on their own date
+    // Refunds come off the month the order was placed (Tyler's standard), once the refund has happened
+    // (refund date on or before today). Cash still moves on the refund's paid date (see cashAt).
     const refs = refundsOf(o, c);
     let refInPeriod = false;
     refs.forEach(r => {
       const e = refundEffects(o, r, c);
-      if (inR(e.date)) {
+      const happened = isValidYMD(e.date) && e.date <= today;
+      if (happened && inR(e.date)) R.stockReturned += e.stockBack;      // stock physically back in the period
+      if (happened && inR(o.date)) {
         refInPeriod = true;
         R.refunds += e.amount; R.refundCount++; R.stockBack += e.stockBack; R.feeRefunds += e.feeRefund; R.returnPostage += e.returnPostage;
         if (e.legacy) R.legacyRefunds.push(o.id);
         if (e.returnedUnknown) R.refundsNoReturnInfo++;
       }
       if (e.paidDate && inR(e.paidDate)) R.refundsPaid += e.amount;
-      if (inR(e.date) && !e.paidDate) R.refundsUnpaid += e.amount;
+      if (happened && inR(o.date) && !e.paidDate) R.refundsUnpaid += e.amount;
     });
     if (refInPeriod) { if (fullyRefunded(o, c, today)) R.fullRefundOrders++; else R.partialRefundOrders++; }
   });
@@ -2355,7 +2354,7 @@ function computeReport(rangeIn, today = londonToday()) {
   R.profitBeforeTax = R.operatingProfit + R.otherIncome;
   R.stockPurchases = sumCat('Stock Purchases');
   R.stockStart = bookStock(range.from, false, idx).value;
-  R.stockEnd = R.stockStart + R.stockPurchases - R.cogs - R.giftsCost + R.stockBack;
+  R.stockEnd = R.stockStart + R.stockPurchases - R.cogs - R.giftsCost + R.stockReturned;   // book stock moves when stock actually comes back
   // Cash movement (estimated; receipts by order date, payout timing not applied)
   R.loanIn = sumCat('Loan Received'); R.loanOut = sumCat('Loan Repayment');
   R.ownerIn = sumCat('Owner Investment'); R.ownerOut = sumCat('Owner Drawings');
@@ -2383,8 +2382,8 @@ function profitConfidence(R) {
     detail: 'Counted as postage not linked to orders. If they paid for customer shipments, match them so the estimate is replaced instead of counted twice.', action: 'postage' });
   if (R.unmatchedOrders) issues.push({ key: 'postage-est', level: 'info', title: `${R.unmatchedOrders} order${R.unmatchedOrders > 1 ? 's use' : ' uses'} estimated postage`,
     detail: 'Each keeps its shipping-method estimate until an actual postage payment is matched to it.', action: 'postage' });
-  if (R.legacyRefunds.length) issues.push({ key: 'legacy-refund', level: 'warn', title: `${R.legacyRefunds.length} refund${R.legacyRefunds.length > 1 ? 's need' : ' needs'} a refund date`,
-    detail: 'Marked refunded without a refund date, so they currently come off sales in the month of the original order. Add the date each refund happened and it comes off that month instead.', action: 'legacydates' });
+  if (R.legacyRefunds.length) issues.push({ key: 'legacy-refund', level: 'warn', title: `${R.legacyRefunds.length} refund${R.legacyRefunds.length > 1 ? 's need' : ' needs'} details`,
+    detail: 'Marked refunded before details were recorded: treated as a full refund on the order, stock not assumed returned, fees assumed kept by the platform.', action: 'refunds' });
   if (R.refundsNoReturnInfo) issues.push({ key: 'refund-return', level: 'info', title: `${R.refundsNoReturnInfo} refund${R.refundsNoReturnInfo > 1 ? 's' : ''} without return details`,
     detail: 'Returned stock is not assumed resaleable until you say so.', action: 'refunds' });
   if (R.unlocked.length) issues.push({ key: 'unlocked', level: 'info', title: `${R.unlocked.length} order${R.unlocked.length > 1 ? 's' : ''} without locked costs`,
@@ -2617,7 +2616,7 @@ function computeMilestones(today = londonToday()) {
   state.orders.forEach(o => {
     const c = calcOrder(o, idx);
     if (c.type === 'sale' && c.revenue > 0 && isValidYMD(o.date) && o.date <= today) events.push({ d: o.date, v: c.revenue });
-    refundsOf(o, c).forEach(r => { if (isValidYMD(r.date) && r.date <= today) events.push({ d: r.date, v: -num(r.amount) }); });
+    refundsOf(o, c).forEach(r => { if (isValidYMD(r.date) && r.date <= today && isValidYMD(o.date)) events.push({ d: o.date, v: -num(r.amount) }); });   // refunds count against the order's month
   });
   events.sort((a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : a.v - b.v));
   const total = events.reduce((a, e) => a + e.v, 0);
@@ -2861,11 +2860,7 @@ function reviewBarHTML(R, id = 'rv') {
 }
 // Overview: one compact line; the full list opens in a sheet.
 function overviewIssues(R, today = londonToday()) {
-  // undated refunds are listed whatever period is selected — they can affect any month
-  const list = R.confidence.issues.filter(i => i.key !== 'legacy-refund');
-  const undated = legacyRefundOrders().length;
-  if (undated) list.unshift({ key: 'legacy-refund', level: 'warn', title: `${undated} refund${undated > 1 ? 's need' : ' needs'} a refund date`,
-    detail: 'Marked refunded without a refund date, so they currently come off sales in the month of the original order. Add the date each refund happened and it comes off that month instead.', action: 'legacydates' });
+  const list = [...R.confidence.issues];
   const sc = stockCountCheck(today);
   if (sc.hasCount && (sc.impossible || sc.large)) list.push({ key: 'stock-count', level: 'warn',
     title: sc.impossible ? 'Stock count is higher than everything bought' : `Stock count differs from book value by ${fmt(sc.variance)}`,
@@ -2888,10 +2883,10 @@ function openReviewSheet() {
 }
 function reviewActionButton(action, fromSheet = false) {
   const map = { missing: ["Open orders", "openReview('missing')"], postage: ['Review postage', "openReview('postage')"],
-    refunds: ['Open refunds', "openReview('refunds')"], legacydates: ['Add refund dates', 'openLegacyRefundDates()'], lock: ['Lock costs', 'openLockCosts()'], expenses: ['Open expenses', "navigate('expenses')"],
+    refunds: ['Open refunds', "openReview('refunds')"], lock: ['Lock costs', 'openLockCosts()'], expenses: ['Open expenses', "navigate('expenses')"],
     zero: ['Open orders', "openReview('zero')"], stock: ['Open stock', 'openStockSheet()'] };
   const m = map[action];
-  return m ? `<button class="btn btn-ghost btn-sm" onclick="${fromSheet && !/^open(LockCosts|StockSheet|LegacyRefundDates)/.test(m[1]) ? 'closeModal();' : ''}${m[1]}">${m[0]}</button>` : '';
+  return m ? `<button class="btn btn-ghost btn-sm" onclick="${fromSheet && !/^open(LockCosts|StockSheet)/.test(m[1]) ? 'closeModal();' : ''}${m[1]}">${m[0]}</button>` : '';
 }
 function openReview(kind) {
   if (kind === 'postage') { expenseFilter = 'postage'; navigate('expenses'); return; }
@@ -2996,11 +2991,11 @@ function openFigureSheet(kind) {
     openFormModal('Sales', `${period}
       <table class="cash-break" data-testid="sales-detail">
         ${row(`Sales of orders dated in the period (${a.paidOrders} paid order${a.paidOrders !== 1 ? 's' : ''})`, fmt(a.grossSales))}
-        ${row(`Refunds recorded in the period${a.refundCount ? ` (${a.refundCount})` : ''}`, '−' + fmt(a.refunds))}
+        ${row(`Refunds on these orders${a.refundCount ? ` (${a.refundCount})` : ''}`, '−' + fmt(a.refunds))}
         ${row('Sales after refunds', fmt(a.salesAfterRefunds), 'total')}
       </table>
       <p class="sheet-note">${esc(cmp.sales.text)}. Paid orders: ${a.paidOrders} — ${esc(cmp.orders.text)}${ex ? `; excludes ${ex}` : ''}.</p>
-      <p class="sheet-note">A refund reduces sales on the date it's recorded; the original sale stays on its own date.</p>`,
+      <p class="sheet-note">Refunds come off the month the order was placed, so each month shows what its orders were finally worth. Refunds paid to customers leave cash on the date they're paid.</p>`,
       `<button class="btn btn-ghost" onclick="closeModal()">Close</button><button class="btn btn-primary" onclick="reportsTab='orders';reportsOrderFilter='all';navigate('reports')">Open in Reports</button>`);
   } else {
     const st = a.confidence;
@@ -3503,7 +3498,7 @@ function openRefund(id) {
       <div class="form-group"><label for="rf-post">Return postage you paid (£)</label><input type="number" id="rf-post" step="0.01" min="0" value="0"></div>
       <div class="form-group full"><label for="rf-note">Note</label><input type="text" id="rf-note"></div>
     </div>
-    <p class="form-hint">The original sale stays on its date; the refund reduces sales on the refund date. Leave return postage at £0 if you log the return label as a Shipping &amp; Postage expense and match it to this order.</p>`,
+    <p class="form-hint">The refund comes off sales in the month the order was placed; the refund date is used for cash. Leave return postage at £0 if you log the return label as a Shipping &amp; Postage expense and match it to this order.</p>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="runSave(this, () => saveRefund(${id}))">Save refund</button>`);
 }
 async function saveRefund(id) {
@@ -3642,61 +3637,6 @@ async function lockEstimatedCosts() {
   closeModal(); renderView(currentView); toast(summary + '.');
 }
 
-// ── Legacy "refunded" flags → dated refund records, so each refund comes off sales in the month it happened ──
-function legacyRefundOrders() {
-  return state.orders.filter(o => { const c = calcOrder(o); return c.type === 'sale' && c.revenue > 0 && o.refunded && !(Array.isArray(o.refunds) && o.refunds.length); })
-    .sort((a, b) => (a.date < b.date ? -1 : 1));
-}
-function openLegacyRefundDates() {
-  if (schema.refunds !== true) { toast('Run migration 002 first.'); return; }
-  const list = legacyRefundOrders();
-  if (!list.length) { toast('Every refund already has a date.'); return; }
-  const today = londonToday();
-  openFormModal('Add refund dates', `
-    <p class="sheet-note">These orders were marked refunded without a date, so the refund currently comes off sales in the month of the order. Enter the date each refund was made (from Shopify → order → timeline) and it will come off that month instead. Leave a date blank to skip that order for now.</p>
-    <div class="legacy-list">${list.map(o => { const c = calcOrder(o); return `<div class="legacy-row">
-      <div><strong>${esc(o.orderNum || '#' + o.id)}</strong> · ${esc(o.customer)}<br><span class="form-hint">Ordered ${fmtDateLong(o.date)} · ${fmt(c.revenue)}</span></div>
-      <label>Refund date<input type="date" class="lr-date" data-id="${o.id}" min="${o.date}" max="${today}"></label>
-      <label>Amount (£)<input type="number" class="lr-amt" data-id="${o.id}" step="0.01" min="0" max="${c.revenue}" value="${c.revenue.toFixed(2)}"></label>
-    </div>`; }).join('')}</div>
-    <p class="form-hint" style="margin-top:8px">Stock isn't assumed returned and the platform fee is assumed kept, as now — add return details on the order later if needed.</p>`,
-    `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="lr-save" onclick="runSave(this, saveLegacyRefundDates)">Save dates</button>`);
-}
-async function saveLegacyRefundDates() {
-  if (writesBlocked()) throw new Error('data not loaded');
-  const rows = Array.from(document.querySelectorAll('.lr-date')).map(i => ({ id: parseInt(i.dataset.id, 10), date: i.value, el: i,
-    amount: parseFloat(document.querySelector(`.lr-amt[data-id="${i.dataset.id}"]`).value) })).filter(r => r.date);
-  if (!rows.length) { const f = document.querySelector('.lr-date'); if (f) f.id = 'lr-first'; throw needInput('enter at least one refund date', 'lr-first'); }
-  for (const r of rows) {
-    const o = state.orders.find(x => x.id === r.id); const c = calcOrder(o);
-    if (!isValidYMD(r.date) || r.date < o.date || r.date > londonToday()) { r.el.id = 'lr-bad'; throw needInput(`the refund date for ${o.orderNum} must be between the order date and today`, 'lr-bad'); }
-    if (!(r.amount > 0) || r.amount > c.revenue + 0.005) { const a = document.querySelector(`.lr-amt[data-id="${r.id}"]`); a.id = 'lr-bad-amt'; throw needInput(`the amount for ${o.orderNum} must be more than £0 and no more than ${fmt(c.revenue)}`, 'lr-bad-amt'); }
-  }
-  let done = 0; const failed = [];
-  suppressRealtime++;
-  try {
-    for (const r of rows) {
-      const o = state.orders.find(x => x.id === r.id); const c = calcOrder(o);
-      try {
-        const fresh = await freshOrderRow(r.id);
-        if (Array.isArray(fresh.refunds) && fresh.refunds.length) { o.refunds = fresh.refunds; continue; }   // details added elsewhere meanwhile
-        const share = Math.min(1, r.amount / c.revenue);
-        const refunds = [{ id: newUid(), amount: r2(r.amount), date: r.date, paid_date: r.date, returned: [], resaleable: null,
-          fees_retained: r2(c.fee * share), return_postage: 0, note: 'Date added to an earlier refunded flag', recorded_at: new Date().toISOString() }];
-        const full = r.amount >= c.revenue - 0.005;
-        const res = await updateRecord('orders', r.id, { refunds, refunded: full });
-        if (res.error) throw new Error(res.error.message || 'database error');
-        o.refunds = refunds; o.refunded = full; done++;
-      } catch (e) { failed.push(`${o.orderNum || '#' + o.id} (${e.message})`); }
-    }
-  } finally { suppressRealtime--; }
-  if (failed.length) {
-    renderView(currentView);
-    throw new Error(`${done} saved, ${failed.length} not saved: ${failed.join(', ')}`);
-  }
-  closeModal(); renderView(currentView);
-  toast(`Refund date${done !== 1 ? 's' : ''} saved for ${done} order${done !== 1 ? 's' : ''}.`);
-}
 
 // ═══════════════════════════════════════════════════
 // EXPENSES (transactions), expected subscriptions and postage review
@@ -3929,7 +3869,7 @@ function reportPLHTML(p) {
   return `<div class="pl-statement">
     ${plHead('Sales')}
     ${plRow(`Gross sales (${p.paidOrders} paid order${p.paidOrders !== 1 ? 's' : ''})`, p.grossSales, '', true)}
-    ${p.refunds ? plRow(`Less refunds (${p.refundCount}, by refund date)`, -p.refunds, '', true) : ''}
+    ${p.refunds ? plRow(`Less refunds on these orders (${p.refundCount})`, -p.refunds, '', true) : ''}
     ${plRow('Sales after refunds', p.salesAfterRefunds, 'total')}
     ${plHead('Direct costs of orders')}
     ${plRow(`Cost of scarves sold (${p.units} units)${flag}`, -p.cogs, '', true)}
@@ -3958,7 +3898,7 @@ function reportPLHTML(p) {
     ${plRow(`Book stock before ${fmtDateLong(p.range.from)}`, p.stockStart)}
     ${plRow('Add stock purchases', p.stockPurchases, '', true)}
     ${plRow('Less scarves sold, given away or sampled', -(p.cogs + p.giftsCost), '', true)}
-    ${p.stockBack ? plRow('Add resaleable returns', p.stockBack, '', true) : ''}
+    ${p.stockReturned ? plRow('Add resaleable returns (by return date)', p.stockReturned, '', true) : ''}
     ${plRow(`Book stock at ${fmtDateLong(p.range.to)}`, p.stockEnd, 'total')}
   </div>`;
 }
@@ -3984,18 +3924,17 @@ function openOrderFromReport(id) { const o = state.orders.find(x => x.id === id)
 function reportRefundsHTML(p) {
   const idx = postageIndex();
   const list = [];
-  state.orders.forEach(o => { const c = calcOrder(o, idx); refundsOf(o, c).forEach(r => { if (inDateRange(r.date, p.range)) list.push({ o, c, r }); }); });
-  const legacyAll = legacyRefundOrders().length;
-  return `${legacyAll ? `<div class="notice warn" style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>${legacyAll} refund${legacyAll > 1 ? 's have' : ' has'} no refund date yet, so ${legacyAll > 1 ? 'they come' : 'it comes'} off sales in the order's month.</span><button class="btn btn-secondary btn-sm" onclick="openLegacyRefundDates()">Add refund dates</button></div>` : ''}
-  <div class="pl-statement">
-    ${plCountRow('Refunds recognised', p.refundCount)}
+  const today = londonToday();
+  state.orders.forEach(o => { const c = calcOrder(o, idx); refundsOf(o, c).forEach(r => { if (inDateRange(o.date, p.range) && isValidYMD(r.date) && r.date <= today) list.push({ o, c, r }); }); });
+  return `<div class="pl-statement">
+    ${plCountRow('Refunds on orders in this period', p.refundCount)}
     ${plRow('Refunded amount', -p.refunds)}
     ${plCountRow(`Fully refunded orders`, p.fullRefundOrders)}
     ${plCountRow(`Partly refunded orders (still counted as one paid order each)`, p.partialRefundOrders)}
     ${p.refundsUnpaid ? plRow('Recorded but not yet paid', -p.refundsUnpaid) : ''}
   </div>
-  <div class="list" style="margin-top:14px">${list.map(({ o, r }) => `<div class="order-row" style="cursor:default"><span class="col-date">${fmtDate(r.date)}</span><span class="col-num">${esc(o.orderNum)}</span>
-    <span>${esc(o.customer)}<div class="sub">${r.legacy ? 'No refund date yet — shown at the order date. Use Add refund dates.' : `${r.paid_date ? 'paid ' + fmtDateLong(r.paid_date) : 'not yet paid'} · ${r.resaleable === true ? 'resaleable return' : r.resaleable === false ? 'not resaleable' : 'no return recorded'}`}</div></span>
+  <div class="list" style="margin-top:14px">${list.map(({ o, r }) => `<div class="order-row" style="cursor:default"><span class="col-date">${fmtDate(o.date)}</span><span class="col-num">${esc(o.orderNum)}</span>
+    <span>${esc(o.customer)}<div class="sub">${r.legacy ? 'Marked refunded before details were recorded — add the details on the order' : `refunded ${fmtDateLong(r.date)} · ${r.paid_date ? 'paid ' + fmtDateLong(r.paid_date) : 'not yet paid'} · ${r.resaleable === true ? 'resaleable return' : r.resaleable === false ? 'not resaleable' : 'no return recorded'}`}</div></span>
     <span class="amt">${fmt(num(r.amount))}</span><span></span></div>`).join('') || '<div class="empty-state"><div class="empty-state-text">No refunds in this period.</div></div>'}</div>`;
 }
 
