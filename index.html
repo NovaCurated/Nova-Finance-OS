@@ -1505,7 +1505,7 @@
 // VERSION & PWA
 // ═══════════════════════════════════════════════════
 
-const APP_VERSION = '1.5.021';
+const APP_VERSION = '1.5.022';
 let swRegistration = null;
 let deferredInstallPrompt = null;
 let lastSyncTime = null;
@@ -1637,6 +1637,9 @@ const DEFAULT_SETTINGS = {
   shopifyFixedFee: 0.25,
   platformPayoutLagDays: 5,
   foldPayoutLagDays: 14,
+  // Fold: commission on the scarf price only (never delivery); card fees passed on, on the full amount paid.
+  // How a Fold sale was paid isn't known at order time, so delivered = online, Collection = in-store till.
+  fold: { onlineRate: 0.15, inStoreRate: 0.25, deliveryCharge: 4.99, onlineCardFee: 0.0185, inStoreCardFee: 0.016 },
   shippingMethods: [
     { method: 'Standard',   cost: 3.40, notes: 'Royal Mail tracked' },
     { method: 'Collection', cost: 0,    notes: 'Customer collection' },
@@ -1984,6 +1987,7 @@ function mergeSettings(v) {
   s.skuCosts = Array.isArray(s.skuCosts) ? s.skuCosts : [];
   s.shippingMethods = Array.isArray(s.shippingMethods) ? s.shippingMethods : [];
   s.bankBalances = Array.isArray(s.bankBalances) ? s.bankBalances : [];
+  s.fold = { ...base.fold, ...((v && typeof v.fold === 'object' && v.fold) || {}) };
   const today = londonToday();
   [...s.skuCosts, ...s.shippingMethods].forEach(e => {
     if (!e.uid) e.uid = newUid();
@@ -2073,6 +2077,20 @@ async function handleRemoteChange() {
 
 const OPEX_CATS = ['Marketing & Advertising','Software & Subscriptions','Bank Fees','Rent','Utilities','Professional Fees','Insurance','Travel','Office Supplies','Other Expenses'];
 const FOLD_DEFAULT_RATE = 0.15;
+// Fold fee rules. Delivered orders are treated as online (15%, ~1.85% card fee on everything paid incl. delivery);
+// Collection orders as in-store till (25%, 1.6% card fee). Delivery is never commissioned.
+// An explicit commission rate on the order overrides the automatic one.
+function foldTerms(o, revenue, s = state.settings) {
+  const f = { ...DEFAULT_SETTINGS.fold, ...(s?.fold || {}) };
+  const inStore = String(o.shippingMethod || '').trim().toLowerCase() === 'collection';
+  const auto = inStore ? num(f.inStoreRate) : num(f.onlineRate);
+  const rate = o.foldCommissionRate != null && isFinite(o.foldCommissionRate) ? Number(o.foldCommissionRate) : auto;
+  const delivery = inStore ? 0 : Math.min(Math.max(0, num(f.deliveryCharge)), Math.max(0, revenue));
+  const cardRate = inStore ? num(f.inStoreCardFee) : num(f.onlineCardFee);
+  const commission = r2((revenue - delivery) * rate);
+  const cardFee = r2(revenue * cardRate);
+  return { inStore, rate, auto: o.foldCommissionRate == null, delivery, cardRate, commission, cardFee, fee: r2(commission + cardFee) };
+}
 const ORDER_TYPES = { sale: 'Sale', gift: 'Gift', sample: 'Sample', cancelled: 'Cancelled' };
 
 function num(v) { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; }
@@ -2198,7 +2216,7 @@ function postageIndex(asOf = londonToday()) {
 function calcOrder(o, idx = postageIndex()) {
   const type = orderType(o);
   const channel = orderChannel(o);
-  const foldRate = o.foldCommissionRate ?? FOLD_DEFAULT_RATE;
+  const foldRate = channel === 'fold' ? foldTerms(o, 0).rate : (o.foldCommissionRate ?? FOLD_DEFAULT_RATE);
   const snap = o.costSnapshot;
   const base = { type, channel, foldRate, locked: !!snap, basis: snap?.basis || null };
   if (type === 'cancelled') {
@@ -2221,9 +2239,10 @@ function calcOrder(o, idx = postageIndex()) {
   const postage = actual !== null ? actual : shipEst;
   const terms = snap?.fees ? { rate: num(snap.fees.shopify_rate), fixed: num(snap.fees.shopify_fixed) } : feesOn(o.date);
   const shopifyFee = channel === 'shopify' && revenue ? r2(revenue * terms.rate + terms.fixed) : 0;
-  const foldFee = channel === 'fold' && revenue ? r2(revenue * foldRate) : 0;
+  const fold = channel === 'fold' && revenue ? foldTerms(o, revenue) : null;
+  const foldFee = fold ? fold.fee : 0;
   const fee = r2(shopifyFee + foldFee);
-  return { ...base, revenue, units, productCost: r2(productCost), lines, missingSkus, costMissing: missingSkus.length > 0,
+  return { ...base, fold, revenue, units, productCost: r2(productCost), lines, missingSkus, costMissing: missingSkus.length > 0,
            shipEst, postageActual: actual, postage, postageMatched: actual !== null,
            shopifyFee, foldFee, fee, payout: r2(revenue - fee), contribution: r2(revenue - productCost - postage - fee) };
 }
@@ -3304,13 +3323,13 @@ function orderDetailHTML(o, c) {
   return `<div class="order-detail">
     <div class="detail-grid">
       <div><span>Date</span>${fmtDateLong(o.date)}</div>
-      <div><span>Channel</span>${c.channel === 'fold' ? `Fold ${Math.round(c.foldRate * 100)}%` : c.channel === 'direct' ? 'Direct' : 'Shopify'}</div>
+      <div><span>Channel</span>${c.channel === 'fold' ? `Fold ${c.fold?.inStore || /^collection$/i.test(o.shippingMethod || '') ? 'in-store' : 'online'} · ${pct1(c.foldRate)}${o.foldCommissionRate == null ? ' (auto)' : ''}` : c.channel === 'direct' ? 'Direct' : 'Shopify'}</div>
       <div><span>Type</span>${ORDER_TYPES[c.type]}</div>
       <div><span>Sale value</span>${fmt(c.revenue)}</div>
       <div><span>Items &amp; unit cost</span>${lines}</div>
       <div><span>Scarf cost</span>${c.costMissing ? '<span class="neg-text">incomplete</span>' : fmt(c.productCost)}</div>
       <div><span>Postage</span>${fmt(c.postage)} ${c.postageMatched ? `(actual; estimate ${fmt(c.shipEst)})` : '(estimate)'}</div>
-      <div><span>Platform fee</span>${fmt(c.fee)}</div>
+      <div><span>Platform fee</span>${fmt(c.fee)}${c.fold ? `<br><span class="form-hint" style="font-size:13px">Commission ${fmt(c.fold.commission)}${c.fold.delivery ? ` (excl. ${fmt(c.fold.delivery)} delivery)` : ''} + card fee ${fmt(c.fold.cardFee)} (${pct1(c.fold.cardRate, 2)}) · payout ${fmt(c.payout)}</span>` : ''}</div>
       <div><span>Contribution at sale</span>${c.costMissing ? 'incomplete' : fmt(c.contribution)}</div>
       <div><span>Costs</span>${esc(snapshotLabel(o))}</div>
     </div>
@@ -3392,7 +3411,9 @@ function orderFormHTML(o = null) {
       <div class="form-group"><label for="o-channel">Channel</label><select id="o-channel" onchange="document.getElementById('o-fold-rate-row').style.display=this.value==='fold'?'':'none';refreshOrderPreview()">
         <option value="shopify" ${(!o || o.channel === 'shopify') ? 'selected' : ''}>Shopify</option><option value="fold" ${o?.channel === 'fold' ? 'selected' : ''}>Fold</option><option value="direct" ${o?.channel === 'direct' ? 'selected' : ''}>Direct — no fee</option></select></div>
       <div class="form-group" id="o-fold-rate-row" style="display:${o?.channel === 'fold' ? '' : 'none'}"><label for="o-fold-rate">Fold commission</label><select id="o-fold-rate" onchange="refreshOrderPreview()">
-        ${[0.15, 0.2, 0.25, 0.3].map(r => `<option value="${r}" ${(o?.foldCommissionRate ?? 0.15) === r ? 'selected' : ''}>${Math.round(r * 100)}%</option>`).join('')}</select></div>
+        <option value="" ${o?.foldCommissionRate == null ? 'selected' : ''}>Auto: 15% delivered, 25% collection</option>
+        ${[0.15, 0.2, 0.25, 0.3].map(r => `<option value="${r}" ${o?.foldCommissionRate === r ? 'selected' : ''}>${Math.round(r * 100)}% (fixed)</option>`).join('')}</select>
+        <p class="form-hint">Commission is on the scarf price only; card fees are added automatically.</p></div>
     </div>
     ${o?.costSnapshot ? `<p class="form-hint" style="margin-top:10px">Locked costs stay as they are when you change the customer, order #, date, revenue or quantities. A new product or shipping method uses the rate for the order date. To change locked costs, use Correct costs, or change the cost in Settings and choose “Apply to existing orders too”.</p>` : ''}
     <div id="order-preview"></div>`;
@@ -3877,7 +3898,7 @@ function reportPLHTML(p) {
     ${plRow(`Postage — order estimates (${p.matchedOrders + p.unmatchedOrders} shipped)`, -p.postageEst, '', true)}
     ${p.matchedOrders ? plRow(`Postage adjustment — matched actual vs estimate (${p.matchedOrders} orders)`, -p.postageAdj, '', true) : ''}
     ${p.shopifyFees ? plRow('Shopify fees', -p.shopifyFees, '', true) : ''}
-    ${p.foldFees ? plRow('Fold commission', -p.foldFees, '', true) : ''}
+    ${p.foldFees ? plRow('Fold commission & card fees', -p.foldFees, '', true) : ''}
     ${p.feeRefunds ? plRow('Platform fees refunded', p.feeRefunds, '', true) : ''}
     ${p.returnPostage ? plRow('Return postage', -p.returnPostage, '', true) : ''}
     ${plRow(`Contribution${flag}`, p.contribution, 'total')}
@@ -4000,6 +4021,17 @@ function renderBalance(el) {
 let settingsDraftBase = null;   // saved settings the draft started from
 function draft() { if (!settingsDraft) { settingsDraft = clone(state.settings); settingsDraftBase = clone(state.settings); } return settingsDraft; }
 function isDirty() { return !!settingsDraft && JSON.stringify(settingsDraft) !== JSON.stringify(state.settings); }
+function pct1(r, dp = 1) { const v = num(r) * 100; return `${Number(v.toFixed(dp))}%`; }
+function foldSettingsHTML(s) {
+  const f = { ...DEFAULT_SETTINGS.fold, ...(s.fold || {}) };
+  const pin = (id, key, label, max, hint = '') => `<div class="form-group"><label for="${id}">${label}</label><input type="number" id="${id}" min="0" max="${max}" step="0.01" inputmode="decimal" value="${Number((num(f[key]) * 100).toFixed(2))}" oninput="setDraft('fold.${key}', +(Math.max(0, parseFloat(this.value) || 0) / 100).toFixed(6))">${hint ? `<p class="form-hint">${hint}</p>` : ''}</div>`;
+  return `<div class="form-group" style="grid-column:1/-1"><label>Fold fees</label><p class="form-hint">How a Fold sale was paid isn't known when it's recorded, so delivered orders are treated as online and Collection orders as in-store. Commission is never charged on delivery. An order with a fixed commission rate keeps it.</p></div>
+      ${pin('s-fold-on', 'onlineRate', 'Online commission (%)', 50)}
+      ${pin('s-fold-in', 'inStoreRate', 'In-store / event commission (%)', 50)}
+      ${pin('s-fold-oncard', 'onlineCardFee', 'Online card fee (%)', 10, 'Charged on everything paid, including delivery.')}
+      ${pin('s-fold-incard', 'inStoreCardFee', 'In-store card fee (%)', 10, 'Till 1.6%, SumUp 1.69%.')}
+      <div class="form-group"><label for="s-fold-del">Fold delivery charge (£)</label><input type="number" id="s-fold-del" min="0" step="0.01" inputmode="decimal" value="${num(f.deliveryCharge)}" oninput="setDraft('fold.deliveryCharge', Math.max(0, parseFloat(this.value) || 0))"><p class="form-hint">Included in delivered orders' sale value; not commissioned.</p></div>`;
+}
 function setDraft(path, value) {
   const d = draft(); const keys = path.split('.'); let o = d;
   for (let i = 0; i < keys.length - 1; i++) o = o[keys[i]];
@@ -4052,7 +4084,8 @@ function renderSettings(el, actions) {
         ${bal.length ? bal.map(b => `<div class="form-hint" style="font-size:13px">${fmt(num(b.amount))} on ${fmtDateLong(b.asAt)} · ${esc(b.source)}</div>`).join('') : '<p class="form-hint">None recorded yet.</p>'}
         <button class="btn btn-secondary btn-sm" style="margin-top:6px;align-self:flex-start" onclick="openBankBalanceForm()">Record bank balance</button></div>
       <div class="form-group"><label for="s-payoutlag">Shopify payout delay (days)</label><input type="number" id="s-payoutlag" min="0" max="30" value="${lagDays(s.platformPayoutLagDays, 7)}" oninput="setDraft('platformPayoutLagDays', lagDays(this.value, 5))"><p class="form-hint">Used only to estimate cash.</p></div>
-      <div class="form-group"><label for="s-foldlag">Fold payout delay (days)</label><input type="number" id="s-foldlag" min="0" max="60" value="${lagDays(s.foldPayoutLagDays, 14)}" oninput="setDraft('foldPayoutLagDays', lagDays(this.value, 14))"></div></div>`)}
+      <div class="form-group"><label for="s-foldlag">Fold payout delay (days)</label><input type="number" id="s-foldlag" min="0" max="60" value="${lagDays(s.foldPayoutLagDays, 14)}" oninput="setDraft('foldPayoutLagDays', lagDays(this.value, 14))"></div>
+      ${foldSettingsHTML(s)}</div>`)}
     ${sec('Stock', `${sc.hasCount && sc.impossible ? `<div class="notice err" style="margin-bottom:12px">Saved stock count ${fmt(sc.value)} is more than everything bought (${fmt(sc.maxPossible)} at cost) — check it isn't at retail value.</div>` : ''}
       <div class="settings-form-grid">
       <div class="form-group"><label for="s-cs">Last stock count value (£, landed cost)</label><input type="number" id="s-cs" step="0.01" min="0" value="${s.closingStock}" oninput="setDraft('closingStock', parseFloat(this.value)||0)"></div>
