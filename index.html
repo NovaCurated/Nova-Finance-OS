@@ -1506,7 +1506,7 @@
 // VERSION & PWA
 // ═══════════════════════════════════════════════════
 
-const APP_VERSION = '1.5.024';
+const APP_VERSION = '1.5.025';
 let swRegistration = null;
 let deferredInstallPrompt = null;
 let lastSyncTime = null;
@@ -3112,10 +3112,8 @@ function supportRowHTML(a, today) {
   const item = (testid, label, value, valueTestid, onclick, note = '') => `<button class="support-item" data-testid="${testid}" onclick="${onclick}">
       <span class="support-label">${label}</span>
       <strong ${valueTestid ? `data-testid="${valueTestid}"` : ''}>${value}</strong>${note}</button>`;
-  // channel split of paid orders: Shopify · Fold (· Direct only when there are any)
-  const split = a.paidOrders ? `<span class="support-note" data-testid="orders-split">Shopify ${a.nova} · Fold ${a.fold}${a.direct ? ` · Direct ${a.direct}` : ''}</span>` : '';
   return `<div class="support-row">
-    ${item('card-orders', 'Paid orders', String(a.paidOrders), '', "reportsTab='orders';reportsOrderFilter='paid';navigate('reports')", split)}
+    ${item('card-orders', 'Paid orders', String(a.paidOrders), '', "reportsTab='orders';reportsOrderFilter='paid';navigate('reports')")}
     ${item('card-payouts', 'Pending payouts', fmt(C.pending), 'cash-pending', 'openPayoutSheet()')}
     ${item('card-cash-total', 'Cash inc. pending', fmt(cashHeadline(today) + C.pending), 'cash-inc-pending', 'openCashBreakdown()')}
   </div>`;
@@ -3931,6 +3929,12 @@ function reportPLHTML(p) {
   </div>`;
 }
 
+// Shopify · Fold (· Direct only when there are any) — shown in Reports → Orders, not on the home page (too tight on phones)
+function channelSplit(rows) {
+  const n = { shopify: 0, fold: 0, direct: 0 };
+  rows.forEach(({ c }) => { n[c.channel === 'fold' ? 'fold' : c.channel === 'direct' ? 'direct' : 'shopify']++; });
+  return `Shopify ${n.shopify} · Fold ${n.fold}${n.direct ? ` · Direct ${n.direct}` : ''}`;
+}
 function reportOrdersHTML(p) {
   const idx = postageIndex();
   const today = londonToday();
@@ -3939,7 +3943,7 @@ function reportOrdersHTML(p) {
     .sort((a, b) => (a.o.date < b.o.date ? 1 : -1));
   const chip = (k, l) => `<button class="chip" aria-pressed="${reportsOrderFilter === k}" onclick="reportsOrderFilter='${k}';renderView('reports')">${l}</button>`;
   return `<div class="list"><div class="list-tools">${chip('all', 'All orders')}${chip('paid', 'Paid orders')}${chip('refunds', 'With refunds')}${chip('missing', 'Missing costs')}
-      <span class="muted" style="font-size:13px">${rows.length} order${rows.length !== 1 ? 's' : ''} dated in this period</span></div>
+      <span class="muted" style="font-size:13px">${rows.length} order${rows.length !== 1 ? 's' : ''} dated in this period${rows.length ? ` · <span data-testid="orders-split">${channelSplit(rows)}</span>` : ''}</span></div>
     ${rows.map(({ o, c }) => `<div class="order-row" style="cursor:default"><span class="col-date">${fmtDate(o.date)}</span><span class="col-num"><strong>${esc(o.orderNum)}</strong></span>
       <span>${esc(o.customer)} ${orderChips(o, c)}<div class="sub">${orderLines(o).map(l => `${esc(l.sku)}${l.qty > 1 ? ` ×${l.qty}` : ''}`).join(', ')}</div></span>
       <span class="amt">${fmt(c.revenue)}<div class="sub" style="font-weight:400">${c.costMissing ? 'contribution incomplete' : `contribution ${fmt(c.contribution)}`}</div></span>
