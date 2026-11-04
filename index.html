@@ -1506,7 +1506,7 @@
 // VERSION & PWA
 // ═══════════════════════════════════════════════════
 
-const APP_VERSION = '1.5.023';
+const APP_VERSION = '1.5.024';
 let swRegistration = null;
 let deferredInstallPrompt = null;
 let lastSyncTime = null;
@@ -2851,11 +2851,11 @@ function periodBarHTML(cmp, { minimal = false } = {}) {
   const today = londonToday();
   const to = cmp.cur.to > today ? today : cmp.cur.to;
   const label = reportPeriod.kind === 'monthOf' && k === 'custom-month' ? `${MONTHS_LONG[reportPeriod.m - 1]} ${reportPeriod.y} · ` : '';
-  const segHTML = `<div class="seg" role="group" aria-label="Reporting period">${btn('month', 'Month', 'This month')}${btn('lastMonth', 'Last month', 'Last month')}${btn('ytd', 'YTD', 'YTD')}${btn('all', 'All time', 'All time')}${btn('custom', 'Custom', 'Custom')}</div>`;
+  const segHTML = `<div class="seg" role="group" aria-label="Reporting period">${btn('month', 'Month', 'This month')}${btn('lastMonth', 'Last mth', 'Last month')}${btn('ytd', 'YTD', 'YTD')}${btn('all', 'All', 'All time')}${btn('custom', 'Custom', 'Custom')}</div>`;
   // Home page: presets need no dates; Custom shows only the chosen dates (its date fields).
   if (minimal) return `<div class="period-wrap minimal">${segHTML}${custom}${reportPeriod.kind === 'monthOf' ? `<div class="period-dates2"><span class="period-sel">${MONTHS_LONG[reportPeriod.m - 1]} ${reportPeriod.y}</span></div>` : ''}</div>`;
   return `<div class="period-wrap">
-    <div class="seg" role="group" aria-label="Reporting period">${btn('month', 'Month', 'This month')}${btn('lastMonth', 'Last month', 'Last month')}${btn('ytd', 'YTD', 'YTD')}${btn('all', 'All time', 'All time')}${btn('custom', 'Custom', 'Custom')}</div>
+    <div class="seg" role="group" aria-label="Reporting period">${btn('month', 'Month', 'This month')}${btn('lastMonth', 'Last mth', 'Last month')}${btn('ytd', 'YTD', 'YTD')}${btn('all', 'All', 'All time')}${btn('custom', 'Custom', 'Custom')}</div>
     ${custom}
     <div class="period-dates2"><span class="period-sel">${label}${fmtRangeShort(cmp.cur.from, to)}${cmp.cur.to > today ? ' (to today)' : ''}</span>
       <button type="button" class="linkbtn period-cmp-btn" aria-expanded="false" aria-controls="period-cmp" onclick="const d=document.getElementById('period-cmp');const o=d.hidden;d.hidden=!o;this.setAttribute('aria-expanded',String(o))">Compared with…</button>
