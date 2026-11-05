@@ -1506,7 +1506,7 @@
 // VERSION & PWA
 // ═══════════════════════════════════════════════════
 
-const APP_VERSION = '1.5.025';
+const APP_VERSION = '1.5.026';
 let swRegistration = null;
 let deferredInstallPrompt = null;
 let lastSyncTime = null;
@@ -2130,6 +2130,14 @@ function skuCostOn(sku, date, s = state.settings) {
   const e = findSkuEntry(sku, s);
   return e ? validCost(rateOn(historyOf(e), date)?.cost) : null;      // null = unknown, never silently £0
 }
+// Fold orders that are posted (anything but Collection) use the "Fold delivery" postage rate when Settings has one
+// (entry flagged foldDelivery). Everything else uses the order's own shipping method.
+function foldDeliveryEntry(s = state.settings) { return (s.shippingMethods || []).find(x => x.foldDelivery && !x.archived) || null; }
+function postageMethod(o, s = state.settings) {
+  const m = o.shippingMethod || null;
+  if (orderChannel(o) === 'fold' && !/^collection$/i.test(String(m || '').trim())) { const e = foldDeliveryEntry(s); if (e) return e.method; }
+  return m;
+}
 function shippingCostOn(method, date, s = state.settings) {
   const def = num(rateOn(historyOf({ history: s.defaultShippingHistory, cost: s.defaultShipping }), date)?.cost);
   if (!method) return def;
@@ -2160,7 +2168,7 @@ function buildSnapshot(o, basis, s = state.settings) {
   return {
     v: 2, basis, captured_on: londonToday(), app_version: APP_VERSION,
     lines: [...new Set(orderLines(o).map(l => l.sku))].map(sku => ({ sku, unit_cost: skuCostOn(sku, o.date, s) })),
-    shipping: { method: o.shippingMethod || null, estimate: shippingCostOn(o.shippingMethod, o.date, s) },
+    shipping: { method: postageMethod(o, s), estimate: shippingCostOn(postageMethod(o, s), o.date, s) },
     fees: { shopify_rate: f.rate, shopify_fixed: f.fixed },
     corrections: [],
   };
@@ -2178,7 +2186,7 @@ function snapshotAfterEdit(prev, next) {
   snap.lines = [...new Set(orderLines(next).map(l => l.sku))].map(sku =>
     snap.lines.find(x => x.sku === sku) || { sku, unit_cost: skuCostOn(sku, next.date), added_on: londonToday() });
   const oldMethod = snap.shipping ? (snap.shipping.method ?? null) : null;
-  if ((next.shippingMethod || null) !== oldMethod) snap.shipping = { method: next.shippingMethod || null, estimate: shippingCostOn(next.shippingMethod, next.date), changed_on: londonToday() };
+  if (postageMethod(next) !== oldMethod && (next.shippingMethod || null) !== oldMethod) snap.shipping = { method: postageMethod(next), estimate: shippingCostOn(postageMethod(next), next.date), changed_on: londonToday() };
   return snap;
 }
 function snapshotLabel(o) {
@@ -2235,7 +2243,7 @@ function calcOrder(o, idx = postageIndex()) {
     return { ...l, unit, source: locked ? 'locked' : 'rate' };
   });
   const revenue = type === 'sale' ? r2(num(o.revenue)) : 0;
-  const shipEst = snap?.shipping ? num(snap.shipping.estimate ?? snap.shipping.cost) : shippingCostOn(o.shippingMethod, o.date);
+  const shipEst = snap?.shipping ? num(snap.shipping.estimate ?? snap.shipping.cost) : shippingCostOn(postageMethod(o), o.date);
   const actual = idx.byOrder.has(o.id) ? idx.byOrder.get(o.id) : null;
   const postage = actual !== null ? actual : shipEst;
   const terms = snap?.fees ? { rate: num(snap.fees.shopify_rate), fixed: num(snap.fees.shopify_fixed) } : feesOn(o.date);
@@ -3116,6 +3124,7 @@ function supportRowHTML(a, today) {
     ${item('card-orders', 'Paid orders', String(a.paidOrders), '', "reportsTab='orders';reportsOrderFilter='paid';navigate('reports')")}
     ${item('card-payouts', 'Pending payouts', fmt(C.pending), 'cash-pending', 'openPayoutSheet()')}
     ${item('card-cash-total', 'Cash inc. pending', fmt(cashHeadline(today) + C.pending), 'cash-inc-pending', 'openCashBreakdown()')}
+    ${item('card-loan', 'Loan outstanding', fmt(computeAsAt(today).directorLoan), 'loan-outstanding', "navigate('balance')")}
   </div>`;
 }
 
@@ -3401,7 +3410,7 @@ function orderFormHTML(o = null) {
   const items = o?.lineItems || [{ sku: o?.skuType || s.skuCosts.find(sk => !sk.archived)?.sku || '', qty: o?.qty || 1 }];
   const knownMethod = !o?.shippingMethod || s.shippingMethods.some(m => m.method === o.shippingMethod && !m.archived);
   const methods = (knownMethod ? '' : `<option value="${esc(o.shippingMethod)}" selected>${esc(o.shippingMethod)} (not in Settings)</option>`) +
-    s.shippingMethods.filter(m => !m.archived).map(m => `<option value="${esc(m.method)}" ${o?.shippingMethod === m.method ? 'selected' : ''}>${esc(m.method)}</option>`).join('');
+    s.shippingMethods.filter(m => !m.archived && !m.foldDelivery).map(m => `<option value="${esc(m.method)}" ${o?.shippingMethod === m.method ? 'selected' : ''}>${esc(m.method)}</option>`).join('');
   const type = o ? orderType(o) : 'sale';
   return `<div class="form-grid">
       <div class="form-group"><label for="o-date">Date</label><input type="date" id="o-date" value="${o?.date || londonToday()}" onchange="refreshOrderPreview()"></div>
@@ -4064,7 +4073,7 @@ function renderSettings(el, actions) {
   const sc = stockCountCheck(today);
   const unlocked = state.orders.filter(o => !o.costSnapshot && orderType(o) !== 'cancelled').length;
   const usedSku = names => state.orders.filter(o => orderLines(o).some(l => names.includes(l.sku))).length;
-  const usedShip = names => state.orders.filter(o => names.includes(o.shippingMethod)).length;
+  const usedShip = names => state.orders.filter(o => names.includes(postageMethod(o))).length;
   const histLine = x => { const t = historyText(historyOf(x)); const al = x.aliases?.length ? `Previously named ${x.aliases.map(esc).join(', ')}. ` : '';
     return (t || al) ? `<tr><td colspan="4" class="form-hint" style="padding-top:0">${al}${t ? 'History: ' + t : ''}</td></tr>` : ''; };
   const skuRows = s.skuCosts.map((x, i) => x.archived
@@ -4075,7 +4084,7 @@ function renderSettings(el, actions) {
        <td><button class="delete-btn" aria-label="Remove" onclick="removeDraftRow('skuCosts', ${i}, ${usedSku([x.sku, ...(x.aliases || [])])})">×</button></td></tr>${histLine(x)}`).join('');
   const shipRows = s.shippingMethods.map((x, i) => x.archived
     ? `<tr style="opacity:.6"><td colspan="3">${esc(x.method)} — archived</td><td><button class="edit-btn" aria-label="Restore" onclick="delete draft().shippingMethods[${i}].archived;renderView('settings')">↺</button></td></tr>`
-    : `<tr><td><input type="text" aria-label="Method" value="${esc(x.method)}" oninput="setDraft('shippingMethods.${i}.method', this.value)"></td>
+    : `<tr><td><input type="text" aria-label="Method" value="${esc(x.method)}" oninput="setDraft('shippingMethods.${i}.method', this.value)">${x.foldDelivery ? '<div class="form-hint" style="font-size:13px">Used for posted Fold orders</div>' : ''}</td>
        <td><input type="number" aria-label="Cost" value="${x.cost}" step="0.01" min="0" style="width:84px" oninput="setDraft('shippingMethods.${i}.cost', parseFloat(this.value)||0)"></td>
        <td><input type="text" aria-label="Notes" value="${esc(x.notes || '')}" oninput="setDraft('shippingMethods.${i}.notes', this.value)"></td>
        <td><button class="delete-btn" aria-label="Remove" onclick="removeDraftRow('shippingMethods', ${i}, ${usedShip([x.method, ...(x.aliases || [])])})">×</button></td></tr>${histLine(x)}`).join('');
@@ -4211,7 +4220,7 @@ function componentNames(ch, s = state.settings) {
 function orderUsesComponent(o, ch, names, base) {
   if (orderType(o) === 'cancelled' || !isValidYMD(o.date)) return false;
   if (ch.kind === 'sku') return orderLines(o).some(l => names.includes(l.sku));
-  if (ch.kind === 'ship') return names.includes(o.shippingMethod);
+  if (ch.kind === 'ship') return names.includes(postageMethod(o));
   if (ch.kind === 'defship') return !o.shippingMethod || !findShipEntry(o.shippingMethod, base);
   return orderChannel(o) === 'shopify';
 }
