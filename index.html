@@ -1506,7 +1506,7 @@
 // VERSION & PWA
 // ═══════════════════════════════════════════════════
 
-const APP_VERSION = '1.5.026';
+const APP_VERSION = '1.5.027';
 let swRegistration = null;
 let deferredInstallPrompt = null;
 let lastSyncTime = null;
@@ -1871,6 +1871,7 @@ function rowToOrder(r) {
            lineItems: Array.isArray(r.line_items) && r.line_items.length ? r.line_items : null,
            orderType: r.order_type || null,
            costSnapshot: validSnapshot(r.cost_snapshot),
+           payoutDate: isValidYMD(String(r.payout_date || '').slice(0, 10)) ? String(r.payout_date).slice(0, 10) : null,   // migration 003 (optional)
            refunds: Array.isArray(r.refunds) ? r.refunds : [] };
 }
 
@@ -2436,7 +2437,7 @@ function cashAt(date) {
   const on = d => isValidYMD(d) && d <= date;
   const C = { date, startingCash: num(s.openingCash), startingCashRecorded: s.openingCash != null && s.openingCash !== '',
     ownerIn: 0, loansIn: 0, otherIncome: 0, salesReceipts: 0, feeRefunds: 0, spent: 0, stockPurchases: 0, postageAssumed: 0,
-    returnPostage: 0, refundsPaid: 0, refundsRecorded: 0, loanRepay: 0, drawings: 0, shopifyPending: 0, foldPending: 0, shopifyLag, foldLag };
+    returnPostage: 0, refundsPaid: 0, refundsRecorded: 0, loanRepay: 0, drawings: 0, shopifyPending: 0, foldPending: 0, confirmedReceipts: 0, shopifyLag, foldLag };
   state.transactions.forEach(t => {
     if (!on(t.date) || t.category === 'Sales') return;
     const a = num(t.amount);
@@ -2456,9 +2457,11 @@ function cashAt(date) {
     if (c.type === 'cancelled') return;
     if (!c.postageMatched) C.postageAssumed += c.shipEst;
     if (c.type === 'sale') {
-      if (c.channel === 'shopify' && o.date >= shopCut) C.shopifyPending += c.payout;
-      else if (c.channel === 'fold' && o.date >= foldCut) C.foldPending += c.payout;
-      else C.salesReceipts += c.payout;
+      // A recorded payout date (from a platform statement) beats the payout-delay estimate.
+      const pending = o.payoutDate ? !on(o.payoutDate) : (c.channel === 'shopify' ? o.date >= shopCut : c.channel === 'fold' ? o.date >= foldCut : false);
+      if (pending && c.channel === 'shopify') C.shopifyPending += c.payout;
+      else if (pending && c.channel === 'fold') C.foldPending += c.payout;
+      else { C.salesReceipts += c.payout; if (o.payoutDate) C.confirmedReceipts += c.payout; }
     }
     refundsOf(o, c).forEach(r => {
       const e = refundEffects(o, r, c);
@@ -2531,6 +2534,10 @@ function periodRange(p = reportPeriod, today = londonToday()) {
   const t = parseYMD(today);
   if (p.kind === 'lastMonth') { const lm = addMonths(t.y, t.m, -1); return { kind: 'month-complete', from: monthStart(lm.y, lm.m), to: monthEnd(lm.y, lm.m), label: `${MONTHS_LONG[lm.m - 1]} ${lm.y}`, name: 'Last month' }; }
   if (p.kind === 'ytd') { const r = ytdRange(today); return { ...r, kind: 'ytd', name: 'Year to date' }; }
+  if (p.kind === 'l3m') {   // the last three complete calendar months, e.g. Aug–Oct when today is in November
+    const a = addMonths(t.y, t.m, -3), b = addMonths(t.y, t.m, -1);
+    return { kind: 'l3m', from: monthStart(a.y, a.m), to: monthEnd(b.y, b.m), label: `${MONTHS_SHORT[a.m - 1]} – ${MONTHS_SHORT[b.m - 1]} ${b.y}`, name: 'Last 3 months' };
+  }
   if (p.kind === 'all') return { kind: 'all', from: EPOCH, to: today, label: 'All time', name: 'All time' };
   if (p.kind === 'monthOf' && p.y && p.m) {
     if (p.y === t.y && p.m === t.m) return { kind: 'mtd', from: monthStart(t.y, t.m), to: today, label: `${MONTHS_LONG[t.m - 1]} ${t.y} to date`, name: 'This month' };
@@ -2558,6 +2565,10 @@ function comparisonRange(cur, today = londonToday()) {
     const dd = Math.min(d, daysInMonth(p.y, p.m));
     return { from: monthStart(p.y, p.m), to: ymd(p.y, p.m, dd), label: `1–${dd} ${MONTHS_SHORT[p.m - 1]} ${p.y}`,
              note: d > dd ? `last month only had ${dd} days` : '' };
+  }
+  if (cur.kind === 'l3m') {   // the three complete months before
+    const { y, m } = parseYMD(cur.from); const a = addMonths(y, m, -3), b = addMonths(y, m, -1);
+    return { from: monthStart(a.y, a.m), to: monthEnd(b.y, b.m), label: `${MONTHS_SHORT[a.m - 1]} – ${MONTHS_SHORT[b.m - 1]} ${b.y}`, note: '' };
   }
   if (cur.kind === 'all') return { from: EPOCH, to: EPOCH, label: 'nothing (all time)', note: '' };   // no earlier period exists
   if (cur.kind === 'ytd') {
@@ -2859,11 +2870,11 @@ function periodBarHTML(cmp, { minimal = false } = {}) {
   const today = londonToday();
   const to = cmp.cur.to > today ? today : cmp.cur.to;
   const label = reportPeriod.kind === 'monthOf' && k === 'custom-month' ? `${MONTHS_LONG[reportPeriod.m - 1]} ${reportPeriod.y} · ` : '';
-  const segHTML = `<div class="seg" role="group" aria-label="Reporting period">${btn('month', 'Month', 'This month')}${btn('lastMonth', 'Last mth', 'Last month')}${btn('ytd', 'YTD', 'YTD')}${btn('all', 'All', 'All time')}${btn('custom', 'Custom', 'Custom')}</div>`;
+  const segHTML = `<div class="seg" role="group" aria-label="Reporting period">${btn('month', 'MTD', 'This month')}${btn('lastMonth', 'LM', 'Last month')}${btn('l3m', 'L3M', 'Last 3 months')}${btn('ytd', 'YTD', 'YTD')}${btn('all', 'All', 'All time')}${btn('custom', 'Custom', 'Custom')}</div>`;
   // Home page: presets need no dates; Custom shows only the chosen dates (its date fields).
   if (minimal) return `<div class="period-wrap minimal">${segHTML}${custom}${reportPeriod.kind === 'monthOf' ? `<div class="period-dates2"><span class="period-sel">${MONTHS_LONG[reportPeriod.m - 1]} ${reportPeriod.y}</span></div>` : ''}</div>`;
   return `<div class="period-wrap">
-    <div class="seg" role="group" aria-label="Reporting period">${btn('month', 'Month', 'This month')}${btn('lastMonth', 'Last mth', 'Last month')}${btn('ytd', 'YTD', 'YTD')}${btn('all', 'All', 'All time')}${btn('custom', 'Custom', 'Custom')}</div>
+    <div class="seg" role="group" aria-label="Reporting period">${btn('month', 'MTD', 'This month')}${btn('lastMonth', 'LM', 'Last month')}${btn('l3m', 'L3M', 'Last 3 months')}${btn('ytd', 'YTD', 'YTD')}${btn('all', 'All', 'All time')}${btn('custom', 'Custom', 'Custom')}</div>
     ${custom}
     <div class="period-dates2"><span class="period-sel">${label}${fmtRangeShort(cmp.cur.from, to)}${cmp.cur.to > today ? ' (to today)' : ''}</span>
       <button type="button" class="linkbtn period-cmp-btn" aria-expanded="false" aria-controls="period-cmp" onclick="const d=document.getElementById('period-cmp');const o=d.hidden;d.hidden=!o;this.setAttribute('aria-expanded',String(o))">Compared with…</button>
@@ -3083,7 +3094,7 @@ function openCashBreakdown() {
 function openPayoutSheet() {
   const today = londonToday(), C = cashAt(today);
   const row = (l, v) => `<tr><td>${l}</td><td class="num">${fmt(v)}</td></tr>`;
-  openFormModal('Pending payouts', `<p class="sheet-note"><strong>Excluded from cash at bank.</strong> Platform payouts for recent orders that haven't reached the bank yet (Shopify after ${C.shopifyLag} days, Fold after ${C.foldLag}), as at ${fmtDateLong(today)}.</p>
+  openFormModal('Pending payouts', `<p class="sheet-note"><strong>Excluded from cash at bank.</strong> Platform payouts for recent orders that haven't reached the bank yet (Shopify after ${C.shopifyLag} days, Fold after ${C.foldLag}, unless a payout date from a statement is recorded on the order), as at ${fmtDateLong(today)}.</p>
     <table class="cash-break" data-testid="payout-detail">${row('Shopify', C.shopifyPending)}${row('Fold', C.foldPending)}<tr class="total"><td>Pending payouts</td><td class="num">${fmt(C.pending)}</td></tr></table>
     ${C.refundsOwed > 0.005 ? `<p class="sheet-note">Refunds owed to customers (recorded, not yet paid): <strong>${fmt(C.refundsOwed)}</strong>.</p>` : ''}
     <p class="sheet-note">Payout delays are set in Settings → Cash.</p>`,
@@ -3343,6 +3354,7 @@ function orderDetailHTML(o, c) {
       <div><span>Items &amp; unit cost</span>${lines}</div>
       <div><span>Scarf cost</span>${c.costMissing ? '<span class="neg-text">incomplete</span>' : fmt(c.productCost)}</div>
       <div><span>Postage</span>${fmt(c.postage)} ${c.postageMatched ? `(actual; estimate ${fmt(c.shipEst)})` : '(estimate)'}</div>
+      ${c.channel !== 'direct' && c.type === 'sale' ? `<div><span>Payout</span>${o.payoutDate ? `paid ${fmtDateLong(o.payoutDate)} (from statement)` : 'estimated from payout delay'}</div>` : ''}
       <div><span>Platform fee</span>${fmt(c.fee)}${c.fold ? `<br><span class="form-hint" style="font-size:13px">Commission ${fmt(c.fold.commission)}${c.fold.delivery ? ` (excl. ${fmt(c.fold.delivery)} delivery)` : ''} + card fee ${fmt(c.fold.cardFee)} (${pct1(c.fold.cardRate, 2)}) · payout ${fmt(c.payout)}</span>` : ''}</div>
       <div><span>Contribution at sale</span>${c.costMissing ? 'incomplete' : fmt(c.contribution)}</div>
       <div><span>Costs</span>${esc(snapshotLabel(o))}</div>
