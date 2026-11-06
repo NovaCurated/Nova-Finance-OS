@@ -1506,7 +1506,7 @@
 // VERSION & PWA
 // ═══════════════════════════════════════════════════
 
-const APP_VERSION = '1.5.027';
+const APP_VERSION = '1.5.028';
 let swRegistration = null;
 let deferredInstallPrompt = null;
 let lastSyncTime = null;
@@ -1730,6 +1730,8 @@ function isValidYMD(s) {
 }
 function parseYMD(s) { const [y, m, d] = String(s).slice(0, 10).split('-').map(Number); return { y, m, d }; }
 function addMonths(y, m, n) { const i = y * 12 + (m - 1) + n; return { y: Math.floor(i / 12), m: ((i % 12) + 12) % 12 + 1 }; }
+// Same day n months away, clamped to the month's length (31 May − 3 months → 28/29 Feb)
+function shiftMonths(s, n) { const { y, m, d } = parseYMD(s); const t = addMonths(y, m, n); return ymd(t.y, t.m, Math.min(d, daysInMonth(t.y, t.m))); }
 function monthStart(y, m) { return ymd(y, m, 1); }
 function monthEnd(y, m)   { return ymd(y, m, daysInMonth(y, m)); }
 function addDays(s, n) { const { y, m, d } = parseYMD(s); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); }
@@ -2534,9 +2536,9 @@ function periodRange(p = reportPeriod, today = londonToday()) {
   const t = parseYMD(today);
   if (p.kind === 'lastMonth') { const lm = addMonths(t.y, t.m, -1); return { kind: 'month-complete', from: monthStart(lm.y, lm.m), to: monthEnd(lm.y, lm.m), label: `${MONTHS_LONG[lm.m - 1]} ${lm.y}`, name: 'Last month' }; }
   if (p.kind === 'ytd') { const r = ytdRange(today); return { ...r, kind: 'ytd', name: 'Year to date' }; }
-  if (p.kind === 'l3m') {   // the last three complete calendar months, e.g. Aug–Oct when today is in November
-    const a = addMonths(t.y, t.m, -3), b = addMonths(t.y, t.m, -1);
-    return { kind: 'l3m', from: monthStart(a.y, a.m), to: monthEnd(b.y, b.m), label: `${MONTHS_SHORT[a.m - 1]} – ${MONTHS_SHORT[b.m - 1]} ${b.y}`, name: 'Last 3 months' };
+  if (p.kind === 'l3m') {   // rolling: the day after the same date 3 months ago, up to today (6 Nov → 7 Aug – 6 Nov)
+    const from = addDays(shiftMonths(today, -3), 1);
+    return { kind: 'l3m', from, to: today, label: `${fmtDateLong(from)} – ${fmtDateLong(today)}`, name: 'Last 3 months' };
   }
   if (p.kind === 'all') return { kind: 'all', from: EPOCH, to: today, label: 'All time', name: 'All time' };
   if (p.kind === 'monthOf' && p.y && p.m) {
@@ -2566,9 +2568,9 @@ function comparisonRange(cur, today = londonToday()) {
     return { from: monthStart(p.y, p.m), to: ymd(p.y, p.m, dd), label: `1–${dd} ${MONTHS_SHORT[p.m - 1]} ${p.y}`,
              note: d > dd ? `last month only had ${dd} days` : '' };
   }
-  if (cur.kind === 'l3m') {   // the three complete months before
-    const { y, m } = parseYMD(cur.from); const a = addMonths(y, m, -3), b = addMonths(y, m, -1);
-    return { from: monthStart(a.y, a.m), to: monthEnd(b.y, b.m), label: `${MONTHS_SHORT[a.m - 1]} – ${MONTHS_SHORT[b.m - 1]} ${b.y}`, note: '' };
+  if (cur.kind === 'l3m') {   // the rolling 3 months before that (7 Aug – 6 Nov → 7 May – 6 Aug)
+    const r = { from: addDays(shiftMonths(addDays(cur.from, -1), -3), 1), to: addDays(cur.from, -1) };
+    return { ...r, label: `${fmtDateLong(r.from)} – ${fmtDateLong(r.to)}`, note: '' };
   }
   if (cur.kind === 'all') return { from: EPOCH, to: EPOCH, label: 'nothing (all time)', note: '' };   // no earlier period exists
   if (cur.kind === 'ytd') {
