@@ -1243,9 +1243,17 @@
     #more-sheet.open { display: flex; }
     #more-sheet button { font-family: 'Sono', monospace; font-size: 15px; text-align: left; padding: 14px 10px; background: none; border: 0; border-bottom: 1px solid var(--border-light); color: var(--text); cursor: pointer; }
 
+    #modal:focus { outline: none; }
+    .m-only { display: none; }
+    .order-row .chev { color: var(--text-3); }
+    .tx-row { cursor: pointer; }
+    .page-subtitle:empty { display: none; }
     @media (max-width: 768px) {
-      .order-row { grid-template-columns: 1fr auto; }
-      .order-row .col-date, .order-row .col-num { display: none; }
+      .order-row { grid-template-columns: 1fr auto; min-height: 56px; }
+      .order-row .col-date, .order-row .col-num, .order-row .chev, .tx-row .row-actions { display: none; }
+      .order-row > span:empty { display: none; }
+      .m-only { display: block; }
+      .d-only { display: none; }
     }
 
     /* ── Overview, Android first (1.5.014) ───────── */
@@ -1464,7 +1472,7 @@
 
 <!-- Modal -->
 <div class="modal-overlay" id="modal-overlay" onclick="closeModalOnOverlay(event)">
-  <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" tabindex="-1">
     <div class="modal-header">
       <div class="modal-title" id="modal-title"></div>
       <button class="modal-close" onclick="closeModal()" aria-label="Close">×</button>
@@ -1506,7 +1514,7 @@
 // VERSION & PWA
 // ═══════════════════════════════════════════════════
 
-const APP_VERSION = '1.5.028';
+const APP_VERSION = '1.5.029';
 let swRegistration = null;
 let deferredInstallPrompt = null;
 let lastSyncTime = null;
@@ -1812,6 +1820,14 @@ function fmtDate(dateStr) {
   const { y, m, d } = parseYMD(dateStr);
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
 }
+function fmtDay(dateStr) {
+  if (!isValidYMD(dateStr)) return esc(dateStr || '');
+  const { y, m, d } = parseYMD(dateStr);
+  return `${d} ${MONTHS_SHORT[m - 1]}${y !== parseYMD(londonToday()).y ? ' ' + y : ''}`;
+}
+const CHANNEL_LABEL = { shopify: 'Shopify', fold: 'Fold', direct: 'Direct' };
+// Phone rows have no date / number columns, so the same facts go on the line under the name.
+function rowMeta(parts) { return `<span class="m-only">${parts.filter(Boolean).map(esc).join(' · ')}</span>`; }
 function fmtDateLong(dateStr) {
   if (!isValidYMD(dateStr)) return esc(dateStr || '');
   const { y, m, d } = parseYMD(dateStr);
@@ -2064,7 +2080,7 @@ async function handleRemoteChange() {
   if (_busy || document.getElementById('modal-overlay')?.classList.contains('open')) { pendingRemoteChange = true; return; }
   pendingRemoteChange = false;
   setSyncStatus('syncing', 'Syncing…');
-  try { await loadFromSupabase(); if (settingsDraft && !isDirty()) settingsDraft = null; renderView(currentView); setSyncStatus('synced', 'Synced'); }
+  try { await loadFromSupabase(); if (settingsDraft && !isDirty()) settingsDraft = null; renderView(currentView); setSyncStatus('synced', 'Synced'); autoLockCosts(); }
   catch (e) { console.error(e); setSyncStatus('error', 'Sync failed'); }
 }
 
@@ -2194,8 +2210,8 @@ function snapshotAfterEdit(prev, next) {
 }
 function snapshotLabel(o) {
   const s = o.costSnapshot;
-  if (!s) return 'Not locked yet — using the Settings rates for the order date';
-  const b = { recorded: 'Recorded with the order', estimated: 'Estimated from the rate on the order date', confirmed: 'Confirmed' }[s.basis] || 'Locked';
+  if (!s) return 'Using the Settings rates for the order date';
+  const b = { recorded: 'Recorded with the order', estimated: 'Set from the rate on the order date', auto: 'Set from the rate on the order date', confirmed: 'Confirmed' }[s.basis] || 'Locked';
   return `${b} · locked ${fmtDateLong(s.captured_on)}${s.corrections?.length ? ` · ${s.corrections.length} correction${s.corrections.length > 1 ? 's' : ''}` : ''}`;
 }
 
@@ -2287,7 +2303,8 @@ function refundEffects(o, r, c) {
     });
   }
   return { date: r.date, paidDate: isValidYMD(r.paid_date) ? r.paid_date : null, amount, feeRefund, stockBack: r2(stockBack),
-           returnPostage: num(r.return_postage), legacy: !!r.legacy, returnedUnknown: r.resaleable == null && !r.legacy && amount > 0 };
+           returnPostage: num(r.return_postage), legacy: !!r.legacy,
+           returnedUnknown: !r.legacy && amount > 0 && (r.resaleable == null || (r.resaleable === true && !(r.returned || []).some(x => num(x.qty) > 0))) };
 }
 function refundTotal(o, c, asOf) {
   return refundsOf(o, c).filter(r => !asOf || (isValidYMD(r.date) && r.date <= asOf)).reduce((a, r) => a + num(r.amount), 0);
@@ -2404,30 +2421,30 @@ function computeReport(rangeIn, today = londonToday()) {
 }
 
 // ── Confidence ─────────────────────────────────────
-// Profit status never says "verified": the best it says is "Ready for review".
+// Automatic cost locking is on unless Settings says otherwise (autoLockCosts: false).
+function autoLockOn() { return state.settings.autoLockCosts !== false; }
 function profitConfidence(R) {
   const issues = [];
   if (R.missingCost.length) issues.push({ key: 'missing', level: 'err', title: `${R.missingCost.length} order${R.missingCost.length > 1 ? 's' : ''} missing product costs`,
     detail: `Scarf cost counted as £0 (${[...new Set(R.missingCost.flatMap(x => x.skus))].map(esc).join(', ')}). Profit is incomplete.`, action: 'missing' });
   if (R.unreviewedPostageCount) issues.push({ key: 'postage-tx', level: 'warn', title: `${R.unreviewedPostageCount} postage payment${R.unreviewedPostageCount > 1 ? 's' : ''} to review (${fmt(R.unreviewedPostage)})`,
     detail: 'Counted as postage not linked to orders. If they paid for customer shipments, match them so the estimate is replaced instead of counted twice.', action: 'postage' });
-  if (R.unmatchedOrders) issues.push({ key: 'postage-est', level: 'info', title: `${R.unmatchedOrders} order${R.unmatchedOrders > 1 ? 's use' : ' uses'} estimated postage`,
-    detail: 'Each keeps its shipping-method estimate until an actual postage payment is matched to it.', action: 'postage' });
   if (R.legacyRefunds.length) issues.push({ key: 'legacy-refund', level: 'warn', title: `${R.legacyRefunds.length} refund${R.legacyRefunds.length > 1 ? 's need' : ' needs'} details`,
     detail: 'Marked refunded before details were recorded: treated as a full refund on the order, stock not assumed returned, fees assumed kept by the platform.', action: 'refunds' });
   if (R.refundsNoReturnInfo) issues.push({ key: 'refund-return', level: 'info', title: `${R.refundsNoReturnInfo} refund${R.refundsNoReturnInfo > 1 ? 's' : ''} without return details`,
-    detail: 'Returned stock is not assumed resaleable until you say so.', action: 'refunds' });
-  if (R.unlocked.length) issues.push({ key: 'unlocked', level: 'info', title: `${R.unlocked.length} order${R.unlocked.length > 1 ? 's' : ''} without locked costs`,
+    detail: 'No returned scarf is recorded, so nothing has gone back into stock.', action: 'refunds' });
+  if (R.unlocked.length && !autoLockOn()) issues.push({ key: 'unlocked', level: 'info', title: `${R.unlocked.length} order${R.unlocked.length > 1 ? 's' : ''} without locked costs`,
     detail: 'Costed at the Settings rates for their dates. Lock them so later Settings changes can never alter them.', action: 'lock' });
   if (R.zeroValue.length) issues.push({ key: 'zero-value', level: 'info', title: `${R.zeroValue.length} zero-value order${R.zeroValue.length > 1 ? 's' : ''}`,
-    detail: 'Not counted as paid orders. If they were gifts or samples, mark them so their stock cost is reported separately.', action: 'zero' });
+    detail: 'Not counted as paid orders. Open one and tap Mark as gift so its scarf cost is reported separately.', action: 'zero' });
   if (R.salesCatCount) issues.push({ key: 'sales-cat', level: 'warn', title: `${R.salesCatCount} transaction${R.salesCatCount > 1 ? 's' : ''} categorised Sales`,
     detail: `${fmt(R.salesCatTotal)} excluded from profit and cash — sales come from Orders. Record genuine sales as orders.`, action: 'expenses' });
   if (R.unknownCatCount) issues.push({ key: 'unknown-cat', level: 'warn', title: `${R.unknownCatCount} transaction${R.unknownCatCount > 1 ? 's' : ''} with an unknown category`, detail: 'Not counted anywhere.', action: 'expenses' });
-  const status = R.missingCost.length ? 'incomplete' : (R.unmatchedOrders || R.unreviewedPostageCount || R.legacyRefunds.length || R.estimatedLocks || R.unlocked.length) ? 'estimated' : 'ready';
+  // Postage at the Settings rates and automatically locked costs are final; only things that need a decision make profit "estimated".
+  const status = R.missingCost.length ? 'incomplete' : (R.unreviewedPostageCount || R.legacyRefunds.length) ? 'estimated' : 'ready';
   const label = status === 'incomplete' ? 'Incomplete — product costs missing'
-              : status === 'estimated' ? ((R.unmatchedOrders || R.unreviewedPostageCount) ? 'Estimated — postage not confirmed' : 'Estimated — some costs not confirmed')
-              : 'Ready for review';
+              : status === 'estimated' ? (R.unreviewedPostageCount ? 'Estimated — postage payments to review' : 'Estimated — refund details missing')
+              : 'Up to date';
   return { status, label, issues, needsReview: issues.filter(i => i.level !== 'info').length };
 }
 
@@ -2812,10 +2829,7 @@ function toggleMore() {
 }
 function closeMore() { document.getElementById('more-sheet')?.classList.remove('open'); document.getElementById('more-btn')?.setAttribute('aria-expanded', 'false'); }
 
-function pageSubtitle() {
-  const fy = fyContaining(londonToday());
-  return `${state.settings.businessName} · ${fy.label} (${fmtRange(fy)})`;
-}
+function pageSubtitle() { return ''; }   // titles stand alone; the financial year is shown in Settings
 
 function globalNoticesHTML() {
   const list = [];
@@ -2887,18 +2901,17 @@ function periodBarHTML(cmp, { minimal = false } = {}) {
 // ── Compact review summary (expands to an actionable list) ──
 function reviewBarHTML(R, id = 'rv') {
   const c = R.confidence;
+  if (!c.issues.length) return '';
   const cls = c.status === 'incomplete' ? 'err' : c.needsReview ? 'warn' : '';
   const dot = c.status === 'incomplete' ? 'err' : c.status === 'estimated' ? 'warn' : 'ok';
-  const head = c.issues.length
-    ? `Profit: ${esc(c.label)} · ${c.issues.length} item${c.issues.length > 1 ? 's' : ''} to review`
-    : `Profit: ${esc(c.label)}`;
+  const nItems = `${c.issues.length} item${c.issues.length > 1 ? 's' : ''} to review`;
+  const head = c.status === 'ready' ? nItems : `Profit: ${esc(c.label)} · ${nItems}`;
   const items = c.issues.map(i => `<div class="review-item"><div><span class="dot ${i.level}"></span><strong>${i.title}</strong><p>${i.detail}</p></div>
       ${reviewActionButton(i.action)}</div>`).join('');
   return `<div class="review-bar ${cls}" id="${id}">
     <div><span class="dot ${dot}"></span>${head}</div>
     ${c.issues.length ? `<button class="btn btn-secondary btn-sm" aria-expanded="false" onclick="const b=document.getElementById('${id}');const o=b.classList.toggle('open');this.setAttribute('aria-expanded',o);this.textContent=o?'Hide':'Review'">Review</button>` : ''}
-    <div class="review-list">${items}
-      <div style="font-size:12.5px;color:var(--text-3)">A balancing balance sheet or an empty list doesn't confirm figures against the bank — cash is checked separately.</div></div>
+    <div class="review-list">${items}</div>
   </div>`;
 }
 // Overview: one compact line; the full list opens in a sheet.
@@ -2920,7 +2933,7 @@ function reviewRowHTML(R) {
 function openReviewSheet() {
   const R = computeReport(periodRange(reportPeriod), londonToday());
   const items = overviewIssues(R);
-  openFormModal('To review', `<p class="sheet-note">Profit status: <strong>${esc(R.confidence.label)}</strong>. A balancing balance sheet or an empty list doesn't confirm figures against the bank — cash is checked separately.</p>
+  openFormModal('To review', `${R.confidence.status !== 'ready' ? `<p class="sheet-note">Profit: <strong>${esc(R.confidence.label)}</strong></p>` : ''}
     ${items.map(i => `<div class="review-item"><div><span class="dot ${i.level}"></span><strong>${i.title}</strong><p>${i.detail}</p></div>${reviewActionButton(i.action, true)}</div>`).join('') || '<p>Nothing to review.</p>'}`,
     `<button class="btn btn-primary" onclick="closeModal()">Close</button>`);
 }
@@ -2977,8 +2990,9 @@ function openFormModal(title, bodyHTML, footerHTML) {
   document.getElementById('modal-footer').innerHTML = footerHTML;
   showModalError('');
   openModal();
-  // focus the first field, unless the user has already moved into the form
-  setTimeout(() => { if (!document.getElementById('modal').contains(document.activeElement)) document.querySelector('#modal-body input, #modal-body select')?.focus(); }, 30);
+  // Desktop: focus the first field. Phones: focus the sheet itself, so no keyboard or date picker opens until a field is tapped.
+  setTimeout(() => { const m = document.getElementById('modal'); if (m.contains(document.activeElement)) return;
+    if (isPhone()) m.focus({ preventScroll: true }); else document.querySelector('#modal-body input, #modal-body select')?.focus(); }, 30);
 }
 
 // ═══════════════════════════════════════════════════
@@ -3078,7 +3092,7 @@ function cashBreakdownHTML(today) {
       ${row(`Sales receipts — estimated (payouts assumed to arrive ${C.shopifyLag} days after a Shopify order, ${C.foldLag} after Fold)`, C.salesReceipts, '+')}
       ${C.feeRefunds ? row('Platform fees refunded', C.feeRefunds, '+') : ''}
       ${row(`Money spent, including stock purchases of ${fmt(C.stockPurchases)}`, C.spent, '−')}
-      ${C.postageAssumed ? row('Postage assumed paid (orders without a matched payment)', C.postageAssumed, '−') : ''}
+      ${C.postageAssumed ? row('Postage on orders', C.postageAssumed, '−') : ''}
       ${C.returnPostage ? row('Return postage', C.returnPostage, '−') : ''}
       ${C.refundsPaid ? row('Refunds paid to customers', C.refundsPaid, '−') : ''}
       ${row('Loan repayments and drawings', C.loanRepay + C.drawings, '−')}
@@ -3203,7 +3217,15 @@ function drawTrend(today) {
   if (trendChart) trendChart.destroy();
   const ctx = document.getElementById('trend-chart');
   if (!ctx) return;
-  const money = v => Math.abs(v) >= 1000 ? `£${(v / 1000).toFixed(v % 1000 === 0 ? 0 : 1)}k` : `£${v}`;
+  const money = v => `${v < 0 ? '−' : ''}£${Math.abs(v) >= 1000 ? `${(Math.abs(v) / 1000).toFixed(v % 1000 === 0 ? 0 : 1)}k` : Math.abs(v)}`;
+  // Even steps sized to the data, so a small loss in one month doesn't add a whole empty band under £0.
+  const vals = series.flatMap(x => [x.sales, x.incomplete ? 0 : x.profit]);
+  const hi = Math.max(0, ...vals), lo = Math.min(0, ...vals);
+  const rawStep = Math.max(hi, -lo, 1) / 5, mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+  const step = [1, 2, 2.5, 5, 10].map(k => k * mag).find(k => k >= rawStep) || 10 * mag;
+  const yMax = Math.max(step, Math.ceil(hi / step) * step);
+  const yMin = lo >= 0 ? 0 : -lo <= step * 0.25 ? -step * 0.25 : -Math.ceil(-lo / step) * step;    // a tiny loss gets a sliver, not a full step
+  const tickValues = []; for (let v = Math.ceil(yMin / step) * step; v <= yMax + 1e-9; v += step) tickValues.push({ value: Math.round(v * 100) / 100 });
   // the current, incomplete month: two-line label and a lighter bar — no explanation needed
   const labels = series.map((s, i) => {
     const yr = (i === 0 || s.m === 1) && series.some(x => x.y !== s.y) ? ` ${String(s.y).slice(-2)}` : '';
@@ -3239,7 +3261,7 @@ function drawTrend(today) {
                        } } } },
       scales: {
         x: { grid: { display: false }, ticks: { font: { family: 'Sono, monospace', size: 14 }, color: '#4A4540', maxRotation: 0, autoSkip: false } },
-        y: { grid: { color: '#EEE8DF' }, border: { display: false }, ticks: { font: { family: 'Sono, monospace', size: 13 }, color: '#6B655E', maxTicksLimit: 6, callback: money } },
+        y: { grid: { color: '#EEE8DF' }, border: { display: false }, min: yMin, max: yMax, ticks: { font: { family: 'Sono, monospace', size: 13 }, color: '#6B655E', stepSize: step, callback: money }, afterBuildTicks: axis => { axis.ticks = tickValues; } },
       },
     },
   });
@@ -3305,7 +3327,7 @@ function renderOrders(el, actions) {
   const chip = (k, l) => `<button class="chip" aria-pressed="${orderFilter === k}" onclick="orderFilter='${k}';updateOrderList();document.querySelectorAll('#order-chips .chip').forEach(c=>c.setAttribute('aria-pressed', c.dataset.k==='${k}'))" data-k="${k}">${l}</button>`;
   const unlocked = state.orders.filter(o => !o.costSnapshot && orderType(o) !== 'cancelled').length;
   el.innerHTML = `
-    ${unlocked && schema.costSnapshot ? `<div class="review-bar"><div><span class="dot"></span>${unlocked} order${unlocked > 1 ? 's' : ''} without locked costs (e.g. new Shopify orders).</div><button class="btn btn-secondary btn-sm" onclick="openLockCosts()">Review &amp; lock</button></div>` : ''}
+    ${unlocked && schema.costSnapshot && !autoLockOn() ? `<div class="review-bar"><div><span class="dot"></span>${unlocked} order${unlocked > 1 ? 's' : ''} without locked costs (e.g. new Shopify orders).</div><button class="btn btn-secondary btn-sm" onclick="openLockCosts()">Review &amp; lock</button></div>` : ''}
     ${schema.costSnapshot === false || schema.refunds === false ? `<div class="notice-list"><div class="notice warn">Run migration <code>002</code> to save locked costs, refund details and order types. Until then those actions are unavailable; everything else works.</div></div>` : ''}
     <div class="list">
       <div class="list-tools">
@@ -3336,9 +3358,9 @@ function orderRowHTML(o, c) {
   const items = orderLines(o).map(l => `${esc(l.sku)}${l.qty > 1 ? ` ×${l.qty}` : ''}`).join(', ');
   return `<button class="order-row" aria-expanded="${open}" onclick="toggleOrder(${o.id})">
       <span class="col-date">${fmtDate(o.date)}</span><span class="col-num"><strong>${esc(o.orderNum)}</strong></span>
-      <span>${esc(o.customer)} ${orderChips(o, c)}<div class="sub">${items}</div></span>
-      <span class="amt">${fmt(orderNet(o, c))}<div class="sub" style="font-weight:400">${refundTotal(o, c) > 0 ? `${fmt(refundTotal(o, c))} refunded` : c.costMissing ? 'contribution incomplete' : `contribution ${fmt(c.contribution)}`}</div></span>
-      <span aria-hidden="true" style="color:var(--text-3)">${open ? '▴' : '▾'}</span>
+      <span>${esc(o.customer) || '—'} ${orderChips(o, c)}<div class="sub">${rowMeta([fmtDay(o.date), o.orderNum, CHANNEL_LABEL[c.channel]])}${items}<span class="d-only"> · ${CHANNEL_LABEL[c.channel]}</span></div></span>
+      <span class="amt">${fmt(orderNet(o, c))}<div class="sub" style="font-weight:400">${refundTotal(o, c) > 0 ? `${fmt(refundTotal(o, c))} refunded` : c.costMissing ? 'cost missing' : c.type !== 'sale' ? `cost ${fmt(c.productCost)}` : `profit ${fmt(c.contribution)}`}</div></span>
+      <span class="chev" aria-hidden="true">${open ? '▴' : '▾'}</span>
     </button>${open ? orderDetailHTML(o, c) : ''}`;
 }
 function toggleOrder(id) { openOrders.has(id) ? openOrders.delete(id) : openOrders.add(id); updateOrderList(); }
@@ -3355,11 +3377,11 @@ function orderDetailHTML(o, c) {
       <div><span>Sale value</span>${fmt(c.revenue)}</div>
       <div><span>Items &amp; unit cost</span>${lines}</div>
       <div><span>Scarf cost</span>${c.costMissing ? '<span class="neg-text">incomplete</span>' : fmt(c.productCost)}</div>
-      <div><span>Postage</span>${fmt(c.postage)} ${c.postageMatched ? `(actual; estimate ${fmt(c.shipEst)})` : '(estimate)'}</div>
-      ${c.channel !== 'direct' && c.type === 'sale' ? `<div><span>Payout</span>${o.payoutDate ? `paid ${fmtDateLong(o.payoutDate)} (from statement)` : 'estimated from payout delay'}</div>` : ''}
-      <div><span>Platform fee</span>${fmt(c.fee)}${c.fold ? `<br><span class="form-hint" style="font-size:13px">Commission ${fmt(c.fold.commission)}${c.fold.delivery ? ` (excl. ${fmt(c.fold.delivery)} delivery)` : ''} + card fee ${fmt(c.fold.cardFee)} (${pct1(c.fold.cardRate, 2)}) · payout ${fmt(c.payout)}</span>` : ''}</div>
-      <div><span>Contribution at sale</span>${c.costMissing ? 'incomplete' : fmt(c.contribution)}</div>
-      <div><span>Costs</span>${esc(snapshotLabel(o))}</div>
+      <div><span>Postage</span>${fmt(c.postage)}${c.postageMatched ? ` (actual; rate ${fmt(c.shipEst)})` : ''}</div>
+      ${c.channel !== 'direct' && c.type === 'sale' && c.revenue > 0 ? `<div><span>Payout</span>${fmt(c.payout)} · ${payoutStatus(o, c)}</div>` : ''}
+      <div><span>Platform fee</span>${fmt(c.fee)}${c.fold ? `<br><span class="form-hint" style="font-size:13px">Commission ${fmt(c.fold.commission)}${c.fold.delivery ? ` (excl. ${fmt(c.fold.delivery)} delivery)` : ''} + card fee ${fmt(c.fold.cardFee)} (${pct1(c.fold.cardRate, 2)})</span>` : ''}</div>
+      <div><span>${c.type === 'sale' ? 'Profit on this order' : 'Cost of this ' + ORDER_TYPES[c.type].toLowerCase()}</span>${c.costMissing ? 'incomplete' : fmt(c.type === 'sale' ? c.contribution : c.productCost + c.postage)}</div>
+      ${o.costSnapshot?.basis === 'auto' && !o.costSnapshot.corrections?.length ? '' : `<div><span>Costs</span>${esc(snapshotLabel(o))}</div>`}
     </div>
     ${refs.length ? `<div style="margin-bottom:12px"><strong>Refunds</strong>${refs.map((r, i) => `<div style="font-size:13.5px;color:var(--text-2);margin-top:4px">
         ${r.legacy ? 'Marked refunded before details were recorded — treated as a full refund at the order date; stock not assumed returned. Add the real details.' :
@@ -3367,12 +3389,30 @@ function orderDetailHTML(o, c) {
         ${!r.legacy && can.ref ? ` <button class="linkbtn" onclick="deleteRefund(${o.id},'${esc(r.id)}')">Remove</button>` : ''}</div>`).join('')}</div>` : ''}
     ${o.costSnapshot?.corrections?.length ? `<details style="margin-bottom:12px;font-size:13px"><summary>Cost corrections</summary>${o.costSnapshot.corrections.map(k => `<div style="margin-top:4px">${fmtDateLong(k.on)}: ${esc(k.reason)} — ${esc(k.summary || '')}</div>`).join('')}</details>` : ''}
     <div class="detail-actions">
+      ${c.type === 'sale' && !(c.revenue > 0) && !o.orderType && schema.orderType === true ? `<button class="btn btn-primary btn-sm" onclick="runSave(this, () => markOrderType(${o.id}, 'gift'))">Mark as gift</button>
+        <button class="btn btn-secondary btn-sm" onclick="runSave(this, () => markOrderType(${o.id}, 'sample'))">Mark as sample</button>` : ''}
       <button class="btn btn-secondary btn-sm" onclick="editOrder(${o.id})">Edit</button>
       ${c.type === 'sale' && c.revenue > 0 ? `<button class="btn btn-secondary btn-sm" ${can.ref ? '' : 'disabled title="Needs migration 002"'} onclick="openRefund(${o.id})">${refs.some(r => r.legacy) ? 'Add refund details' : 'Record refund'}</button>` : ''}
       <button class="btn btn-secondary btn-sm" ${can.snap ? '' : 'disabled title="Needs migration 002"'} onclick="openCorrectCosts(${o.id})">Correct costs</button>
       <button class="btn btn-danger btn-sm" onclick="deleteOrder(${o.id})">Delete</button>
     </div>
   </div>`;
+}
+
+// When the payout reached (or should reach) the bank: a date from a statement, or the payout-delay estimate.
+function payoutStatus(o, c, today = londonToday()) {
+  if (o.payoutDate) return o.payoutDate <= today ? `paid ${fmtDay(o.payoutDate)} (statement)` : `due ${fmtDay(o.payoutDate)} (statement)`;
+  const lag = c.channel === 'fold' ? lagDays(state.settings.foldPayoutLagDays, 14) : lagDays(state.settings.platformPayoutLagDays, 7);
+  const due = addDays(o.date, lag + 1);       // counted as received from the day after the delay ends (see cashAt)
+  return due <= today ? 'counted as received' : `expected about ${fmtDay(due)}`;
+}
+// One tap for a £0 order: gift or sample (its scarf cost then shows under gifts & samples, not cost of sales).
+async function markOrderType(id, type) {
+  if (writesBlocked()) throw new Error('data not loaded');
+  const o = state.orders.find(x => x.id === id); if (!o) throw new Error('order not found');
+  failIf(await updateRecord('orders', id, { order_type: type }));
+  o.orderType = type;
+  toast(`Marked as ${ORDER_TYPES[type].toLowerCase()}.`); renderView(currentView);
 }
 
 // ── Add / edit ─────────────────────────────────────
@@ -3433,7 +3473,7 @@ function orderFormHTML(o = null) {
       ${schema.orderType ? `<div class="form-group"><label for="o-type">Type</label><select id="o-type" onchange="document.getElementById('o-rev-row').style.display=this.value==='sale'?'':'none';refreshOrderPreview()">
         ${Object.entries(ORDER_TYPES).map(([k, l]) => `<option value="${k}" ${type === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>` : ''}
       <div class="form-group full"><label>Items</label><div id="line-items-list">${items.map(li => lineItemRowHTML(li.sku, li.qty, items.length > 1)).join('')}</div>
-        <button type="button" class="btn btn-ghost btn-sm" style="margin-top:4px" onclick="addLineItem()">+ Add item</button></div>
+        <button type="button" class="btn btn-secondary btn-sm" style="margin-top:6px;align-self:flex-start;min-height:44px;padding:0 14px" onclick="addLineItem()">+ Add another scarf</button></div>
       <div class="form-group" id="o-rev-row" style="display:${type === 'sale' ? '' : 'none'}"><label for="o-rev">Sale value (£)</label><input type="number" id="o-rev" value="${o?.revenue || ''}" step="0.01" min="0" oninput="refreshOrderPreview()"></div>
       <div class="form-group"><label for="o-ship">Shipping method</label><select id="o-ship" onchange="refreshOrderPreview()">${methods}</select></div>
       <div class="form-group"><label for="o-channel">Channel</label><select id="o-channel" onchange="document.getElementById('o-fold-rate-row').style.display=this.value==='fold'?'':'none';refreshOrderPreview()">
@@ -3456,9 +3496,9 @@ function refreshOrderPreview() {
   const c = calcOrder(cand);
   el.innerHTML = `<div class="detail-grid" style="background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-top:14px">
     <div><span>Scarf cost</span>${c.costMissing ? '<span class="neg-text">missing</span>' : fmt(c.productCost)}</div>
-    <div><span>Postage estimate</span>${fmt(c.shipEst)}</div>
+    <div><span>Postage</span>${fmt(c.shipEst)}</div>
     <div><span>Platform fee</span>${fmt(c.fee)}</div>
-    <div><span>Contribution</span>${c.costMissing ? 'incomplete' : fmt(c.contribution)}</div></div>
+    <div><span>Profit on this order</span>${c.costMissing ? 'incomplete' : fmt(c.contribution)}</div></div>
     ${c.costMissing ? `<p class="form-hint neg-text">No cost in Settings for ${esc(c.missingSkus.join(', '))}.</p>` : ''}`;
 }
 function openAddOrder() {
@@ -3538,17 +3578,25 @@ function openRefund(id) {
       <div class="form-group"><label for="rf-date">Refund date</label><input type="date" id="rf-date" value="${today}"></div>
       <div class="form-group full"><label class="checkbox-row" style="text-transform:none;letter-spacing:0"><input type="checkbox" id="rf-paid" checked onchange="document.getElementById('rf-paid-row').style.display=this.checked?'':'none'"> Refund has been paid to the customer</label></div>
       <div class="form-group" id="rf-paid-row"><label for="rf-paid-date">Date paid</label><input type="date" id="rf-paid-date" value="${today}"></div>
-      <div class="form-group full"><label>Returned items</label>${c.lines.map(l => { const prior = (o.refunds || []).filter(r => r.resaleable === true).reduce((a, r) => a + (r.returned || []).filter(x => x.sku === l.sku).reduce((b, x) => b + num(x.qty), 0), 0);
+      <div class="form-group full"><label for="rf-resale">Did the scarf come back?</label><select id="rf-resale" onchange="refundReturnChanged(this.value)">
+        <option value="">No / not known</option><option value="yes">Yes, and it can be resold</option><option value="no">Yes, but it can't be resold</option></select></div>
+      <div class="form-group full" id="rf-ret-row" style="display:none"><label>How many came back</label>${c.lines.map(l => { const prior = (o.refunds || []).filter(r => r.resaleable === true).reduce((a, r) => a + (r.returned || []).filter(x => x.sku === l.sku).reduce((b, x) => b + num(x.qty), 0), 0);
         const left = Math.max(0, l.qty - prior); return `<div style="display:flex;gap:8px;align-items:center;margin-bottom:4px"><span style="flex:1">${esc(l.sku)}</span>
         <input type="number" class="rf-ret" data-sku="${esc(l.sku)}" aria-label="Returned ${esc(l.sku)}" min="0" max="${left}" value="0" style="width:70px"> of ${left}${prior ? ` (${prior} already returned)` : ''}</div>`; }).join('')}</div>
-      <div class="form-group full"><label for="rf-resale">Returned stock</label><select id="rf-resale">
-        <option value="">Not returned / not known</option><option value="yes">Returned and resaleable</option><option value="no">Returned but not resaleable</option></select></div>
       <div class="form-group"><label for="rf-fee">Platform fee kept by the platform (£)</label><input type="number" id="rf-fee" step="0.01" min="0" value="${(c.fee * (remaining / (c.revenue || 1))).toFixed(2)}"></div>
       <div class="form-group"><label for="rf-post">Return postage you paid (£)</label><input type="number" id="rf-post" step="0.01" min="0" value="0"></div>
       <div class="form-group full"><label for="rf-note">Note</label><input type="text" id="rf-note"></div>
     </div>
     <p class="form-hint">The refund comes off sales in the month the order was placed; the refund date is used for cash. Leave return postage at £0 if you log the return label as a Shipping &amp; Postage expense and match it to this order.</p>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="runSave(this, () => saveRefund(${id}))">Save refund</button>`);
+}
+// Returned quantities appear only when a scarf came back, pre-filled with everything that can still be returned.
+function refundReturnChanged(v) {
+  const row = document.getElementById('rf-ret-row'); if (!row) return;
+  row.style.display = v ? '' : 'none';
+  const inputs = Array.from(document.querySelectorAll('.rf-ret'));
+  if (!v) inputs.forEach(i => { i.value = 0; });
+  else if (!inputs.some(i => parseInt(i.value) > 0)) inputs.forEach(i => { i.value = i.max; });
 }
 async function saveRefund(id) {
   if (writesBlocked()) throw new Error('data not loaded');
@@ -3566,7 +3614,8 @@ async function saveRefund(id) {
   const paidDate = document.getElementById('rf-paid-date').value;
   if (paid && !isValidYMD(paidDate)) throw new Error('enter the date the refund was paid');
   const resale = document.getElementById('rf-resale').value;
-  const returned = Array.from(document.querySelectorAll('.rf-ret')).map(i => ({ sku: i.dataset.sku, qty: parseInt(i.value) || 0 })).filter(x => x.qty > 0);
+  const returned = resale ? Array.from(document.querySelectorAll('.rf-ret')).map(i => ({ sku: i.dataset.sku, qty: parseInt(i.value) || 0 })).filter(x => x.qty > 0) : [];
+  if (resale && !returned.length) throw needInput('Enter how many scarves came back, or choose "No / not known".', 'rf-resale');
   const refund = { id: newUid(), amount: r2(amount), date, paid_date: paid ? paidDate : null, returned,
     resaleable: resale === 'yes' ? true : resale === 'no' ? false : null,
     fees_retained: r2(num(document.getElementById('rf-fee').value)), return_postage: r2(num(document.getElementById('rf-post').value)),
@@ -3659,6 +3708,31 @@ async function runLockBackup() {
   document.getElementById('modal-footer').innerHTML = `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
     <button class="btn btn-primary" id="lock-confirm" onclick="runSave(this, lockEstimatedCosts)">Backup saved — lock ${n} order${n !== 1 ? 's' : ''}</button>`;
 }
+// Automatic locking: orders that arrive without saved costs (e.g. from the Shopify sync) get the Settings
+// costs for their own date as soon as the app has loaded them. Already-locked orders are never touched
+// (the update only applies while cost_snapshot is still empty), and an order with a missing product cost
+// is left alone so it stays flagged. Figures don't change: the locked values are the ones already in use.
+let autoLocking = false;
+async function autoLockCosts() {
+  if (autoLocking || loadError || !autoLockOn() || schema.costSnapshot !== true) return 0;
+  const hits = lockCandidates().filter(o => !calcOrder(o).costMissing);
+  if (!hits.length) return 0;
+  autoLocking = true; suppressRealtime++;
+  let done = 0;
+  try {
+    for (const o of hits) {
+      const snap = buildSnapshot(o, 'auto');
+      try {
+        const { data, error } = await sb.from('orders').update({ cost_snapshot: snap }).eq('id', o.id).is('cost_snapshot', null).select('id');
+        if (error) break;                                   // offline or failing: try again next time the app loads
+        if (data && data.length) { const cur = state.orders.find(x => x.id === o.id); if (cur && !cur.costSnapshot) cur.costSnapshot = snap; done++; }
+      } catch (e) { break; }
+    }
+  } finally { suppressRealtime--; autoLocking = false; }
+  if (done && !_busy && !document.getElementById('modal-overlay')?.classList.contains('open') && ['orders', 'reports'].includes(currentView)
+      && !['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement?.tagName)) renderView(currentView);
+  return done;
+}
 async function lockEstimatedCosts() {
   if (writesBlocked()) throw new Error('data not loaded');
   const confirmed = new Set(Array.from(document.querySelectorAll('.lk-conf:checked')).map(c => parseInt(c.dataset.id, 10)));
@@ -3705,14 +3779,14 @@ function renderExpenses(el, actions) {
       ${exp.map(x => `<div class="review-item" style="margin-bottom:6px"><div><strong>${esc(x.description)}</strong><p>${fmt(x.amount)} · due ${fmtDateLong(x.due)}</p></div>
         <div style="display:flex;gap:6px"><button class="btn btn-secondary btn-sm" onclick="confirmExpected('${esc(x.key)}')">Confirm…</button>
         <button class="btn btn-ghost btn-sm" onclick="runSave(this, () => skipExpected('${esc(x.key)}'))">Skip</button></div></div>`).join('')}</section>` : ''}
-    <section class="card" style="margin-bottom:16px" id="postage-review"><h3>Postage review</h3>
+    ${toReview.length ? `<section class="card" style="margin-bottom:16px" id="postage-review"><h3>Postage payments to check</h3>
       ${schema.postageReview === false ? `<p class="form-hint">Run migration 002 to match postage payments to orders.</p>` : ''}
       ${toReview.length ? `<p class="form-hint" style="margin:-4px 0 10px">${toReview.length} Shipping &amp; Postage payment${toReview.length > 1 ? 's' : ''} not reviewed. Each is currently counted as postage not linked to an order, while the orders keep their estimates. Match a payment to the order(s) it paid for, or mark it as not for a customer order.</p>
         ${toReview.map(t => `<div class="review-item" style="margin-bottom:6px"><div><strong>${esc(t.description)}</strong><p>${fmt(t.amount)} · ${fmtDateLong(t.date)}</p></div>
           <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" ${schema.postageReview ? '' : 'disabled'} onclick="openMatchPostage(${t.id})">Match to orders…</button>
           <button class="btn btn-ghost btn-sm" ${schema.postageReview ? '' : 'disabled'} onclick="runSave(this, () => markNonOrderPostage(${t.id}))">Not for an order</button></div></div>`).join('')}`
-        : `<p class="form-hint">Nothing to review.</p>`}
-    </section>
+        : ''}
+    </section>` : ''}
     <div class="list">
       <div class="list-tools">
         <input class="search-input" type="search" id="tx-search" aria-label="Search expenses" placeholder="Search expenses…" value="${esc(txSearch)}" oninput="txSearch=this.value;updateTxList()">
@@ -3735,11 +3809,11 @@ function updateTxList() {
     const dir = CAT_CFG[t.category]?.d;
     const info = idx.txInfo.get(t.id);
     const pchip = info ? (info.status === 'orders' ? `<span class="status-chip">Matched ${fmt(info.allocated)}</span>` : info.status === 'non_order' ? `<span class="status-chip">Not for an order</span>` : `<span class="status-chip warn">To review</span>`) : '';
-    return `<div class="order-row" style="cursor:default">
+    return `<div class="order-row tx-row" role="button" tabindex="0" onclick="editTx(${t.id})" onkeydown="if(event.key==='Enter')editTx(${t.id})">
       <span class="col-date">${fmtDate(t.date)}</span><span class="col-num"></span>
-      <span>${esc(t.description)} ${t.category === 'Sales' ? '<span class="status-chip warn">Excluded</span>' : ''}${pchip}<div class="sub">${esc(t.category || 'No category')}</div></span>
+      <span>${esc(t.description)} ${t.category === 'Sales' ? '<span class="status-chip warn">Excluded</span>' : ''}${pchip}<div class="sub">${rowMeta([fmtDay(t.date)])}${esc(t.category || 'No category')}</div></span>
       <span class="amt ${dir === 'In' ? 'pos-text' : ''}">${dir === 'In' ? '+' : ''}${fmt(t.amount)}</span>
-      <span class="row-actions">
+      <span class="row-actions" onclick="event.stopPropagation()">
         <button class="edit-btn" onclick="editTx(${t.id})" aria-label="Edit">✎</button>
         <button class="edit-btn" onclick="copyTxToday(${t.id})" aria-label="Copy to today">⧉</button>
         <button class="delete-btn" onclick="deleteTx(${t.id})" aria-label="Delete">×</button>
@@ -3766,7 +3840,7 @@ function txFormHTML(t = null, preset = null) {
     <div class="form-group"><label for="t-amount">Amount (£)</label><input type="number" id="t-amount" step="0.01" min="0" value="${v.amount ?? ''}"></div>
     <div class="form-group full"><label for="t-desc">Description</label><input type="text" id="t-desc" value="${esc(v.description || '')}"></div>
     <div class="form-group full"><label for="t-cat">Category</label><select id="t-cat" onchange="document.getElementById('t-hint').textContent=categoryTreatmentHint(this.value)">
-      ${CATEGORIES.map(c => `<option ${c === (v.category || 'Other Expenses') ? 'selected' : ''}>${c}</option>`).join('')}</select>
+      ${CATEGORIES.filter(c => c !== 'Sales' || v.category === 'Sales').map(c => `<option ${c === (v.category || 'Other Expenses') ? 'selected' : ''}>${c}</option>`).join('')}</select>
       <p class="form-hint" id="t-hint">${categoryTreatmentHint(v.category || 'Other Expenses')}</p></div>
   </div>`;
 }
@@ -3785,7 +3859,9 @@ function openAddTx(preset = null) {
 function editTx(id) {
   const t = state.transactions.find(x => x.id === id); if (!t) return;
   editingTxId = id;
-  openFormModal('Edit expense', txFormHTML(t),
+  openFormModal('Edit expense', txFormHTML(t) + `<div class="detail-actions" style="margin-top:14px">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal();copyTxToday(${id})">Copy to today</button>
+      <button class="btn btn-ghost btn-sm neg-text" onclick="closeModal();deleteTx(${id})">Delete</button></div>`,
     `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="runSave(this, () => updateTx(${id}))">Save changes</button>`);
 }
 async function createTx(t) {
@@ -3923,7 +3999,7 @@ function reportPLHTML(p) {
     ${plHead('Direct costs of orders')}
     ${plRow(`Cost of scarves sold (${p.units} units)${flag}`, -p.cogs, '', true)}
     ${p.stockBack ? plRow('Returned resaleable stock', p.stockBack, '', true) : ''}
-    ${plRow(`Postage — order estimates (${p.matchedOrders + p.unmatchedOrders} shipped)`, -p.postageEst, '', true)}
+    ${plRow(`Postage (${p.matchedOrders + p.unmatchedOrders} order${p.matchedOrders + p.unmatchedOrders !== 1 ? 's' : ''} posted)`, -p.postageEst, '', true)}
     ${p.matchedOrders ? plRow(`Postage adjustment — matched actual vs estimate (${p.matchedOrders} orders)`, -p.postageAdj, '', true) : ''}
     ${p.shopifyFees ? plRow('Shopify fees', -p.shopifyFees, '', true) : ''}
     ${p.foldFees ? plRow('Fold commission & card fees', -p.foldFees, '', true) : ''}
@@ -3938,7 +4014,7 @@ function reportPLHTML(p) {
     ${OPEX_CATS.map(c => p.opex[c] ? plRow(esc(c), -p.opex[c], '', true) : '').join('') || `<div class="pl-row"><span style="padding-left:28px;color:var(--text-3)">None in this period</span></div>`}
     ${plRow('Total operating expenses', -p.totalOpEx, 'subtotal')}
     <div class="pl-row net-profit"><span>Net profit${flag}</span><span class="pl-value">${colorFmt(p.operatingProfit)}</span></div>
-    <div class="pl-row"><span style="color:var(--text-2)">Status</span><span style="color:var(--text-2)">${esc(p.confidence.label)}</span></div>
+    ${p.confidence.status !== 'ready' ? `<div class="pl-row"><span style="color:var(--text-2)">Status</span><span style="color:var(--text-2)">${esc(p.confidence.label)}</span></div>` : ''}
     ${p.otherIncome ? plRow('Other income', p.otherIncome, '', true) + plRow('Profit before tax', p.profitBeforeTax, 'total') : ''}
     <div class="pl-note">Stock purchases go into book stock and are charged to profit as scarves are sold. Loans and owner money never count as sales or profit. No tax is calculated.</div>
   </div>
@@ -3967,10 +4043,10 @@ function reportOrdersHTML(p) {
   const chip = (k, l) => `<button class="chip" aria-pressed="${reportsOrderFilter === k}" onclick="reportsOrderFilter='${k}';renderView('reports')">${l}</button>`;
   return `<div class="list"><div class="list-tools">${chip('all', 'All orders')}${chip('paid', 'Paid orders')}${chip('refunds', 'With refunds')}${chip('missing', 'Missing costs')}
       <span class="muted" style="font-size:13px">${rows.length} order${rows.length !== 1 ? 's' : ''} dated in this period${rows.length ? ` · <span data-testid="orders-split">${channelSplit(rows)}</span>` : ''}</span></div>
-    ${rows.map(({ o, c }) => `<div class="order-row" style="cursor:default"><span class="col-date">${fmtDate(o.date)}</span><span class="col-num"><strong>${esc(o.orderNum)}</strong></span>
-      <span>${esc(o.customer)} ${orderChips(o, c)}<div class="sub">${orderLines(o).map(l => `${esc(l.sku)}${l.qty > 1 ? ` ×${l.qty}` : ''}`).join(', ')}</div></span>
-      <span class="amt">${fmt(c.revenue)}<div class="sub" style="font-weight:400">${c.costMissing ? 'contribution incomplete' : `contribution ${fmt(c.contribution)}`}</div></span>
-      <span><button class="linkbtn" onclick="openOrderFromReport(${o.id})">Open</button></span></div>`).join('')
+    ${rows.map(({ o, c }) => `<button class="order-row" onclick="openOrderFromReport(${o.id})"><span class="col-date">${fmtDate(o.date)}</span><span class="col-num"><strong>${esc(o.orderNum)}</strong></span>
+      <span>${esc(o.customer) || '—'} ${orderChips(o, c)}<div class="sub">${rowMeta([fmtDay(o.date), o.orderNum, CHANNEL_LABEL[c.channel]])}${orderLines(o).map(l => `${esc(l.sku)}${l.qty > 1 ? ` ×${l.qty}` : ''}`).join(', ')}</div></span>
+      <span class="amt">${fmt(c.revenue)}<div class="sub" style="font-weight:400">${c.costMissing ? 'cost missing' : c.type !== 'sale' ? `cost ${fmt(c.productCost)}` : `profit ${fmt(c.contribution)}`}</div></span>
+      <span class="chev" aria-hidden="true">›</span></button>`).join('')
       || '<div class="empty-state"><div class="empty-state-text">No orders in this period.</div></div>'}</div>`;
 }
 
@@ -3989,7 +4065,7 @@ function reportRefundsHTML(p) {
     ${p.refundsUnpaid ? plRow('Recorded but not yet paid', -p.refundsUnpaid) : ''}
   </div>
   <div class="list" style="margin-top:14px">${list.map(({ o, r }) => `<div class="order-row" style="cursor:default"><span class="col-date">${fmtDate(o.date)}</span><span class="col-num">${esc(o.orderNum)}</span>
-    <span>${esc(o.customer)}<div class="sub">${r.legacy ? 'Marked refunded before details were recorded — add the details on the order' : `refunded ${fmtDateLong(r.date)} · ${r.paid_date ? 'paid ' + fmtDateLong(r.paid_date) : 'not yet paid'} · ${r.resaleable === true ? 'resaleable return' : r.resaleable === false ? 'not resaleable' : 'no return recorded'}`}</div></span>
+    <span>${esc(o.customer) || '—'}<div class="sub">${rowMeta([o.orderNum])}${r.legacy ? 'Marked refunded before details were recorded — add the details on the order' : `refunded ${fmtDateLong(r.date)} · ${r.paid_date ? 'paid ' + fmtDateLong(r.paid_date) : 'not yet paid'} · ${r.resaleable === true ? 'resaleable return' : r.resaleable === false ? 'not resaleable' : 'no return recorded'}`}</div></span>
     <span class="amt">${fmt(num(r.amount))}</span><span></span></div>`).join('') || '<div class="empty-state"><div class="empty-state-text">No refunds in this period.</div></div>'}</div>`;
 }
 
@@ -4005,7 +4081,7 @@ function reportCashHTML(p) {
     ${plRow('Stock purchases', -p.stockPurchases, '', true)}
     ${plRow('Packaging', -p.packaging, '', true)}
     ${plRow('Postage payments recorded', -p.postageTx, '', true)}
-    ${p.postageAssumedPaid ? plRow('Postage assumed paid (orders without a matched payment)', -p.postageAssumedPaid, '', true) : ''}
+    ${p.postageAssumedPaid ? plRow('Postage on orders', -p.postageAssumedPaid, '', true) : ''}
     ${plRow('Operating expenses', -p.totalOpEx, '', true)}
     ${p.refundsPaid ? plRow('Refunds paid', -p.refundsPaid, '', true) : ''}
     ${p.returnPostage ? plRow('Return postage', -p.returnPostage, '', true) : ''}
@@ -4694,6 +4770,7 @@ async function manualSync() {
     setSyncStatus('synced', 'Synced');
     renderView(currentView);
     toast('Data refreshed ✓');
+    autoLockCosts();
   } catch (e) {
     setSyncStatus('error', 'Sync failed');
     toast('Sync failed — check connection');
@@ -5235,6 +5312,7 @@ document.addEventListener('click', e => { if (!e.target.closest('#more-sheet, #m
     navigate(restore && restore.view ? restore.view : 'overview');
   }
   setTimeout(checkForUpdate, 3000);
+  setTimeout(autoLockCosts, 600);
 })();
 
 </script>
