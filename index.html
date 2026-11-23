@@ -1568,7 +1568,7 @@ const SCARF_ART = {
 // VERSION & PWA
 // ═══════════════════════════════════════════════════
 
-const APP_VERSION = '1.5.033';
+const APP_VERSION = '1.5.034';
 let swRegistration = null;
 let deferredInstallPrompt = null;
 let lastSyncTime = null;
@@ -2101,6 +2101,7 @@ const RECURRING_EXPENSES = [
   { description: 'Shopify Website Monthly Cost',   category: 'Software & Subscriptions', amount: 25,    dayOfMonth: 10 },
   { description: 'Adobe Illustrator Monthly Cost', category: 'Software & Subscriptions', amount: 21.98, dayOfMonth: 20 },
   { description: 'ChatGPT Subscription',           category: 'Software & Subscriptions', amount: 20,    dayOfMonth: 1  },
+  { description: 'Adobe Lightroom Monthly Cost',   category: 'Software & Subscriptions', amount: 11.99, dayOfMonth: 23, from: '2026-11-23' },   // started Nov 2026: nothing expected before then
 ];
 // Items due this month or last month that aren't recorded (same description that month) or skipped.
 function expectedItems(today = londonToday()) {
@@ -2109,7 +2110,7 @@ function expectedItems(today = londonToday()) {
   const out = [];
   months.forEach(({ y, m }) => RECURRING_EXPENSES.forEach(rec => {
     const due = ymd(y, m, Math.min(rec.dayOfMonth, daysInMonth(y, m)));
-    if (due > today) return;
+    if (due > today || (rec.from && due < rec.from)) return;
     const key = `${due.slice(0, 7)}|${rec.description}`;
     const recorded = state.transactions.some(t => t.description === rec.description && (t.date || '').startsWith(due.slice(0, 7)));
     if (recorded || (recurringState || {})[key]) return;
