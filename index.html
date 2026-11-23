@@ -1568,7 +1568,7 @@ const SCARF_ART = {
 // VERSION & PWA
 // ═══════════════════════════════════════════════════
 
-const APP_VERSION = '1.5.034';
+const APP_VERSION = '1.5.035';
 let swRegistration = null;
 let deferredInstallPrompt = null;
 let lastSyncTime = null;
@@ -2512,6 +2512,24 @@ function profitConfidence(R) {
   return { status, label, issues, needsReview: issues.filter(i => i.level !== 'info').length };
 }
 
+// Refunds on Shopify and Fold orders: the customer is refunded by the platform straight away, but the money only leaves
+// our bank when the platform takes it back (a debit, or netted off a payout). Until then the refund is PENDING.
+function pendingRefundsOn() { return state.settings.pendingRefunds !== false; }
+function isPlatform(channel) { return channel === 'shopify' || channel === 'fold'; }
+// The day a refund counts as out of the bank: the paid date if one is recorded; otherwise, on platform orders,
+// one payout delay after the refund (same estimate as payouts). Null = owed to a customer with no date yet.
+function refundSettleDate(c, e) {
+  if (e.paidDate) return e.paidDate;
+  if (!pendingRefundsOn() || !isPlatform(c.channel) || !isValidYMD(e.date)) return null;
+  return payoutDue({ date: e.date }, c.channel);
+}
+function refundPaidLabel(o, r, today = londonToday()) {
+  if (r.paid_date) return `paid ${fmtDateLong(r.paid_date)}`;
+  const c = calcOrder(o), due = refundSettleDate(c, { paidDate: null, date: r.date });
+  if (!due) return 'not yet paid';
+  return due <= today ? 'counted as taken from the bank' : `pending — expected to leave the bank about ${fmtDay(due)}`;
+}
+
 // ── Cash (as at a date; independent of the reporting period) ──
 function cashAt(date) {
   const s = state.settings;
@@ -2520,7 +2538,7 @@ function cashAt(date) {
   const on = d => isValidYMD(d) && d <= date;
   const C = { date, startingCash: num(s.openingCash), startingCashRecorded: s.openingCash != null && s.openingCash !== '',
     ownerIn: 0, loansIn: 0, otherIncome: 0, salesReceipts: 0, feeRefunds: 0, spent: 0, stockPurchases: 0, postageAssumed: 0,
-    returnPostage: 0, refundsPaid: 0, refundsRecorded: 0, loanRepay: 0, drawings: 0, shopifyPending: 0, foldPending: 0, confirmedReceipts: 0, shopifyLag, foldLag, lagUnit: payoutWorkingDays() ? 'working days' : 'days' };
+    returnPostage: 0, refundsPaid: 0, refundsRecorded: 0, loanRepay: 0, drawings: 0, shopifyPending: 0, foldPending: 0, shopifyRefundPending: 0, foldRefundPending: 0, feeRefundsPending: 0, confirmedReceipts: 0, shopifyLag, foldLag, lagUnit: payoutWorkingDays() ? 'working days' : 'days' };
   state.transactions.forEach(t => {
     if (!on(t.date) || t.category === 'Sales') return;
     const a = num(t.amount);
@@ -2547,15 +2565,25 @@ function cashAt(date) {
     }
     refundsOf(o, c).forEach(r => {
       const e = refundEffects(o, r, c);
-      if (on(e.date)) { C.refundsRecorded += e.amount; C.feeRefunds += e.feeRefund; C.returnPostage += e.returnPostage; }
-      if (e.paidDate && on(e.paidDate)) C.refundsPaid += e.amount;
+      const platform = pendingRefundsOn() && isPlatform(c.channel);
+      const settle = refundSettleDate(c, e), settled = !!settle && on(settle);
+      if (on(e.date)) {
+        C.refundsRecorded += e.amount; C.returnPostage += e.returnPostage;
+        // On a platform order the fee handed back arrives with the refund itself (netted), so it waits too.
+        if (!platform || settled) C.feeRefunds += e.feeRefund;
+        else { C.feeRefundsPending += e.feeRefund; C[c.channel + 'RefundPending'] += e.amount - e.feeRefund; }
+      }
+      if (settled) C.refundsPaid += e.amount;
     });
   });
   C.moneyIn = C.startingCash + C.ownerIn + C.loansIn + C.otherIncome + C.salesReceipts + C.feeRefunds;
   C.moneyOut = C.spent + C.postageAssumed + C.returnPostage + C.refundsPaid + C.loanRepay + C.drawings;
   C.cash = C.moneyIn - C.moneyOut;
   C.pending = C.shopifyPending + C.foldPending;
-  C.refundsOwed = C.refundsRecorded - C.refundsPaid;
+  C.refundsPending = C.shopifyRefundPending + C.foldRefundPending;      // still to be taken back by the platforms (net of fees they hand back)
+  C.pendingNet = C.pending - C.refundsPending;
+  C.refundsOwed = C.refundsRecorded - C.refundsPaid - C.feeRefundsPending; // everything not yet out of the bank
+  C.customerRefundsOwed = C.refundsOwed - C.refundsPending;               // direct orders: owed to the customer
   return C;
 }
 
@@ -2575,7 +2603,7 @@ function computeAsAt(today = londonToday()) {
   const sumCat = cat => txs.filter(t => t.category === cat).reduce((a, t) => a + num(t.amount), 0);
   const directorLoan = sumCat('Loan Received') - sumCat('Loan Repayment');
   const ownerCapital = sumCat('Owner Investment') - sumCat('Owner Drawings');
-  const refundsOwed = C.refundsRecorded - C.refundsPaid;
+  const refundsOwed = C.refundsOwed;
   const retained = computeReport(allTimeRange(today), today).profitBeforeTax;
   const totalAssets = C.cash + C.pending + stock.value;
   const totalLiabilities = directorLoan + refundsOwed;
@@ -3161,8 +3189,8 @@ function cashBreakdownHTML(today) {
       ${row('Loan repayments and drawings', C.loanRepay + C.drawings, '−')}
       <tr class="total"><td>Estimated cash at bank</td><td class="num">${fmt(C.cash)}</td></tr>
     </table>
-    <p class="cash-note"><strong>Cash inc. pending payouts: ${fmt(cashHeadline(today) + C.pending)}</strong> (cash at bank ${fmt(cashHeadline(today))} + pending ${fmt(C.pending)}).</p>
-    <p class="cash-note">Not included: pending payouts of ${fmt(C.pending)}${C.refundsOwed > 0.005 ? ` and refunds owed to customers of ${fmt(C.refundsOwed)}` : ''}.
+    <p class="cash-note"><strong>Cash inc. pending${C.refundsPending > 0.005 ? '' : ' payouts'}: ${fmt(cashHeadline(today) + C.pendingNet)}</strong> (cash at bank ${fmt(cashHeadline(today))} + pending payouts ${fmt(C.pending)}${C.refundsPending > 0.005 ? ` − pending refunds ${fmt(C.refundsPending)}` : ''}).</p>
+    <p class="cash-note">Not included: pending payouts of ${fmt(C.pending)}${C.refundsPending > 0.005 ? `, pending refunds of ${fmt(C.refundsPending)}` : ''}${C.customerRefundsOwed > 0.005 ? ` and refunds owed to customers of ${fmt(C.customerRefundsOwed)}` : ''}.
       Loans and your own money put in raise cash but are not sales or profit. Only a balance from your bank statement confirms this figure.</p>
   </div>`;
 }
@@ -3173,9 +3201,12 @@ function openCashBreakdown() {
 function openPayoutSheet() {
   const today = londonToday(), C = cashAt(today);
   const row = (l, v) => `<tr><td>${l}</td><td class="num">${fmt(v)}</td></tr>`;
-  openFormModal('Pending payouts', `<p class="sheet-note"><strong>Excluded from cash at bank.</strong> Platform payouts for recent orders that haven't reached the bank yet (Shopify after ${C.shopifyLag} ${C.lagUnit}, Fold after ${C.foldLag}, unless a payout date from a statement is recorded on the order), as at ${fmtDateLong(today)}.</p>
-    <table class="cash-break" data-testid="payout-detail">${row('Shopify', C.shopifyPending)}${row('Fold', C.foldPending)}<tr class="total"><td>Pending payouts</td><td class="num">${fmt(C.pending)}</td></tr></table>
-    ${C.refundsOwed > 0.005 ? `<p class="sheet-note">Refunds owed to customers (recorded, not yet paid): <strong>${fmt(C.refundsOwed)}</strong>.</p>` : ''}
+  const hasRef = pendingRefundsOn();
+  openFormModal(hasRef ? 'Pending payouts and refunds' : 'Pending payouts', `<p class="sheet-note"><strong>Excluded from cash at bank.</strong> Platform payouts for recent orders that haven't reached the bank yet (Shopify after ${C.shopifyLag} ${C.lagUnit}, Fold after ${C.foldLag}, unless a payout date from a statement is recorded on the order), as at ${fmtDateLong(today)}.</p>
+    <table class="cash-break" data-testid="payout-detail">${hasRef ? `${row('Shopify payouts to come', C.shopifyPending)}${row('Fold payouts to come', C.foldPending)}${row('Shopify refunds to go out', -C.shopifyRefundPending)}${row('Fold refunds to go out', -C.foldRefundPending)}<tr class="total"><td>Net pending</td><td class="num">${fmt(C.pendingNet)}</td></tr>`
+      : `${row('Shopify', C.shopifyPending)}${row('Fold', C.foldPending)}<tr class="total"><td>Pending payouts</td><td class="num">${fmt(C.pending)}</td></tr>`}</table>
+    ${hasRef ? `<p class="sheet-note">A refund on a Shopify or Fold order stays pending until the platform takes the money back: on the paid date recorded on the refund, or otherwise one payout delay after the refund. Fold refunds are shown net of the commission Fold hands back.</p>` : ''}
+    ${C.customerRefundsOwed > 0.005 ? `<p class="sheet-note">Refunds owed to customers (recorded, not yet paid): <strong>${fmt(C.customerRefundsOwed)}</strong>.</p>` : ''}
     <p class="sheet-note">Payout delays are set in Settings → Cash.</p>`,
     `<button class="btn btn-primary" onclick="closeModal()">Close</button>`);
 }
@@ -3212,8 +3243,8 @@ function supportRowHTML(a, today) {
       <strong ${valueTestid ? `data-testid="${valueTestid}"` : ''}>${value}</strong>${note}</button>`;
   return `<div class="support-row">
     ${item('card-orders', 'Paid orders', String(a.paidOrders), '', "reportsTab='orders';reportsOrderFilter='paid';navigate('reports')")}
-    ${item('card-payouts', 'Pending payouts', fmt(C.pending), 'cash-pending', 'openPayoutSheet()')}
-    ${item('card-cash-total', 'Cash inc. pending', fmt(cashHeadline(today) + C.pending), 'cash-inc-pending', 'openCashBreakdown()')}
+    ${item('card-payouts', 'Pending payouts', fmt(C.pendingNet), 'cash-pending', 'openPayoutSheet()')}
+    ${item('card-cash-total', 'Cash inc. pending', fmt(cashHeadline(today) + C.pendingNet), 'cash-inc-pending', 'openCashBreakdown()')}
     ${item('card-loan', 'Loan outstanding', fmt(computeAsAt(today).directorLoan), 'loan-outstanding', "navigate('balance')")}
   </div>`;
 }
@@ -3448,7 +3479,7 @@ function orderDetailHTML(o, c) {
     </div>
     ${refs.length ? `<div style="margin-bottom:12px"><strong>Refunds</strong>${refs.map((r, i) => `<div style="font-size:13.5px;color:var(--text-2);margin-top:4px">
         ${r.legacy ? 'Marked refunded before details were recorded — treated as a full refund at the order date; stock not assumed returned. Add the real details.' :
-        `${fmt(num(r.amount))} on ${fmtDateLong(r.date)} · ${r.paid_date ? `paid ${fmtDateLong(r.paid_date)}` : 'not yet paid'} · ${r.resaleable === true ? 'returned, resaleable' : r.resaleable === false ? 'returned, not resaleable' : 'no return recorded'}${num(r.return_postage) ? ` · return postage ${fmt(num(r.return_postage))}` : ''}`}
+        `${fmt(num(r.amount))} on ${fmtDateLong(r.date)} · ${refundPaidLabel(o, r)} · ${r.resaleable === true ? 'returned, resaleable' : r.resaleable === false ? 'returned, not resaleable' : 'no return recorded'}${num(r.return_postage) ? ` · return postage ${fmt(num(r.return_postage))}` : ''}`}
         ${!r.legacy && can.ref ? ` <button class="linkbtn" onclick="deleteRefund(${o.id},'${esc(r.id)}')">Remove</button>` : ''}</div>`).join('')}</div>` : ''}
     ${o.costSnapshot?.corrections?.length ? `<details style="margin-bottom:12px;font-size:13px"><summary>Cost corrections</summary>${o.costSnapshot.corrections.map(k => `<div style="margin-top:4px">${fmtDateLong(k.on)}: ${esc(k.reason)} — ${esc(k.summary || '')}</div>`).join('')}</details>` : ''}
     <div class="detail-actions">
@@ -3633,13 +3664,14 @@ function openRefund(id) {
   const existing = (o.refunds || []).reduce((a, r) => a + num(r.amount), 0);
   const remaining = Math.max(0, c.revenue - existing);
   const today = londonToday();
+  const pendRef = pendingRefundsOn() && isPlatform(c.channel);   // platform refunds start as pending
   openFormModal(`Record refund — ${o.orderNum || 'order'}`, `
     ${o.refunded && !(o.refunds || []).length ? `<div class="notice warn" style="margin-bottom:12px">This order was marked refunded without details. Recording the details replaces the legacy treatment.</div>` : ''}
     <div class="form-grid">
       <div class="form-group"><label for="rf-amt">Refund amount (£)</label><input type="number" id="rf-amt" step="0.01" min="0" value="${remaining.toFixed(2)}"></div>
       <div class="form-group"><label for="rf-date">Refund date</label><input type="date" id="rf-date" value="${today}"></div>
-      <div class="form-group full"><label class="checkbox-row" style="text-transform:none;letter-spacing:0"><input type="checkbox" id="rf-paid" checked onchange="document.getElementById('rf-paid-row').style.display=this.checked?'':'none'"> Refund has been paid to the customer</label></div>
-      <div class="form-group" id="rf-paid-row"><label for="rf-paid-date">Date paid</label><input type="date" id="rf-paid-date" value="${today}"></div>
+      <div class="form-group full"><label class="checkbox-row" style="text-transform:none;letter-spacing:0"><input type="checkbox" id="rf-paid" ${pendRef ? '' : 'checked'} onchange="document.getElementById('rf-paid-row').style.display=this.checked?'':'none'"> ${pendRef ? `The money has already left our bank` : 'Refund has been paid to the customer'}</label>${pendRef ? `<p class="form-hint">Leave unticked while ${c.channel === 'fold' ? 'Fold' : 'Shopify'} hasn't taken it back yet — it shows under pending refunds until then.</p>` : ''}</div>
+      <div class="form-group" id="rf-paid-row" ${pendRef ? 'style="display:none"' : ''}><label for="rf-paid-date">Date paid</label><input type="date" id="rf-paid-date" value="${today}"></div>
       <div class="form-group full"><label for="rf-resale">Did the scarf come back?</label><select id="rf-resale" onchange="refundReturnChanged(this.value)">
         <option value="">No / not known</option><option value="yes">Yes, and it can be resold</option><option value="no">Yes, but it can't be resold</option></select></div>
       <div class="form-group full" id="rf-ret-row" style="display:none"><label>How many came back</label>${c.lines.map(l => { const prior = (o.refunds || []).filter(r => r.resaleable === true).reduce((a, r) => a + (r.returned || []).filter(x => x.sku === l.sku).reduce((b, x) => b + num(x.qty), 0), 0);
@@ -4127,7 +4159,7 @@ function reportRefundsHTML(p) {
     ${p.refundsUnpaid ? plRow('Recorded but not yet paid', -p.refundsUnpaid) : ''}
   </div>
   <div class="list" style="margin-top:14px">${list.map(({ o, r }) => `<div class="order-row" style="cursor:default"><span class="col-date">${fmtDate(o.date)}</span><span class="col-num">${esc(o.orderNum)}</span>
-    <span>${esc(o.customer) || '—'}<div class="sub">${rowMeta([o.orderNum])}${r.legacy ? 'Marked refunded before details were recorded — add the details on the order' : `refunded ${fmtDateLong(r.date)} · ${r.paid_date ? 'paid ' + fmtDateLong(r.paid_date) : 'not yet paid'} · ${r.resaleable === true ? 'resaleable return' : r.resaleable === false ? 'not resaleable' : 'no return recorded'}`}</div></span>
+    <span>${esc(o.customer) || '—'}<div class="sub">${rowMeta([o.orderNum])}${r.legacy ? 'Marked refunded before details were recorded — add the details on the order' : `refunded ${fmtDateLong(r.date)} · ${refundPaidLabel(o, r)} · ${r.resaleable === true ? 'resaleable return' : r.resaleable === false ? 'not resaleable' : 'no return recorded'}`}</div></span>
     <span class="amt">${fmt(num(r.amount))}</span><span></span></div>`).join('') || '<div class="empty-state"><div class="empty-state-text">No refunds in this period.</div></div>'}</div>`;
 }
 
@@ -4173,7 +4205,7 @@ function renderBalance(el) {
       ${row('Total assets', b.totalAssets, 'total')}</div>
     <div class="bs-section"><div class="bs-header">Liabilities</div>
       ${row('Director loan', b.directorLoan)}
-      ${b.refundsOwed ? row('Refunds owed to customers', b.refundsOwed) : ''}
+      ${b.refundsOwed ? row(b.cash.refundsPending > 0.005 ? 'Refunds not yet paid out' : 'Refunds owed to customers', b.refundsOwed) : ''}
       ${row('Total liabilities', b.totalLiabilities, 'total')}</div>
     <div class="bs-section"><div class="bs-header">Equity</div>
       ${row('Owner capital (investment − drawings)', b.ownerCapital)}
