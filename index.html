@@ -1568,7 +1568,7 @@ const SCARF_ART = {
 // VERSION & PWA
 // ═══════════════════════════════════════════════════
 
-const APP_VERSION = '1.5.032';
+const APP_VERSION = '1.5.033';
 let swRegistration = null;
 let deferredInstallPrompt = null;
 let lastSyncTime = null;
@@ -2170,6 +2170,15 @@ const ORDER_TYPES = { sale: 'Sale', gift: 'Gift', sample: 'Sample', cancelled: '
 function num(v) { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; }
 function r2(n) { return Math.round((n + Number.EPSILON) * 100) / 100; }
 function lagDays(v, def) { const n = parseInt(v, 10); return Number.isFinite(n) && n >= 0 ? n : def; }
+// Platforms only pay out Monday to Friday, so payout delays are counted in working days (bank holidays are not known to the app).
+function isWeekend(s) { const { y, m, d } = parseYMD(s); const w = new Date(Date.UTC(y, m - 1, d)).getUTCDay(); return w === 0 || w === 6; }
+function addWorkingDays(s, n) { let d = s; while (n > 0) { d = addDays(d, 1); if (!isWeekend(d)) n--; } while (isWeekend(d)) d = addDays(d, 1); return d; }
+function payoutWorkingDays() { return state.settings.payoutWorkingDays !== false; }
+// First day an order's payout is counted as in the bank when no statement date is recorded on it.
+function payoutDue(o, channel) {
+  const lag = channel === 'fold' ? lagDays(state.settings.foldPayoutLagDays, 14) : lagDays(state.settings.platformPayoutLagDays, 7);
+  return payoutWorkingDays() ? addWorkingDays(o.date, lag) : addDays(o.date, lag + 1);
+}
 function orderChannel(o) { return o.channel || (o.outsideShopify ? 'direct' : 'shopify'); }
 function orderType(o) { return ORDER_TYPES[o.orderType] ? o.orderType : 'sale'; }
 function orderLines(o) {
@@ -2510,7 +2519,7 @@ function cashAt(date) {
   const on = d => isValidYMD(d) && d <= date;
   const C = { date, startingCash: num(s.openingCash), startingCashRecorded: s.openingCash != null && s.openingCash !== '',
     ownerIn: 0, loansIn: 0, otherIncome: 0, salesReceipts: 0, feeRefunds: 0, spent: 0, stockPurchases: 0, postageAssumed: 0,
-    returnPostage: 0, refundsPaid: 0, refundsRecorded: 0, loanRepay: 0, drawings: 0, shopifyPending: 0, foldPending: 0, confirmedReceipts: 0, shopifyLag, foldLag };
+    returnPostage: 0, refundsPaid: 0, refundsRecorded: 0, loanRepay: 0, drawings: 0, shopifyPending: 0, foldPending: 0, confirmedReceipts: 0, shopifyLag, foldLag, lagUnit: payoutWorkingDays() ? 'working days' : 'days' };
   state.transactions.forEach(t => {
     if (!on(t.date) || t.category === 'Sales') return;
     const a = num(t.amount);
@@ -2523,7 +2532,6 @@ function cashAt(date) {
       default: if (CAT_CFG[t.category]?.d === 'Out') { C.spent += a; if (t.category === 'Stock Purchases') C.stockPurchases += a; }
     }
   });
-  const shopCut = addDays(date, -shopifyLag), foldCut = addDays(date, -foldLag);
   state.orders.forEach(o => {
     if (!on(o.date)) return;
     const c = calcOrder(o, idx);
@@ -2531,7 +2539,7 @@ function cashAt(date) {
     if (!c.postageMatched) C.postageAssumed += c.shipEst;
     if (c.type === 'sale') {
       // A recorded payout date (from a platform statement) beats the payout-delay estimate.
-      const pending = o.payoutDate ? !on(o.payoutDate) : (c.channel === 'shopify' ? o.date >= shopCut : c.channel === 'fold' ? o.date >= foldCut : false);
+      const pending = o.payoutDate ? !on(o.payoutDate) : (c.channel === 'shopify' || c.channel === 'fold' ? date < payoutDue(o, c.channel) : false);
       if (pending && c.channel === 'shopify') C.shopifyPending += c.payout;
       else if (pending && c.channel === 'fold') C.foldPending += c.payout;
       else { C.salesReceipts += c.payout; if (o.payoutDate) C.confirmedReceipts += c.payout; }
@@ -3143,7 +3151,7 @@ function cashBreakdownHTML(today) {
       <tr><td>Starting cash</td><td class="num">${C.startingCashRecorded ? fmt(C.startingCash) : 'Not recorded'}</td></tr>
       ${row('Owner investment and loans received', C.ownerIn + C.loansIn, '+')}
       ${C.otherIncome ? row('Other income', C.otherIncome, '+') : ''}
-      ${row(`Sales receipts — estimated (payouts assumed to arrive ${C.shopifyLag} days after a Shopify order, ${C.foldLag} after Fold)`, C.salesReceipts, '+')}
+      ${row(`Sales receipts — estimated (payouts assumed to arrive ${C.shopifyLag} ${C.lagUnit} after a Shopify order, ${C.foldLag} after Fold)`, C.salesReceipts, '+')}
       ${C.feeRefunds ? row('Platform fees refunded', C.feeRefunds, '+') : ''}
       ${row(`Money spent, including stock purchases of ${fmt(C.stockPurchases)}`, C.spent, '−')}
       ${C.postageAssumed ? row('Postage on orders', C.postageAssumed, '−') : ''}
@@ -3164,7 +3172,7 @@ function openCashBreakdown() {
 function openPayoutSheet() {
   const today = londonToday(), C = cashAt(today);
   const row = (l, v) => `<tr><td>${l}</td><td class="num">${fmt(v)}</td></tr>`;
-  openFormModal('Pending payouts', `<p class="sheet-note"><strong>Excluded from cash at bank.</strong> Platform payouts for recent orders that haven't reached the bank yet (Shopify after ${C.shopifyLag} days, Fold after ${C.foldLag}, unless a payout date from a statement is recorded on the order), as at ${fmtDateLong(today)}.</p>
+  openFormModal('Pending payouts', `<p class="sheet-note"><strong>Excluded from cash at bank.</strong> Platform payouts for recent orders that haven't reached the bank yet (Shopify after ${C.shopifyLag} ${C.lagUnit}, Fold after ${C.foldLag}, unless a payout date from a statement is recorded on the order), as at ${fmtDateLong(today)}.</p>
     <table class="cash-break" data-testid="payout-detail">${row('Shopify', C.shopifyPending)}${row('Fold', C.foldPending)}<tr class="total"><td>Pending payouts</td><td class="num">${fmt(C.pending)}</td></tr></table>
     ${C.refundsOwed > 0.005 ? `<p class="sheet-note">Refunds owed to customers (recorded, not yet paid): <strong>${fmt(C.refundsOwed)}</strong>.</p>` : ''}
     <p class="sheet-note">Payout delays are set in Settings → Cash.</p>`,
@@ -3456,8 +3464,7 @@ function orderDetailHTML(o, c) {
 // When the payout reached (or should reach) the bank: a date from a statement, or the payout-delay estimate.
 function payoutStatus(o, c, today = londonToday()) {
   if (o.payoutDate) return o.payoutDate <= today ? `paid ${fmtDay(o.payoutDate)} (statement)` : `due ${fmtDay(o.payoutDate)} (statement)`;
-  const lag = c.channel === 'fold' ? lagDays(state.settings.foldPayoutLagDays, 14) : lagDays(state.settings.platformPayoutLagDays, 7);
-  const due = addDays(o.date, lag + 1);       // counted as received from the day after the delay ends (see cashAt)
+  const due = payoutDue(o, c.channel);        // same date cashAt uses
   return due <= today ? 'counted as received' : `expected about ${fmtDay(due)}`;
 }
 // One tap for a £0 order: gift or sample (its scarf cost then shows under gifts & samples, not cost of sales).
@@ -4247,8 +4254,8 @@ function renderSettings(el, actions) {
       <div class="form-group"><label>Bank-confirmed balances</label>
         ${bal.length ? bal.map(b => `<div class="form-hint" style="font-size:13px">${fmt(num(b.amount))} on ${fmtDateLong(b.asAt)} · ${esc(b.source)}</div>`).join('') : '<p class="form-hint">None recorded yet.</p>'}
         <button class="btn btn-secondary btn-sm" style="margin-top:6px;align-self:flex-start" onclick="openBankBalanceForm()">Record bank balance</button></div>
-      <div class="form-group"><label for="s-payoutlag">Shopify payout delay (days)</label><input type="number" id="s-payoutlag" min="0" max="30" value="${lagDays(s.platformPayoutLagDays, 7)}" oninput="setDraft('platformPayoutLagDays', lagDays(this.value, 5))"><p class="form-hint">Used only to estimate cash.</p></div>
-      <div class="form-group"><label for="s-foldlag">Fold payout delay (days)</label><input type="number" id="s-foldlag" min="0" max="60" value="${lagDays(s.foldPayoutLagDays, 14)}" oninput="setDraft('foldPayoutLagDays', lagDays(this.value, 14))"></div>
+      <div class="form-group"><label for="s-payoutlag">Shopify payout delay (${payoutWorkingDays() ? 'working days' : 'days'})</label><input type="number" id="s-payoutlag" min="0" max="30" value="${lagDays(s.platformPayoutLagDays, 7)}" oninput="setDraft('platformPayoutLagDays', lagDays(this.value, 5))"><p class="form-hint">Used only to estimate cash.${payoutWorkingDays() ? ' Weekends are skipped.' : ''}</p></div>
+      <div class="form-group"><label for="s-foldlag">Fold payout delay (${payoutWorkingDays() ? 'working days' : 'days'})</label><input type="number" id="s-foldlag" min="0" max="60" value="${lagDays(s.foldPayoutLagDays, 14)}" oninput="setDraft('foldPayoutLagDays', lagDays(this.value, 14))"></div>
       ${foldSettingsHTML(s)}</div>`)}
     ${sec('Stock', `${sc.hasCount && sc.impossible ? `<div class="notice err" style="margin-bottom:12px">Saved stock count ${fmt(sc.value)} is more than everything bought (${fmt(sc.maxPossible)} at cost) — check it isn't at retail value.</div>` : ''}
       <div class="settings-form-grid">
